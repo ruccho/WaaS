@@ -1,0 +1,3 @@
+[submodule "WaaS/WaaS.Tests/spec"]
+	path = WaaS/WaaS.Tests/spec
+	url = https://github.com/WebAssembly/spec

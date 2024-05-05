@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WaaS.Generators", "WaaS.Generators\WaaS.Generators.csproj", "{E2599BF8-553A-4563-B5A5-AA6038048447}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WaaS.Core", "WaaS.Core\WaaS.Core.csproj", "{EF9D812F-9765-44BB-84BF-337FC5C7EFBC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WaaS.Tests", "WaaS.Tests\WaaS.Tests.csproj", "{0EDA901C-D9D4-4448-98FD-B80F1A65FDBD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E2599BF8-553A-4563-B5A5-AA6038048447}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E2599BF8-553A-4563-B5A5-AA6038048447}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E2599BF8-553A-4563-B5A5-AA6038048447}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2599BF8-553A-4563-B5A5-AA6038048447}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EF9D812F-9765-44BB-84BF-337FC5C7EFBC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EF9D812F-9765-44BB-84BF-337FC5C7EFBC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF9D812F-9765-44BB-84BF-337FC5C7EFBC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EF9D812F-9765-44BB-84BF-337FC5C7EFBC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0EDA901C-D9D4-4448-98FD-B80F1A65FDBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0EDA901C-D9D4-4448-98FD-B80F1A65FDBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0EDA901C-D9D4-4448-98FD-B80F1A65FDBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0EDA901C-D9D4-4448-98FD-B80F1A65FDBD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
