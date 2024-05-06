@@ -412,5 +412,98 @@ namespace WaaS.Models
         }
     }
 
+
+    [OpCode(0xFC, 0x0A)]
+    public partial class MemoryCopy : Instruction
+    {
+        [Operand(0)] public byte Reserved0 { get; }
+        [Operand(1)] public byte Reserved1 { get; }
+
+        public override void Execute(WasmStackFrame current)
+        {
+            var memory = current.Instance.GetMemory(0);
+
+            var n = current.Pop().ExpectValueI32();
+            var src = current.Pop().ExpectValueI32();
+            var dest = current.Pop().ExpectValueI32();
+
+            checked
+            {
+                if (src + n > memory.Length || dest + n > memory.Length) throw new TrapException();
+                if (n == 0) return;
+
+                var srcSpan = memory.Slice((int)src, (int)n);
+                var destSpan = memory.Slice((int)dest, (int)n);
+
+                srcSpan.CopyTo(destSpan);
+            }
+        }
+
+        public override void Validate(in ValidationContext context)
+        {
+            base.Validate(context);
+            if (Reserved0 != 0) throw new InvalidModuleException();
+            if (Reserved1 != 0) throw new InvalidModuleException();
+        }
+
+        public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)
+        {
+            return (3, 0);
+        }
+
+        public override void ValidateStackState(in ValidationContext context, ref ValidationBlockStackState stackState)
+        {
+            context.GetMemoryType(0);
+            stackState.Pop(ValueType.I32);
+            stackState.Pop(ValueType.I32);
+            stackState.Pop(ValueType.I32);
+        }
+    }
+
+
+    [OpCode(0xFC, 0x0B)]
+    public partial class MemoryFill : Instruction
+    {
+        [Operand(0)] public byte Reserved { get; }
+
+        public override void Execute(WasmStackFrame current)
+        {
+            var memory = current.Instance.GetMemory(0);
+
+            var n = current.Pop().ExpectValueI32();
+            var val = unchecked((byte)current.Pop().ExpectValueI32());
+            var dest = current.Pop().ExpectValueI32();
+
+            checked
+            {
+                if (dest + n > memory.Length) throw new TrapException();
+                if (n == 0) return;
+
+                var destSpan = memory.Slice((int)dest, (int)n);
+
+                destSpan.Fill(val);
+            }
+        }
+
+        public override void Validate(in ValidationContext context)
+        {
+            base.Validate(context);
+            if (Reserved != 0) throw new InvalidModuleException();
+        }
+
+        public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)
+        {
+            return (3, 0);
+        }
+
+        public override void ValidateStackState(in ValidationContext context, ref ValidationBlockStackState stackState)
+        {
+            context.GetMemoryType(0);
+            stackState.Pop(ValueType.I32);
+            stackState.Pop(ValueType.I32);
+            stackState.Pop(ValueType.I32);
+        }
+    }
+
     #endregion
 }

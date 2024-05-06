@@ -10,7 +10,9 @@ namespace WaaS.Models
         {
             var preamble = reader.ReadUnaligned<Preamble>();
 
-            if (!preamble.IsValid()) throw new InvalidModuleException("invalid preamble");
+            if (!preamble.IsValid())
+                throw new InvalidModuleException(
+                    $"invalid preamble (magic: 0x{preamble.magic:X8}, version: 0x{preamble.version:X8})");
 
             List<Section> sections = new();
 

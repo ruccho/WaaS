@@ -4,13 +4,13 @@ using System.Runtime.InteropServices;
 namespace WaaS.Models
 {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct Preamble : IEquatable<Preamble>
+    public readonly struct Preamble : IEquatable<Preamble>
     {
         public const uint DefinedMagic = 0x6D736100;
         public const uint DefinedVersion = 1;
 
-        public uint magic;
-        public uint version;
+        public readonly uint magic;
+        public readonly uint version;
 
         public bool IsValid()
         {

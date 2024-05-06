@@ -1434,5 +1434,50 @@ namespace WaaS.Models
         }
     }
 
+    [OpCode(0xC0)]
+    public partial class ExtendS8I32 : UnaryInstruction<uint, ValueTypeI32>
+    {
+        protected override uint Operate(uint value)
+        {
+            return unchecked((uint)(sbyte)(byte)value);
+        }
+    }
+
+    [OpCode(0xC1)]
+    public partial class ExtendS16I32 : UnaryInstruction<uint, ValueTypeI32>
+    {
+        protected override uint Operate(uint value)
+        {
+            return unchecked((uint)(short)(ushort)value);
+        }
+    }
+
+    [OpCode(0xC2)]
+    public partial class ExtendS8I64 : UnaryInstruction<ulong, ValueTypeI64>
+    {
+        protected override ulong Operate(ulong value)
+        {
+            return unchecked((ulong)(sbyte)(byte)value);
+        }
+    }
+
+    [OpCode(0xC3)]
+    public partial class ExtendS16I64 : UnaryInstruction<ulong, ValueTypeI64>
+    {
+        protected override ulong Operate(ulong value)
+        {
+            return unchecked((ulong)(short)(ushort)value);
+        }
+    }
+
+    [OpCode(0xC4)]
+    public partial class ExtendS32I64 : UnaryInstruction<ulong, ValueTypeI64>
+    {
+        protected override ulong Operate(ulong value)
+        {
+            return unchecked((ulong)(int)(uint)value);
+        }
+    }
+
     #endregion
 }

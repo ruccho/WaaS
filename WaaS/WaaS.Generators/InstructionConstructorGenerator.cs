@@ -31,7 +31,7 @@ public class InstructionConstructorGenerator : IIncrementalGenerator
 
     private void EmitReader(SourceProductionContext sourceContext, ImmutableArray<INamedTypeSymbol?> types)
     {
-        var targetTypes = types.NotNull().Where(t => !t.IsAbstract);
+        var targetTypes = types.WhereNotNull().Where(t => !t.IsAbstract);
 
         if (!targetTypes.Any()) return;
 
@@ -46,27 +46,47 @@ public class InstructionConstructorGenerator : IIncrementalGenerator
                       private static partial global::WaaS.Models.Instruction Read(ref global::WaaS.Models.ModuleReader reader, uint count)
                       {
                           var opCode = reader.ReadUnaligned<byte>();
+                          byte opCode1;
                           return opCode switch
                           {
               """);
 
-        foreach (var type in targetTypes)
+
+        foreach (var group0 in targetTypes.Select(t => new InstructionTypeInfo(t)).GroupBy(t => t.opCode0))
         {
-            var opCodeAttr = type.GetAttributes()
-                .FirstOrDefault(attr => attr.AttributeClass?.Matches("WaaS.Models.OpCodeAttributes") ?? false);
+            if (group0.Key is null) continue;
 
-            if (opCodeAttr is null) continue;
-
-            var opCode = opCodeAttr.ConstructorArguments.Length > 0
-                ? (byte?)opCodeAttr.ConstructorArguments[0].Value
-                : null;
-
-            if (opCode is null) continue;
-
-            sourceBuilder.AppendLine(
+            if (group0.Any(t => t.opCode1 != null))
+            {
+                sourceBuilder.AppendLine(
 /*  lang=c# */$$"""
-                                0x{{opCode:X2}} => {{type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}.Read(ref reader, count),
+                                0x{{group0.Key.Value:X2}} => (opCode1 = reader.ReadUnaligned<byte>()) switch
+                                {
                 """);
+                foreach (var group1 in group0.GroupBy(t => t.opCode1))
+                {
+                    if (group1.Key is null) continue;
+                    sourceBuilder.AppendLine(
+/*  lang=c# */$$"""
+                                    0x{{group1.Key.Value:X2}} => {{group1.First().type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}.Read(ref reader, count),
+                """);
+                }
+
+                sourceBuilder.AppendLine(
+/*  lang=c# */"""
+                                  _ => throw new global::System.InvalidOperationException($"Unsupported OpCpde:0x{opCode:X2} 0x{opCode1:X2} at 0x{(reader.Position - 2):X8}")
+                              },
+              """);
+            }
+            else
+            {
+                foreach (var typeInfo in group0)
+                    sourceBuilder.AppendLine(
+                        /*  lang=c# */
+                        $$"""
+                                          0x{{group0.Key.Value:X2}} => {{typeInfo.type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}.Read(ref reader, count),
+                          """);
+            }
         }
 
 
@@ -268,6 +288,31 @@ public class InstructionConstructorGenerator : IIncrementalGenerator
 
         sourceContext.AddSource($"{typeSymbol.ToFullMetadataName()}.g.cs",
             SourceText.From(sourceBuilder.ToString(), Encoding.UTF8));
+    }
+
+    private readonly record struct InstructionTypeInfo
+    {
+        public readonly byte? opCode0;
+        public readonly byte? opCode1;
+        public readonly ITypeSymbol type;
+
+        public InstructionTypeInfo(ITypeSymbol type)
+        {
+            this.type = type;
+
+            var opCodeAttr = type.GetAttributes()
+                .FirstOrDefault(attr => attr.AttributeClass?.Matches("WaaS.Models.OpCodeAttributes") ?? false);
+
+            if (opCodeAttr is null) return;
+
+            opCode0 = opCodeAttr.ConstructorArguments.Length > 0
+                ? (byte?)opCodeAttr.ConstructorArguments[0].Value
+                : null;
+
+            opCode1 = opCodeAttr.ConstructorArguments.Length > 1
+                ? (byte?)opCodeAttr.ConstructorArguments[1].Value
+                : null;
+        }
     }
 
     private readonly record struct OperandItem(

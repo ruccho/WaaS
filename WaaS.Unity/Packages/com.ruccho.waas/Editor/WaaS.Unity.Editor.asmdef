@@ -1,0 +1,19 @@
+{
+    "name": "WaaS.Unity.Editor",
+    "rootNamespace": "WaaS.Unity.Editor",
+    "references": [
+        "GUID:93771d79ccdcc1a409850992fac32615",
+        "GUID:c8b029b087bf86b45acb8436e0a7d988"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
