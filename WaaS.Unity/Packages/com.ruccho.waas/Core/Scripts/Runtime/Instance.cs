@@ -44,7 +44,7 @@ namespace WaaS.Runtime
                 var startFunction = FunctionInstance.Functions.Span[checked((int)startSection.FunctionIndex)];
                 var type = startFunction.Type;
                 if (type.ParameterTypes.Length != 0 || type.ResultTypes.Length != 0) throw new InvalidModuleException();
-                _ = new ExecutionContext(ushort.MaxValue).InvokeAsync(startFunction, Span<StackValueItem>.Empty).Result;
+                new ExecutionContext(ushort.MaxValue).Invoke(startFunction, Span<StackValueItem>.Empty);
             }
         }
 

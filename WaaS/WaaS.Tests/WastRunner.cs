@@ -4,7 +4,7 @@ using ExecutionContext = WaaS.Runtime.ExecutionContext;
 
 namespace WaaS.Tests;
 
-public class WastRunner
+public class WastRunner : IDisposable
 {
     private readonly Dictionary<string, Instance> instances = new();
 
@@ -18,6 +18,12 @@ public class WastRunner
     public Imports CurrentImports { get; } = SpecTest.CreateImports();
 
     public ExecutionContext Context { get; } = new(ushort.MaxValue);
+
+    public void Dispose()
+    {
+        CurrentInstance?.Dispose();
+        Context.Dispose();
+    }
 
     private void AddInstance(Module module, string? name)
     {
@@ -58,7 +64,7 @@ public class WastRunner
         var directory = Path.Combine(Path.GetTempPath(), "WaaS.Tests", "Wast2Json") ??
                         throw new InvalidOperationException();
 
-        var runner = new WastRunner(directory);
+        using var runner = new WastRunner(directory);
 
         foreach (var command in proc.Commands.Span)
             try

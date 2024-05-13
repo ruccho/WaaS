@@ -33,6 +33,12 @@ namespace WaaS.Models
             ResultTypes = resultTypes.ToArray();
         }
 
+        internal FunctionType(ValueType[] parameterTypes, ValueType[] resultTypes)
+        {
+            ParameterTypes = parameterTypes;
+            ResultTypes = resultTypes;
+        }
+
         public ReadOnlyMemory<ValueType> ParameterTypes { get; }
         public ReadOnlyMemory<ValueType> ResultTypes { get; }
 

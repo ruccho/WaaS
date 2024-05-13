@@ -45,7 +45,7 @@ namespace WaaS.Models
     {
         public override void Execute(WasmStackFrame current)
         {
-            current.Context.Trap();
+            throw new TrapException();
         }
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)

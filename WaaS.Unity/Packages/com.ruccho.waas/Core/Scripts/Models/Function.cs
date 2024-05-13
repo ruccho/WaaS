@@ -75,7 +75,8 @@ namespace WaaS.Models
         private uint TypeIndex { get; }
         public FunctionType Type { get; }
         public FunctionBody Body { get; }
-        public uint MaxStackDepth { get; private set; }
+        public uint? MaxStackDepth { get; private set; }
+        public uint? MaxBlockDepth { get; private set; }
 
         internal void Validate(in ValidationContext context)
         {
@@ -112,6 +113,7 @@ namespace WaaS.Models
                     ValidateBlock(context, ref blockResultTypeStack, 0,
                         out var maxStackDepth);
                     MaxStackDepth = maxStackDepth;
+                    MaxBlockDepth = (uint)maxBlockDepth;
                 }
             }
             catch (InvalidCodeException ex)
@@ -210,6 +212,7 @@ namespace WaaS.Models
                         localStackDepth +=
                             innerBlockType.Type.HasValue ? 1u : 0u;
                         if (localMaxStackDepth < localStackDepth) localMaxStackDepth = localStackDepth;
+                        if (maxStackDepth < localStackDepth) maxStackDepth = localStackDepth;
 
                         // go to next
                         i = (int)blockInstr.End.Index;
@@ -218,6 +221,7 @@ namespace WaaS.Models
 
                     localStackDepth += pushCount;
                     if (localMaxStackDepth < localStackDepth) localMaxStackDepth = localStackDepth;
+                    if (maxStackDepth < localStackDepth) maxStackDepth = localStackDepth;
 
                     if (instr is BrIf brIf)
                     {

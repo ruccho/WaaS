@@ -28,7 +28,8 @@ namespace WaaS.Models
 
                 var memory = current.Instance.GetMemory(0);
 
-                if (ea + readSize > memory.Length) current.Context.Trap();
+                if (ea + readSize > memory.Length)
+                    throw new TrapException();
 
                 var slice = memory[ea..];
                 ref var asRef = ref MemoryMarshal.GetReference(slice);
@@ -40,7 +41,7 @@ namespace WaaS.Models
             }
             catch (OverflowException)
             {
-                current.Context.Trap();
+                throw new TrapException();
             }
         }
 
@@ -229,7 +230,7 @@ namespace WaaS.Models
 
             var memory = current.Instance.GetMemory(0);
 
-            if (ea + writeSize > memory.Length) current.Context.Trap();
+            if (ea + writeSize > memory.Length) throw new TrapException();
 
             var writeValue = Convert(c);
 

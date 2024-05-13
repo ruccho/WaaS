@@ -300,14 +300,14 @@ public class InvokeAction : Action
         Span<StackValueItem> args = stackalloc StackValueItem[Args.Length];
         for (var i = 0; i < args.Length; i++) args[i] = Args[i].GetValue();
 
-        var lastFrame = runner.Context.InvokeAsync(function, args).Result;
+        runner.Context.Invoke(function, args);
 
-        var resultLength = lastFrame.ResultLength;
+        var resultLength = runner.Context.ResultLength;
         if (resultLength == 0) return [];
 
         Span<StackValueItem> results = stackalloc StackValueItem[resultLength];
 
-        lastFrame.TakeResults(results);
+        runner.Context.TakeResults(results);
         return results.ToArray();
     }
 }

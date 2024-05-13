@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace WaaS.Runtime
 {
-    public class ExecutionContext
+    public class ExecutionContext : IDisposable
     {
         private readonly Stack<StackFrame> frames = new();
         private readonly uint? maxStackFrames;
@@ -14,14 +13,19 @@ namespace WaaS.Runtime
             this.maxStackFrames = maxStackFrames;
         }
 
+        public StackFrame LastFrame { get; private set; }
+
         private StackFrame Current => frames.Peek();
 
-        internal void Trap()
+        public int ResultLength => LastFrame.ResultLength;
+
+        public void Dispose()
         {
-            throw new TrapException();
+            LastFrame?.Dispose();
+            LastFrame = null;
         }
 
-        public bool MoveNext(out StackFrame lastFrame)
+        public bool MoveNext()
         {
             try
             {
@@ -35,30 +39,33 @@ namespace WaaS.Runtime
                     {
                         Span<StackValueItem> results = stackalloc StackValueItem[current.ResultLength];
                         current.TakeResults(results);
+                        current.Dispose();
+
                         foreach (var value in results) nextWasm.Push(value.ExpectValue());
                     }
                     else
                     {
-                        lastFrame = current;
+                        LastFrame = current;
                         return false;
                     }
                 }
             }
             catch
             {
+                foreach (var f in frames) f.Dispose();
+
                 frames.Clear();
                 throw;
             }
 
-            lastFrame = null;
             return true;
         }
 
-        public ValueTask<StackFrame> InvokeAsync(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
+        public void Invoke(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
         {
             if (frames.Count > 0) throw new InvalidOperationException();
             PushFrame(function, inputValues);
-            return RunAsync();
+            Run();
         }
 
         internal void PushFrame(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
@@ -76,12 +83,15 @@ namespace WaaS.Runtime
             frames.Push(frame);
         }
 
-        private async ValueTask<StackFrame> RunAsync()
+        private void Run()
         {
             // TODO: async
-            StackFrame lastFrame;
-            while (MoveNext(out lastFrame)) ;
-            return lastFrame;
+            while (MoveNext()) ;
+        }
+
+        public void TakeResults(Span<StackValueItem> results)
+        {
+            LastFrame.TakeResults(results);
         }
     }
 }

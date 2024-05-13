@@ -10,9 +10,33 @@ namespace WaaS.Runtime
         public abstract void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results);
     }
 
-    public class ExternalFunctionDelegate : ExternalFunction
+    public unsafe class ExternalFunctionDelegate : ExternalFunction
     {
-        public ExternalFunctionDelegate(Delegate @delegate)
+        private readonly delegate*<object /*state*/, ReadOnlySpan<StackValueItem> /*parameters*/
+            , Span<StackValueItem> /*results*/, void> invoke;
+
+        private readonly object state;
+
+        public ExternalFunctionDelegate(
+            delegate*<object, ReadOnlySpan<StackValueItem>, Span<StackValueItem>, void> invoke, object state,
+            FunctionType type)
+        {
+            this.invoke = invoke;
+            this.state = state;
+            Type = type;
+        }
+
+        public override FunctionType Type { get; }
+
+        public override void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results)
+        {
+            invoke(state, parameters, results);
+        }
+    }
+
+    public class ExternalFunctionCoreBoxedDelegate : ExternalFunction
+    {
+        public ExternalFunctionCoreBoxedDelegate(Delegate @delegate)
         {
             Delegate = @delegate;
             var method = @delegate.Method;
