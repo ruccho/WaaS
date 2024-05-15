@@ -103,7 +103,6 @@ namespace WaaS.Runtime.Bindings
         public static unsafe ExternalFunction ToExternalFunction(this Binder binder, Delegate @delegate)
         {
             var method = @delegate.Method;
-            var instance = @delegate.Target;
 
             ValueType[] resultTypes = default;
             if (method.ReturnType != typeof(void))
@@ -188,7 +187,7 @@ namespace WaaS.Runtime.Bindings
 
             var type = new FunctionType(parameterTypes, resultTypes);
 
-            return new ExternalFunctionDelegate(&Invoke, new Tuple<Binder, Delegate>(binder, @delegate), type);
+            return new ExternalFunctionPointer(&Invoke, new Tuple<Binder, Delegate>(binder, @delegate), type);
 
 
             static void Invoke(object state, ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> result)

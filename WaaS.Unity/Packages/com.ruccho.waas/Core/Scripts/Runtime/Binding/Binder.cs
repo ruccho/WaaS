@@ -24,7 +24,7 @@ namespace WaaS.Runtime.Bindings
         void IterateValue<T>(T value, ref MarshalStack<StackValueItem> stack);
         void IterateValueBoxed(object value, ref MarshalStack<StackValueItem> stack);
 
-        void IterateValueType<T>(T value, ref MarshalStack<ValueType> types);
+        void IterateValueType<T>(ref MarshalStack<ValueType> types);
         void IterateValueTypeBoxed(Type type, ref MarshalStack<ValueType> types);
     }
 
@@ -37,7 +37,7 @@ namespace WaaS.Runtime.Bindings
         void IterateValue<T>(out T value, ref UnmarshalQueue<StackValueItem> stack);
         void IterateValueBoxed(Type type, out object value, ref UnmarshalQueue<StackValueItem> stack);
 
-        void IterateValueType<T>(T value, ref MarshalStack<ValueType> types);
+        void IterateValueType<T>(ref MarshalStack<ValueType> types);
         void IterateValueTypeBoxed(Type type, ref MarshalStack<ValueType> types);
     }
 

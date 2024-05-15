@@ -316,7 +316,7 @@ namespace WaaS.Runtime.Bindings
                 }
             }
 
-            public void IterateValueType<T>(T value, ref MarshalStack<ValueType> types)
+            public void IterateValueType<T>(ref MarshalStack<ValueType> types)
             {
                 if (state is StateKind.FirstIteration)
                     AllocateLength++;

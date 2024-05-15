@@ -10,14 +10,14 @@ namespace WaaS.Runtime
         public abstract void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results);
     }
 
-    public unsafe class ExternalFunctionDelegate : ExternalFunction
+    public unsafe class ExternalFunctionPointer : ExternalFunction
     {
         private readonly delegate*<object /*state*/, ReadOnlySpan<StackValueItem> /*parameters*/
             , Span<StackValueItem> /*results*/, void> invoke;
 
         private readonly object state;
 
-        public ExternalFunctionDelegate(
+        public ExternalFunctionPointer(
             delegate*<object, ReadOnlySpan<StackValueItem>, Span<StackValueItem>, void> invoke, object state,
             FunctionType type)
         {
@@ -31,6 +31,32 @@ namespace WaaS.Runtime
         public override void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results)
         {
             invoke(state, parameters, results);
+        }
+    }
+    
+
+    public unsafe class ExternalFunctionDelegate : ExternalFunction
+    {
+        public delegate void InvokeDelegate(object state, ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results);
+        
+        private readonly InvokeDelegate invoke;
+
+        private readonly object state;
+
+        public ExternalFunctionDelegate(
+            InvokeDelegate invoke, object state,
+            FunctionType type)
+        {
+            this.invoke = invoke;
+            this.state = state;
+            Type = type;
+        }
+
+        public override FunctionType Type { get; }
+
+        public override void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results)
+        {
+            invoke?.Invoke(state, parameters, results);
         }
     }
 
