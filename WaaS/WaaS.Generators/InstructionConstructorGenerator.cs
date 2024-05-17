@@ -21,15 +21,16 @@ public class InstructionConstructorGenerator : IIncrementalGenerator
                     return n is TypeDeclarationSyntax typeDecl &&
                            typeDecl.Modifiers.Any(mod => mod.IsKind(SyntaxKind.PartialKeyword));
                 },
-                (context, ct) => context.SemanticModel.GetDeclaredSymbol(context.Node) as INamedTypeSymbol)
+                (ctx, ct) => ctx.SemanticModel.GetDeclaredSymbol(ctx.Node) as INamedTypeSymbol)
             .Where(s => s is not null)
+            .Select((s, ct) => s!)
             .Where(type => type.GetBaseTypes(false).Any(t => t.Matches("WaaS.Models.Instruction")));
 
         context.RegisterSourceOutput(source, EmitConstructor);
         context.RegisterSourceOutput(source.Collect(), EmitReader);
     }
 
-    private void EmitReader(SourceProductionContext sourceContext, ImmutableArray<INamedTypeSymbol?> types)
+    private void EmitReader(SourceProductionContext sourceContext, ImmutableArray<INamedTypeSymbol> types)
     {
         var targetTypes = types.WhereNotNull().Where(t => !t.IsAbstract);
 
@@ -108,13 +109,12 @@ public class InstructionConstructorGenerator : IIncrementalGenerator
         if (typeSymbol is null) return;
 
         var opcodeAttr = typeSymbol.GetAttributes()
-            .FirstOrDefault(attr => attr.AttributeClass.Matches("WaaS.Models.OpCodeAttribute"));
+            .FirstOrDefault(attr => attr.AttributeClass?.Matches("WaaS.Models.OpCodeAttribute") ?? false);
 
         var baseTypes = typeSymbol.GetBaseTypes(true).ToArray();
 
         List<OperandItem> targets = new();
 
-        var inBlockInstrCursor = int.MaxValue;
         foreach (var type in baseTypes)
         {
             var members = type.GetMembers();

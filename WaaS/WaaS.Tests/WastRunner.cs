@@ -81,7 +81,7 @@ public class WastRunner : IDisposable
             {
                 Console.WriteLine($"command in line {command.Line} is not supported!");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 Console.WriteLine($"command in line {command.Line} failed!");
                 throw;

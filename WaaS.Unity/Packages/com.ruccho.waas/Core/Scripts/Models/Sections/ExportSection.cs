@@ -100,7 +100,6 @@ namespace WaaS.Models
                 case ExportKind.Global:
                 {
                     return globalType.Equals(other.globalType);
-                    break;
                 }
                 default:
                     throw new ArgumentOutOfRangeException();

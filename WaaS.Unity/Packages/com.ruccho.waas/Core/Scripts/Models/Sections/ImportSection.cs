@@ -125,7 +125,6 @@ namespace WaaS.Models
                 case ImportKind.Global:
                 {
                     return globalType.Equals(other.globalType);
-                    break;
                 }
                 default:
                     throw new ArgumentOutOfRangeException();

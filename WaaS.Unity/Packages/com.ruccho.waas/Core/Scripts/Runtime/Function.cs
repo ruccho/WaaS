@@ -33,12 +33,13 @@ namespace WaaS.Runtime
             invoke(state, parameters, results);
         }
     }
-    
 
-    public unsafe class ExternalFunctionDelegate : ExternalFunction
+
+    public class ExternalFunctionDelegate : ExternalFunction
     {
-        public delegate void InvokeDelegate(object state, ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results);
-        
+        public delegate void InvokeDelegate(object state, ReadOnlySpan<StackValueItem> parameters,
+            Span<StackValueItem> results);
+
         private readonly InvokeDelegate invoke;
 
         private readonly object state;

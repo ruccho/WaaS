@@ -6,10 +6,10 @@ using Global = WaaS.Runtime.Global;
 
 namespace WaaS.Tests;
 
-public class WastProc
+public class WastProc(string sourceFilename, ReadOnlyMemory<Command> commands)
 {
-    public string SourceFilename { get; set; }
-    public ReadOnlyMemory<Command> Commands { get; set; }
+    public string SourceFilename { get; } = sourceFilename;
+    public ReadOnlyMemory<Command> Commands { get; } = commands;
 
     public static JsonSerializerOptions SerializerOptions { get; } = new()
     {
@@ -29,17 +29,17 @@ public class WastProc
 [JsonDerivedType(typeof(AssertUninstantiableCommand), "assert_uninstantiable")]
 [JsonDerivedType(typeof(AssertUnlinkableCommand), "assert_unlinkable")]
 [JsonDerivedType(typeof(RegisterCommand), "register")]
-public abstract class Command
+public abstract class Command(uint line)
 {
-    public uint Line { get; set; }
+    public uint Line { get; } = line;
 
     public abstract void Execute(WastRunner runner);
 }
 
-public class ModuleCommand : Command
+public class ModuleCommand(uint line, string? name, string filename) : Command(line)
 {
-    public string? Name { get; set; }
-    public string Filename { get; set; }
+    public string? Name { get; } = name;
+    public string Filename { get; } = filename;
 
     public override void Execute(WastRunner runner)
     {
@@ -47,9 +47,9 @@ public class ModuleCommand : Command
     }
 }
 
-public class ActionCommand : Command
+public class ActionCommand(uint line, Action action) : Command(line)
 {
-    public Action Action { get; set; }
+    public Action Action { get; } = action;
 
     public override void Execute(WastRunner runner)
     {
@@ -57,10 +57,10 @@ public class ActionCommand : Command
     }
 }
 
-public class AssertReturnCommand : Command
+public class AssertReturnCommand(uint line, Action action, Const[] expected) : Command(line)
 {
-    public Action Action { get; set; }
-    public Const[] Expected { get; set; }
+    public Action Action { get; } = action;
+    public Const[] Expected { get; } = expected;
 
     public override void Execute(WastRunner runner)
     {
@@ -68,7 +68,7 @@ public class AssertReturnCommand : Command
         if (!returns.SequenceEqual(Expected.Select(e => e.GetValue())))
         {
             if (!returns.SequenceEqual(Expected.Select(e => e.GetValue()),
-                    ApproximateStackValueItemEqualityComparer.Default))
+                    ApproximateStackValueItemEqualityComparer.Instance))
                 throw new InvalidOperationException(
                     $"Assertion failed. expected: [{string.Join(", ", Expected.Select(e => e.GetValue().ToString()))}], actual: [{string.Join(", ", returns.Select(r => r.ToString()))}] ");
             Console.WriteLine(
@@ -79,10 +79,11 @@ public class AssertReturnCommand : Command
 
 public class ApproximateStackValueItemEqualityComparer : EqualityComparer<StackValueItem>
 {
-    public static readonly ApproximateStackValueItemEqualityComparer Default = new();
+    public static readonly ApproximateStackValueItemEqualityComparer Instance = new();
 
     public override bool Equals(StackValueItem x, StackValueItem y)
     {
+        // ReSharper disable CompareOfFloatsByEqualityOperator
         x.ExpectValue(out var typeX);
         y.ExpectValue(out var typeY);
         if (typeX != typeY) return false;
@@ -116,6 +117,7 @@ public class ApproximateStackValueItemEqualityComparer : EqualityComparer<StackV
             default:
                 throw new ArgumentOutOfRangeException();
         }
+        // ReSharper restore CompareOfFloatsByEqualityOperator
     }
 
     public override int GetHashCode(StackValueItem obj)
@@ -124,10 +126,10 @@ public class ApproximateStackValueItemEqualityComparer : EqualityComparer<StackV
     }
 }
 
-public class AssertExhaustionCommand : Command
+public class AssertExhaustionCommand(uint line, Action action, string text) : Command(line)
 {
-    public Action Action { get; set; }
-    public string Text { get; set; }
+    public Action Action { get; } = action;
+    public string Text { get; } = text;
 
     public override void Execute(WastRunner runner)
     {
@@ -144,10 +146,10 @@ public class AssertExhaustionCommand : Command
     }
 }
 
-public class AssertTrapCommand : Command
+public class AssertTrapCommand(uint line, Action action, string text) : Command(line)
 {
-    public Action Action { get; set; }
-    public string Text { get; set; }
+    public Action Action { get; } = action;
+    public string Text { get; } = text;
 
     public override void Execute(WastRunner runner)
     {
@@ -164,11 +166,12 @@ public class AssertTrapCommand : Command
     }
 }
 
-public class AssertInvalidCommand : Command
+public class AssertInvalidCommand(uint line, string filename, string text, ModuleType moduleType)
+    : Command(line)
 {
-    public string Filename { get; set; }
-    public string Text { get; set; }
-    public ModuleType ModuleType { get; set; }
+    public string Filename { get; } = filename;
+    public string Text { get; } = text;
+    public ModuleType ModuleType { get; } = moduleType;
 
     public override void Execute(WastRunner runner)
     {
@@ -186,11 +189,12 @@ public class AssertInvalidCommand : Command
     }
 }
 
-public class AssertMalformedCommand : Command
+public class AssertMalformedCommand(uint line, string filename, string text, ModuleType moduleType)
+    : Command(line)
 {
-    public string Filename { get; set; }
-    public string Text { get; set; }
-    public ModuleType ModuleType { get; set; }
+    public string Filename { get; } = filename;
+    public string Text { get; } = text;
+    public ModuleType ModuleType { get; } = moduleType;
 
     public override void Execute(WastRunner runner)
     {
@@ -213,11 +217,12 @@ public class AssertMalformedCommand : Command
     }
 }
 
-public class AssertUninstantiableCommand : Command
+public class AssertUninstantiableCommand(uint line, string filename, string text, ModuleType moduleType)
+    : Command(line)
 {
-    public string Filename { get; set; }
-    public string Text { get; set; }
-    public ModuleType ModuleType { get; set; }
+    public string Filename { get; } = filename;
+    public string Text { get; } = text;
+    public ModuleType ModuleType { get; } = moduleType;
 
     public override void Execute(WastRunner runner)
     {
@@ -236,11 +241,12 @@ public class AssertUninstantiableCommand : Command
     }
 }
 
-public class AssertUnlinkableCommand : Command
+public class AssertUnlinkableCommand(uint line, string filename, string text, ModuleType moduleType)
+    : Command(line)
 {
-    public string Filename { get; set; }
-    public string Text { get; set; }
-    public ModuleType ModuleType { get; set; }
+    public string Filename { get; } = filename;
+    public string Text { get; } = text;
+    public ModuleType ModuleType { get; } = moduleType;
 
     public override void Execute(WastRunner runner)
     {
@@ -258,14 +264,16 @@ public class AssertUnlinkableCommand : Command
     }
 }
 
-public class RegisterCommand : Command
+public class RegisterCommand(uint line, string? name, string @as) : Command(line)
 {
-    public string? Name { get; set; }
-    public string As { get; set; }
+    public string? Name { get; } = name;
+    public string As { get; } = @as;
 
     public override void Execute(WastRunner runner)
     {
-        runner.Register(Name != null ? runner.GetInstance(Name) : runner.CurrentInstance, As);
+        runner.Register(
+            Name != null ? runner.GetInstance(Name) : runner.CurrentInstance ?? throw new InvalidOperationException(),
+            As);
     }
 }
 
@@ -278,21 +286,24 @@ public enum ModuleType
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(InvokeAction), "invoke")]
 [JsonDerivedType(typeof(GetAction), "get")]
-public abstract class Action
+public abstract class Action(string? module, string field)
 {
-    public string? Module { get; set; }
-    public string Field { get; set; }
+    public string? Module { get; } = module;
+    public string Field { get; } = field;
 
     public abstract StackValueItem[] Invoke(WastRunner runner);
 }
 
-public class InvokeAction : Action
+public class InvokeAction(string? module, string field, Const[] args) : Action(module, field)
 {
-    public Const[] Args { get; set; }
+    public Const[] Args { get; } = args;
+
 
     public override StackValueItem[] Invoke(WastRunner runner)
     {
-        var instance = string.IsNullOrEmpty(Module) ? runner.CurrentInstance : runner.GetInstance(Module);
+        var instance = string.IsNullOrEmpty(Module)
+            ? runner.CurrentInstance ?? throw new InvalidOperationException()
+            : runner.GetInstance(Module);
 
         if (instance.ExportInstance.Items[Field] is not InstanceFunction function)
             throw new InvalidOperationException();
@@ -312,11 +323,13 @@ public class InvokeAction : Action
     }
 }
 
-public class GetAction : Action
+public class GetAction(string? module, string field) : Action(module, field)
 {
     public override StackValueItem[] Invoke(WastRunner runner)
     {
-        var instance = string.IsNullOrEmpty(Module) ? runner.CurrentInstance : runner.GetInstance(Module);
+        var instance = string.IsNullOrEmpty(Module)
+            ? runner.CurrentInstance ?? throw new InvalidOperationException()
+            : runner.GetInstance(Module);
 
         if (instance.ExportInstance.Items[Field] is not Global global) throw new InvalidOperationException();
 

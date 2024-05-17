@@ -7,7 +7,7 @@ namespace WaaS.Generators;
 
 public static class TypeUtils
 {
-    [ThreadStatic] private static StringBuilder tempStringBuilder;
+    [ThreadStatic] private static StringBuilder? tempStringBuilder;
 
     public static bool Matches(this ISymbol symbol, string fullMetadataName)
     {

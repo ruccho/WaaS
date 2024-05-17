@@ -334,7 +334,6 @@ namespace WaaS.Runtime.Bindings
                 }
                 else if (state is StateKind.SecondIteration)
                 {
-                    StackValueItem stackValue;
                     if (type == typeof(int))
                         types.Push(MarshallerRegistry<int>.Instance.valueType.Value);
                     else if (type == typeof(uint))

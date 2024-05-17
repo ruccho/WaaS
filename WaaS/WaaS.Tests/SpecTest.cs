@@ -10,6 +10,7 @@ public static class SpecTest
     {
         var imports = new Imports();
         var binder = new CoreBinder();
+
         imports["spectest"] = new ModuleImports
         {
             { "print", binder.ToExternalFunction(() => { Console.WriteLine("<spectest> print"); }) },
