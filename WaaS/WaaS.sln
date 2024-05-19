@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WaaS.Generators", "WaaS.Gen
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WaaS.Core", "WaaS.Core\WaaS.Core.csproj", "{EF9D812F-9765-44BB-84BF-337FC5C7EFBC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WaaS.Tests", "WaaS.Tests\WaaS.Tests.csproj", "{0EDA901C-D9D4-4448-98FD-B80F1A65FDBD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WaaS.Tests.Wast", "WaaS.Tests.Wast\WaaS.Tests.Wast.csproj", "{0EDA901C-D9D4-4448-98FD-B80F1A65FDBD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

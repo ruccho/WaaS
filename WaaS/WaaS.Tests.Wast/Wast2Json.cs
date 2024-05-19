@@ -2,7 +2,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
-namespace WaaS.Tests;
+namespace WaaS.Tests.Wast;
 
 public class Wast2Json
 {
@@ -16,7 +16,7 @@ public class Wast2Json
     public async Task<WastProc> RunAsync(string wastPath, string binaryPath = "wast2json",
         CancellationToken ct = default)
     {
-        var dir = Path.Combine(Path.GetTempPath(), "WaaS.Tests", "Wast2Json");
+        var dir = Path.Combine(Path.GetTempPath(), "WaaS.Tests.Wast", "Wast2Json");
         var path = Path.GetFullPath(wastPath);
 
         Directory.CreateDirectory(dir);

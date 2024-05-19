@@ -2,7 +2,7 @@
 using WaaS.Runtime;
 using WaaS.Runtime.Bindings;
 
-namespace WaaS.Tests;
+namespace WaaS.Tests.Wast;
 
 public static class SpecTest
 {

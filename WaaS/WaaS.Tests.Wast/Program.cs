@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using WaaS.Tests;
+using WaaS.Tests.Wast;
 
 var builder = ConsoleApp.CreateBuilder(args);
 

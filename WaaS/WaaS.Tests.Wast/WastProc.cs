@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using WaaS.Runtime;
 using Global = WaaS.Runtime.Global;
 
-namespace WaaS.Tests;
+namespace WaaS.Tests.Wast;
 
 public class WastProc(string sourceFilename, ReadOnlyMemory<Command> commands)
 {

@@ -2,7 +2,7 @@
 using WaaS.Runtime;
 using ExecutionContext = WaaS.Runtime.ExecutionContext;
 
-namespace WaaS.Tests;
+namespace WaaS.Tests.Wast;
 
 public class WastRunner : IDisposable
 {
@@ -61,7 +61,7 @@ public class WastRunner : IDisposable
 
     public static void Run(WastProc proc)
     {
-        var directory = Path.Combine(Path.GetTempPath(), "WaaS.Tests", "Wast2Json") ??
+        var directory = Path.Combine(Path.GetTempPath(), "WaaS.Tests.Wast", "Wast2Json") ??
                         throw new InvalidOperationException();
 
         using var runner = new WastRunner(directory);
