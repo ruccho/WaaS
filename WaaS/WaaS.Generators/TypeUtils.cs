@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
 
@@ -92,6 +93,35 @@ public static class TypeUtils
 
                 sb.Append(">");
             }
+        }
+    }
+
+    public static bool HasTypeParameter(this ITypeSymbol type)
+    {
+        var containingType = type.ContainingType;
+        if (containingType != null && HasTypeParameter(type)) return true;
+
+        switch (type)
+        {
+            case IArrayTypeSymbol arrayTypeSymbol:
+                return HasTypeParameter(arrayTypeSymbol.ElementType);
+            case IDynamicTypeSymbol dynamicTypeSymbol:
+                return false;
+            case IErrorTypeSymbol errorTypeSymbol:
+                return false;
+            case IFunctionPointerTypeSymbol functionPointerTypeSymbol:
+            {
+                var sig = functionPointerTypeSymbol.Signature;
+                return HasTypeParameter(sig.ReturnType) || sig.Parameters.Any(p => HasTypeParameter(p.Type));
+            }
+            case INamedTypeSymbol namedTypeSymbol:
+                return namedTypeSymbol.TypeArguments.Any(HasTypeParameter);
+            case IPointerTypeSymbol pointerTypeSymbol:
+                return HasTypeParameter(pointerTypeSymbol.PointedAtType);
+            case ITypeParameterSymbol typeParameterSymbol:
+                return true;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(type));
         }
     }
 }

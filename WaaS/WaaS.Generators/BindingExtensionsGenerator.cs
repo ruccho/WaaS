@@ -48,9 +48,27 @@ public class BindingExtensionsGenerator : IIncrementalGenerator
                   {
               """);
 
-        foreach (var argumentTypes in operations.Where(o => o.TargetMethod.MetadataName is "Invoke``1")
-                     .Select(o => o.Arguments.Select(a => a.Type ?? throw new InvalidOperationException()))
-                     .Distinct(TypeListEqualityComparer.Instance))
+        foreach (var argumentTypes in operations.Where(o => o.TargetMethod.MetadataName is "Invoke")
+                     .Where(o => o.Arguments.Length == 4 && o.Arguments[3] is
+                         { ArgumentKind: ArgumentKind.ParamArray })
+                     .Select(o => o.Arguments[3])
+                     .Where(o => o is { ArgumentKind: ArgumentKind.ParamArray })
+                     .Select(o => o.Value)
+                     .OfType<IArrayCreationOperation>()
+                     .Select(o => o.Initializer)
+                     .WhereNotNull()
+                     .Select(o => o.ElementValues.Select(v =>
+                     {
+                         var cursor = v;
+                         while (cursor is IConversionOperation { IsImplicit: true } conversion)
+                             cursor = conversion.Operand;
+
+                         var type = cursor.Type;
+                         return type!;
+                     }))
+                     .Where(types => types.All(t => !t.HasTypeParameter())) // TODO: support type parameters
+                     .Distinct(TypeListEqualityComparer.Instance)
+                )
             EmitInvokeOverload(sourceBuilder, argumentTypes);
 
         foreach (var delegateType in operations.Where(o => o.TargetMethod.MetadataName is "ToExternalFunction")
@@ -238,10 +256,9 @@ public class BindingExtensionsGenerator : IIncrementalGenerator
 
         for (var i = 0; i < parameters.Length; i++)
             sourceBuilder.AppendLine(
-                /*  lang=c# */
-                $$"""
-                                                  unmarshalContext.IterateValue(out _{{i}}, ref unmarshalQueue);
-                  """);
+/*  lang=c# */$$"""
+                                                unmarshalContext.IterateValue(out _{{i}}, ref unmarshalQueue);
+                """);
 
         sourceBuilder.AppendLine(
 /*  lang=c# */"""
@@ -320,7 +337,7 @@ public class BindingExtensionsGenerator : IIncrementalGenerator
     {
         sourceBuilder.AppendLine(
 /*  lang=c# */$$"""
-                        public static unsafe TResult Invoke<TResult>({{string.Join(", ", argumentTypes.Select((t, i) => $"{t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} _{i}"))}})
+                        public static TResult Invoke<TResult>(this Binder binder, ExecutionContext context, IInvocableFunction function, {{string.Join(", ", argumentTypes.Select((t, i) => $"{t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} _{i}"))}})
                         {
                             {
                                 var marshalContext = binder.GetMarshalContext();
@@ -345,13 +362,18 @@ public class BindingExtensionsGenerator : IIncrementalGenerator
                                             }
                                             case MarshallerActionKind.Iterate:
                                             {
-                                                foreach (var parameter in parameters)
                 """);
+
+        var i = 0;
+        foreach (var _ in argumentTypes)
+            sourceBuilder.AppendLine(
+                /*  lang=c# */
+                $$"""
+                                                  marshalContext.IterateValue(_{{i++}}, ref marshalStack);
+                  """);
 
         sourceBuilder.AppendLine(
 /*  lang=c# */"""
-                                                  marshalContext.IterateValueBoxed(parameter, ref marshalStack);
-                      
                                               break;
                                           }
                                           case MarshallerActionKind.Allocate:
