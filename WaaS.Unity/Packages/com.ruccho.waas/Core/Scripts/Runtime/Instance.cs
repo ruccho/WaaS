@@ -38,7 +38,7 @@ namespace WaaS.Runtime
             MemoryInstance.Initialize(dataSection, GlobalInstance);
             TableInstance.Initialize(FunctionInstance, GlobalInstance, elementSection);
 
-            // TODO: support async start
+            // NOTE: should we support async start?
             if (startSection != null)
             {
                 var startFunction = FunctionInstance.Functions.Span[checked((int)startSection.FunctionIndex)];

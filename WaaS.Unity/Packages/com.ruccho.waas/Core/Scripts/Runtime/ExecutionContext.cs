@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace WaaS.Runtime
 {
@@ -7,6 +8,7 @@ namespace WaaS.Runtime
     {
         private readonly Stack<StackFrame> frames = new();
         private readonly uint? maxStackFrames;
+        private ValueTaskSource currentPendingTaskSource;
 
         public ExecutionContext(uint? maxStackFrames = null)
         {
@@ -25,29 +27,49 @@ namespace WaaS.Runtime
             LastFrame = null;
         }
 
-        public bool MoveNext()
+        private void MoveToEndOrPending(out bool pending)
         {
             try
             {
+                Loop:
                 var current = Current;
                 if (current is null) throw new InvalidOperationException();
 
-                if (!current.MoveNext())
+                LoopCurrent:
+                switch (current.MoveNext(new Waker(currentPendingTaskSource)))
                 {
-                    frames.Pop();
-                    if (frames.TryPeek(out var next) && next is WasmStackFrame nextWasm)
+                    case StackFrameState.Ready:
                     {
-                        Span<StackValueItem> results = stackalloc StackValueItem[current.ResultLength];
-                        current.TakeResults(results);
-                        current.Dispose();
+                        goto Loop;
+                    }
+                    case StackFrameState.Pending:
+                    {
+                        pending = true;
+                        return;
+                    }
+                    case StackFrameState.Completed:
+                    {
+                        frames.Pop();
+                        if (frames.TryPeek(out var next) && next is WasmStackFrame nextWasm)
+                        {
+                            Span<StackValueItem> results = stackalloc StackValueItem[current.ResultLength];
+                            current.TakeResults(results);
+                            current.Dispose();
 
-                        foreach (var value in results) nextWasm.Push(value.ExpectValue());
-                    }
-                    else
-                    {
+                            foreach (var value in results) nextWasm.Push(value.ExpectValue());
+
+                            current = next;
+
+                            goto LoopCurrent;
+                        }
+
+                        // end
                         LastFrame = current;
-                        return false;
+                        pending = false;
+                        return;
                     }
+                    default:
+                        throw new ArgumentOutOfRangeException();
                 }
             }
             catch
@@ -57,8 +79,6 @@ namespace WaaS.Runtime
                 frames.Clear();
                 throw;
             }
-
-            return true;
         }
 
         public void Invoke(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
@@ -66,6 +86,13 @@ namespace WaaS.Runtime
             if (frames.Count > 0) throw new InvalidOperationException();
             PushFrame(function, inputValues);
             Run();
+        }
+
+        public ValueTask InvokeAsync(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
+        {
+            if (frames.Count > 0) throw new InvalidOperationException();
+            PushFrame(function, inputValues);
+            return RunAsync();
         }
 
         internal void PushFrame(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
@@ -78,6 +105,8 @@ namespace WaaS.Runtime
             {
                 InstanceFunction instanceFunction => new WasmStackFrame(this, instanceFunction, inputValues),
                 ExternalFunction externalFunction => new ExternalStackFrame(externalFunction, inputValues),
+                AsyncExternalFunction asyncExternalFunction => new AsyncExternalStackFrame(asyncExternalFunction,
+                    inputValues),
                 _ => throw new InvalidOperationException()
             };
             frames.Push(frame);
@@ -85,13 +114,51 @@ namespace WaaS.Runtime
 
         private void Run()
         {
-            // TODO: async
-            while (MoveNext()) ;
+            MoveToEndOrPending(out var pending);
+
+            if (pending) throw new InvalidOperationException("Use RunAsync() instead of Run() to use coroutines.");
+        }
+
+        private async ValueTask RunAsync()
+        {
+            while (true)
+            {
+                var source = currentPendingTaskSource ??= ValueTaskSource.Create();
+                MoveToEndOrPending(out var pending);
+
+                if (!pending) return;
+
+                currentPendingTaskSource = null;
+
+                // wait for wake
+                await source.AsValueTask();
+            }
         }
 
         public void TakeResults(Span<StackValueItem> results)
         {
             LastFrame.TakeResults(results);
+        }
+    }
+
+
+    public struct Waker
+    {
+        private readonly ValueTaskSource source;
+
+        internal Waker(ValueTaskSource source)
+        {
+            this.source = source;
+        }
+
+        public void Wake()
+        {
+            source.SetResult();
+        }
+
+        public void Fail(Exception ex)
+        {
+            source.SetResult();
         }
     }
 }

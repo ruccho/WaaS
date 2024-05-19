@@ -7,8 +7,7 @@ namespace WaaS.Runtime
         public abstract int ResultLength { get; }
 
         public abstract void Dispose();
-        public abstract bool MoveNext();
-
+        public abstract StackFrameState MoveNext(Waker waker);
         public abstract void TakeResults(Span<StackValueItem> dest);
     }
 }

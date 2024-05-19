@@ -324,7 +324,7 @@ namespace WaaS.Models
                 parameters[i] = stackItem;
             }
 
-            current.Context.PushFrame(function, parameters);
+            current.PushFrame(function, parameters);
         }
 
         public override void Validate(in ValidationContext context)
@@ -381,7 +381,7 @@ namespace WaaS.Models
                 parameters[i] = stackItem;
             }
 
-            current.Context.PushFrame(function, parameters);
+            current.PushFrame(function, parameters);
         }
 
         public override void Validate(in ValidationContext context)

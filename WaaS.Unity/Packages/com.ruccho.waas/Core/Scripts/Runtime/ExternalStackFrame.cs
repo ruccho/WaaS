@@ -7,8 +7,7 @@ namespace WaaS.Runtime
         private readonly ExternalFunction function;
         private readonly StackValueItem[] inputValues;
         private readonly StackValueItem[] outputValues;
-
-        private StateKind state;
+        private bool invoked;
 
         internal ExternalStackFrame(ExternalFunction function, ReadOnlySpan<StackValueItem> inputValues)
         {
@@ -18,33 +17,16 @@ namespace WaaS.Runtime
             outputValues = new StackValueItem[type.ResultTypes.Length];
 
             inputValues.CopyTo(this.inputValues);
-
-            state = StateKind.Ready;
         }
 
         public override int ResultLength => function.Type.ResultTypes.Length;
 
-        public override bool MoveNext()
+        public override StackFrameState MoveNext(Waker waker)
         {
-            switch (state)
-            {
-                case StateKind.Ready:
-                {
-                    state = StateKind.Running;
-                    function.Invoke(inputValues, outputValues);
-                    return false;
-                }
-                case StateKind.Running:
-                {
-                    throw new InvalidOperationException();
-                }
-                case StateKind.Completed:
-                {
-                    return false;
-                }
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+            if (invoked) throw new InvalidOperationException();
+            invoked = true;
+            function.Invoke(inputValues, outputValues);
+            return StackFrameState.Completed;
         }
 
         public override void TakeResults(Span<StackValueItem> dest)
@@ -54,13 +36,6 @@ namespace WaaS.Runtime
 
         public override void Dispose()
         {
-        }
-
-        private enum StateKind
-        {
-            Ready,
-            Running,
-            Completed
         }
     }
 }

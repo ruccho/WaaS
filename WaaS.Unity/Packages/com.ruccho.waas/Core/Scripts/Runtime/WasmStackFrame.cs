@@ -10,6 +10,7 @@ namespace WaaS.Runtime
         private bool isDisposed;
 
         private bool isEnd;
+        private bool isFramePushed;
         private int[] labelDepthStack;
         private int labelDepthStackPointer;
 
@@ -67,7 +68,7 @@ namespace WaaS.Runtime
             inputValues.CopyTo(localsSpan.Slice(0, numParams));
         }
 
-        public ExecutionContext Context { get; }
+        private ExecutionContext Context { get; }
         public InstanceFunction Function { get; }
 
         public Instance Instance => Function.instance;
@@ -105,22 +106,38 @@ namespace WaaS.Runtime
             return ref locals.Span[index];
         }
 
-        public override bool MoveNext()
+        public override StackFrameState MoveNext(Waker waker)
         {
-            if (isEnd) return true;
+            if (isEnd) return StackFrameState.Completed;
 
             var instrs = Function.function.Body.Instructions.Span;
-            if (programCounter >= instrs.Length) return false;
 
-            var instr = instrs[checked((int)programCounter)];
+            while (true)
+            {
+                if (programCounter >= instrs.Length) return StackFrameState.Completed;
 
-            instr.Execute(this);
+                var instr = instrs[checked((int)programCounter)];
 
-            if (isEnd) return false;
+                isFramePushed = false;
+                instr.Execute(this);
 
-            programCounter++;
+                programCounter++;
 
-            return programCounter < instrs.Length;
+                if (isEnd || instrs.Length <= programCounter) return StackFrameState.Completed;
+
+                if (isFramePushed) return StackFrameState.Ready;
+            }
+        }
+
+        public void End()
+        {
+            isEnd = true;
+        }
+
+        public void PushFrame(IInvocableFunction function, Span<StackValueItem> parameters)
+        {
+            isFramePushed = true;
+            Context.PushFrame(function, parameters);
         }
 
         public override void TakeResults(Span<StackValueItem> dest)
@@ -191,11 +208,6 @@ namespace WaaS.Runtime
         public void Jump(uint index)
         {
             programCounter = index - 1;
-        }
-
-        public void End()
-        {
-            isEnd = true;
         }
 
         public void EnterBlock(Label label)
