@@ -198,12 +198,22 @@ namespace WaaS.Runtime.Bindings
                 }
                 else if (state is StateKind.SecondIteration)
                 {
-                    if (type == typeof(int) || type == typeof(uint))
+                    if (type == typeof(int))
+                    {
+                        MarshallerRegistry<int>.Instance.unmarshaller(stack.Dequeue(), out var valueTyped);
+                        value = valueTyped;
+                    }
+                    else if (type == typeof(uint))
                     {
                         MarshallerRegistry<uint>.Instance.unmarshaller(stack.Dequeue(), out var valueTyped);
                         value = valueTyped;
                     }
-                    else if (type == typeof(long) || type == typeof(ulong))
+                    else if (type == typeof(long))
+                    {
+                        MarshallerRegistry<long>.Instance.unmarshaller(stack.Dequeue(), out var valueTyped);
+                        value = valueTyped;
+                    }
+                    else if (type == typeof(ulong))
                     {
                         MarshallerRegistry<ulong>.Instance.unmarshaller(stack.Dequeue(), out var valueTyped);
                         value = valueTyped;

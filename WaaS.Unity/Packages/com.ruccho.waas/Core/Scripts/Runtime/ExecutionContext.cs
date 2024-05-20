@@ -131,7 +131,9 @@ namespace WaaS.Runtime
                 currentPendingTaskSource = null;
 
                 // wait for wake
+                Console.WriteLine("pending");
                 await source.AsValueTask();
+                Console.WriteLine("pending completed");
             }
         }
 
@@ -158,7 +160,7 @@ namespace WaaS.Runtime
 
         public void Fail(Exception ex)
         {
-            source.SetResult();
+            source.SetException(ex);
         }
     }
 }

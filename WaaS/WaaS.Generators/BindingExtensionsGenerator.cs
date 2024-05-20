@@ -21,7 +21,7 @@ public class BindingExtensionsGenerator : IIncrementalGenerator
                 {
                     Expression: MemberAccessExpressionSyntax
                     {
-                        Name: { Identifier: { Text: "Invoke" or "ToExternalFunction" } }
+                        Name: { Identifier: { Text: "Invoke" or "ToExternalFunction" or "InvokeAsync" } }
                     }
                 },
                 (ctx, ct) => ctx.SemanticModel.GetOperation(ctx.Node))
@@ -29,7 +29,7 @@ public class BindingExtensionsGenerator : IIncrementalGenerator
             .Where(o =>
             {
                 if (o is null) return false;
-                return o.TargetMethod.ContainingType.Matches("WaaS.Runtime.Bindings.BinderExtensions");
+                return o.TargetMethod.ContainingType.Matches("WaaS.Runtime.Bindings.BindingExtensions");
             })
             .Select((o, ct) => o!);
 
@@ -44,7 +44,7 @@ public class BindingExtensionsGenerator : IIncrementalGenerator
 /*  lang=c# */"""
               namespace WaaS.Runtime.Bindings
               {
-                  internal static partial class BinderExtensionsLocal
+                  internal static partial class BindingExtensionsLocal
                   {
               """);
 
@@ -70,6 +70,29 @@ public class BindingExtensionsGenerator : IIncrementalGenerator
                      .Distinct(TypeListEqualityComparer.Instance)
                 )
             EmitInvokeOverload(sourceBuilder, argumentTypes);
+
+        foreach (var argumentTypes in operations.Where(o => o.TargetMethod.MetadataName is "InvokeAsync")
+                     .Where(o => o.Arguments.Length == 4 && o.Arguments[3] is
+                         { ArgumentKind: ArgumentKind.ParamArray })
+                     .Select(o => o.Arguments[3])
+                     .Where(o => o is { ArgumentKind: ArgumentKind.ParamArray })
+                     .Select(o => o.Value)
+                     .OfType<IArrayCreationOperation>()
+                     .Select(o => o.Initializer)
+                     .WhereNotNull()
+                     .Select(o => o.ElementValues.Select(v =>
+                     {
+                         var cursor = v;
+                         while (cursor is IConversionOperation { IsImplicit: true } conversion)
+                             cursor = conversion.Operand;
+
+                         var type = cursor.Type;
+                         return type!;
+                     }))
+                     .Where(types => types.All(t => !t.HasTypeParameter())) // TODO: support type parameters
+                     .Distinct(TypeListEqualityComparer.Instance)
+                )
+            EmitInvokeAsyncOverload(sourceBuilder, argumentTypes);
 
         foreach (var delegateType in operations.Where(o => o.TargetMethod.MetadataName is "ToExternalFunction")
                      .Where(o => o.Arguments.Length == 2)
@@ -337,7 +360,7 @@ public class BindingExtensionsGenerator : IIncrementalGenerator
     {
         sourceBuilder.AppendLine(
 /*  lang=c# */$$"""
-                        public static TResult Invoke<TResult>(this Binder binder, ExecutionContext context, IInvocableFunction function, {{string.Join(", ", argumentTypes.Select((t, i) => $"{t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} _{i}"))}})
+                        public static TResult Invoke<TResult>(this Binder binder, ExecutionContext context, IInvocableFunction function{{(argumentTypes.Any() ? ", " : "")}}{{string.Join(", ", argumentTypes.Select((t, i) => $"{t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} _{i}"))}})
                         {
                             {
                                 var marshalContext = binder.GetMarshalContext();
@@ -438,6 +461,126 @@ public class BindingExtensionsGenerator : IIncrementalGenerator
                           }
                       
                           return result;
+                      }
+              """);
+    }
+
+    private void EmitInvokeAsyncOverload(StringBuilder sourceBuilder, IEnumerable<ITypeSymbol> argumentTypes)
+    {
+        sourceBuilder.AppendLine(
+/*  lang=c# */$$"""
+                        public static ValueTask<TResult> InvokeAsync<TResult>(this Binder binder, ExecutionContext context, IInvocableFunction function{{(argumentTypes.Any() ? ", " : "")}}{{string.Join(", ", argumentTypes.Select((t, i) => $"{t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} _{i}"))}})
+                        {
+                            ValueTask task;
+                            {
+                                var marshalContext = binder.GetMarshalContext();
+                                var disposed = false;
+                                try
+                                {
+                                    var allocated = false;
+                        
+                                    Start:
+                                    Span<StackValueItem> parameterValues =
+                                        stackalloc StackValueItem[allocated ? marshalContext.AllocateLength : 0];
+                                    var marshalStack = new MarshalStack<StackValueItem>(parameterValues);
+                        
+                                    do
+                                    {
+                                        switch (marshalContext.MoveNext())
+                                        {
+                                            case MarshallerActionKind.End:
+                                            {
+                                                if (!marshalStack.End) throw new InvalidOperationException();
+                                                goto End;
+                                            }
+                                            case MarshallerActionKind.Iterate:
+                                            {
+                """);
+
+        var i = 0;
+        foreach (var _ in argumentTypes)
+            sourceBuilder.AppendLine(
+                /*  lang=c# */
+                $$"""
+                                                  marshalContext.IterateValue(_{{i++}}, ref marshalStack);
+                  """);
+
+        sourceBuilder.AppendLine(
+/*  lang=c# */"""
+                                              break;
+                                          }
+                                          case MarshallerActionKind.Allocate:
+                                          {
+                                              if (allocated) throw new InvalidOperationException();
+                                              allocated = true;
+                                              goto Start;
+                                          }
+                                          default:
+                                              throw new ArgumentOutOfRangeException();
+                                      }
+                                  } while (true);
+              
+                                  End:
+              
+                                  disposed = true;
+                                  marshalContext.Dispose();
+              
+                                  task = context.InvokeAsync(function, parameterValues);
+                              }
+                              finally
+                              {
+                                  if (!disposed) marshalContext.Dispose();
+                              }
+                          }
+              
+                          return InvokeAsyncCore(binder, context, task);
+                          
+                          static async ValueTask<TResult> InvokeAsyncCore(Binder binder, ExecutionContext context, ValueTask task)
+                          {
+                              await task;
+                              return GetResult(binder, context);
+                          }
+                          
+                          static TResult GetResult(Binder binder, ExecutionContext context)
+                          {
+                              Span<StackValueItem> resultValues = stackalloc StackValueItem[context.ResultLength];
+                              context.TakeResults(resultValues);
+                          
+                              var unmarshalQueue = new UnmarshalQueue<StackValueItem>(resultValues);
+                          
+                              TResult result = default;
+                              {
+                                  using var unmarshalContext = binder.GetUnmarshalContext();
+                          
+                                  do
+                                  {
+                                      switch (unmarshalContext.MoveNext())
+                                      {
+                                          case MarshallerActionKind.End:
+                                          {
+                                              if (!unmarshalQueue.End) throw new InvalidOperationException();
+                                              goto End;
+                                          }
+                                          case MarshallerActionKind.Iterate:
+                                          {
+                                              unmarshalContext.IterateValue(out result, ref unmarshalQueue);
+                          
+                                              break;
+                                          }
+                                          case MarshallerActionKind.Allocate:
+                                          {
+                                              break;
+                                          }
+                                          default:
+                                              throw new ArgumentOutOfRangeException();
+                                      }
+                                  } while (true);
+                          
+                                  End: ;
+                              }
+                          
+                              return result;
+                          }
                       }
               """);
     }

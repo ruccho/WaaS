@@ -9,18 +9,23 @@ namespace WaaS.Runtime
     public class AsyncExternalStackFrame : StackFrame
     {
         private readonly AsyncExternalFunction function;
-        private StackValueItem[] inputValues;
-        private StackValueItem[] outputValues;
+        private readonly Memory<StackValueItem> inputValues;
+        private StackValueItem[] inputValuesArray;
+        private readonly Memory<StackValueItem> outputValues;
+        private StackValueItem[] outputValuesArray;
         private StackFrameState state = StackFrameState.Ready;
 
         internal AsyncExternalStackFrame(AsyncExternalFunction function, ReadOnlySpan<StackValueItem> inputValues)
         {
             this.function = function;
             var type = function.Type;
-            this.inputValues = ArrayPool<StackValueItem>.Shared.Rent(type.ParameterTypes.Length);
-            outputValues = ArrayPool<StackValueItem>.Shared.Rent(type.ResultTypes.Length);
+            inputValuesArray = ArrayPool<StackValueItem>.Shared.Rent(type.ParameterTypes.Length);
+            outputValuesArray = ArrayPool<StackValueItem>.Shared.Rent(type.ResultTypes.Length);
 
-            inputValues.CopyTo(this.inputValues);
+            this.inputValues = inputValuesArray.AsMemory().Slice(0, type.ParameterTypes.Length);
+            outputValues = outputValuesArray.AsMemory().Slice(0, type.ResultTypes.Length);
+
+            inputValues.CopyTo(this.inputValues.Span);
         }
 
         public override int ResultLength => function.Type.ResultTypes.Length;
@@ -31,6 +36,7 @@ namespace WaaS.Runtime
             {
                 state = StackFrameState.Pending;
                 InvokeAsync(waker);
+                return StackFrameState.Pending;
             }
 
             return state;
@@ -41,36 +47,36 @@ namespace WaaS.Runtime
             try
             {
                 var type = function.Type;
-                await function.InvokeAsync(inputValues.AsSpan(0, type.ParameterTypes.Length),
-                    outputValues.AsMemory(0, type.ResultTypes.Length));
+                await function.InvokeAsync(inputValues.Span, outputValues);
             }
             catch (Exception ex)
             {
                 waker.Fail(ex);
-                return;
+                throw;
             }
 
-            waker.Wake();
             state = StackFrameState.Completed;
+
+            waker.Wake();
         }
 
         public override void TakeResults(Span<StackValueItem> dest)
         {
-            outputValues.CopyTo(dest);
+            outputValues.Span.CopyTo(dest);
         }
 
         public override void Dispose()
         {
-            if (inputValues != null)
+            if (inputValuesArray != null)
             {
-                ArrayPool<StackValueItem>.Shared.Return(inputValues);
-                inputValues = null;
+                ArrayPool<StackValueItem>.Shared.Return(inputValuesArray);
+                inputValuesArray = null;
             }
 
-            if (outputValues != null)
+            if (outputValuesArray != null)
             {
-                ArrayPool<StackValueItem>.Shared.Return(outputValues);
-                outputValues = null;
+                ArrayPool<StackValueItem>.Shared.Return(outputValuesArray);
+                outputValuesArray = null;
             }
         }
     }
