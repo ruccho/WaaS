@@ -102,6 +102,37 @@ public class BindingTests
     }
 
     [Test]
+    public async ValueTask TestImportAsyncCoreNoReturn()
+    {
+        var binder = new CoreBinder();
+
+        var externalFunc = binder.ToAsyncExternalFunction(async (int a, int b) => { Console.WriteLine(a + b); });
+        var imports = new Imports
+        {
+            {
+                "waas", new ModuleImports
+                {
+                    { "add", externalFunc }
+                }
+            }
+        };
+
+        var function = GetInstance(
+/*    */"""
+        (module
+            (import "waas" "add" (func $add (param i32) (param i32)))
+            (func $main (param i32) (param i32)
+                local.get 0
+                local.get 1
+                call $add)
+            (export "main" (func $main))
+        )
+        """, imports).ExportInstance.Items["main"] as IInvocableFunction;
+
+        await binder.InvokeAsync(new ExecutionContext(), function, 1, 2);
+    }
+
+    [Test]
     public async ValueTask TestImportAsyncCoreDelayed()
     {
         var binder = new CoreBinder();

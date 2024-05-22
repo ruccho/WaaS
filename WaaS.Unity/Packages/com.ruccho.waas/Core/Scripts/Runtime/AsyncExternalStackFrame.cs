@@ -10,8 +10,8 @@ namespace WaaS.Runtime
     {
         private readonly AsyncExternalFunction function;
         private readonly Memory<StackValueItem> inputValues;
-        private StackValueItem[] inputValuesArray;
         private readonly Memory<StackValueItem> outputValues;
+        private StackValueItem[] inputValuesArray;
         private StackValueItem[] outputValuesArray;
         private StackFrameState state = StackFrameState.Ready;
 

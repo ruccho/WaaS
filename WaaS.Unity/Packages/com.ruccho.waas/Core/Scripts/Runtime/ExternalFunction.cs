@@ -34,7 +34,6 @@ namespace WaaS.Runtime
         }
     }
 
-
     public class ExternalFunctionDelegate : ExternalFunction
     {
         public delegate void InvokeDelegate(object state, ReadOnlySpan<StackValueItem> parameters,

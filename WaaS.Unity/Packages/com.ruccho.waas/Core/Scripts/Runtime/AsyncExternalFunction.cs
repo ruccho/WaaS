@@ -34,4 +34,30 @@ namespace WaaS.Runtime
             return invoke(state, parameters, results);
         }
     }
+
+    public class AsyncExternalFunctionDelegate : AsyncExternalFunction
+    {
+        public delegate ValueTask InvokeDelegate(object state, ReadOnlySpan<StackValueItem> parameters,
+            Memory<StackValueItem> results);
+
+        private readonly InvokeDelegate invoke;
+
+        private readonly object state;
+
+        public AsyncExternalFunctionDelegate(
+            InvokeDelegate invoke, object state,
+            FunctionType type)
+        {
+            this.invoke = invoke;
+            this.state = state;
+            Type = type;
+        }
+
+        public override FunctionType Type { get; }
+
+        public override ValueTask InvokeAsync(ReadOnlySpan<StackValueItem> parameters, Memory<StackValueItem> results)
+        {
+            return invoke.Invoke(state, parameters, results);
+        }
+    }
 }

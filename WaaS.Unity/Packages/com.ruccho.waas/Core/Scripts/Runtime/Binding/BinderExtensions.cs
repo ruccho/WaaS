@@ -114,6 +114,60 @@ namespace WaaS.Runtime.Bindings
             }
         }
 
+        public static ValueTask InvokeAsync(this Binder binder, ExecutionContext context,
+            IInvocableFunction function, params object[] parameters)
+        {
+            var marshalContext = binder.GetMarshalContext();
+            var disposed = false;
+            try
+            {
+                var allocated = false;
+
+                Start:
+                Span<StackValueItem> parameterValues =
+                    stackalloc StackValueItem[allocated ? marshalContext.AllocateLength : 0];
+                var marshalStack = new MarshalStack<StackValueItem>(parameterValues);
+
+                do
+                {
+                    switch (marshalContext.MoveNext())
+                    {
+                        case MarshallerActionKind.End:
+                        {
+                            if (!marshalStack.End) throw new InvalidOperationException();
+                            goto End;
+                        }
+                        case MarshallerActionKind.Iterate:
+                        {
+                            foreach (var parameter in parameters)
+                                marshalContext.IterateValueBoxed(parameter, ref marshalStack);
+
+                            break;
+                        }
+                        case MarshallerActionKind.Allocate:
+                        {
+                            if (allocated) throw new InvalidOperationException();
+                            allocated = true;
+                            goto Start;
+                        }
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                } while (true);
+
+                End:
+
+                disposed = true;
+                marshalContext.Dispose();
+
+                return context.InvokeAsync(function, parameterValues);
+            }
+            finally
+            {
+                if (!disposed) marshalContext.Dispose();
+            }
+        }
+
         public static unsafe TResult Invoke<TResult>(this Binder binder, ExecutionContext context,
             IInvocableFunction function, params object[] parameters)
         {
@@ -419,7 +473,7 @@ namespace WaaS.Runtime.Bindings
             var resultType = getResultMethod.ReturnType;
 
             ValueType[] resultTypes = default;
-            if (method.ReturnType != typeof(void))
+            if (resultType != typeof(void))
             {
                 using var marshalContext = binder.GetMarshalContext();
 

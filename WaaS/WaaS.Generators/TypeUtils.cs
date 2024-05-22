@@ -124,4 +124,53 @@ public static class TypeUtils
                 throw new ArgumentOutOfRangeException(nameof(type));
         }
     }
+
+    public static IEnumerable<ITypeParameterSymbol> ExtractTypeParameters(this ITypeSymbol type)
+    {
+        switch (type)
+        {
+            case IArrayTypeSymbol arrayTypeSymbol:
+            {
+                foreach (var t in ExtractTypeParameters(arrayTypeSymbol.ElementType)) yield return t;
+
+                break;
+            }
+            case IDynamicTypeSymbol dynamicTypeSymbol:
+                break;
+            case IErrorTypeSymbol errorTypeSymbol:
+                break;
+            case IFunctionPointerTypeSymbol functionPointerTypeSymbol:
+            {
+                var sig = functionPointerTypeSymbol.Signature;
+                foreach (var t in ExtractTypeParameters(sig.ReturnType)) yield return t;
+
+                foreach (var p in sig.Parameters)
+                foreach (var t in ExtractTypeParameters(p.Type))
+                    yield return t;
+
+                break;
+            }
+            case INamedTypeSymbol namedTypeSymbol:
+            {
+                foreach (var a in namedTypeSymbol.TypeArguments)
+                foreach (var t in ExtractTypeParameters(a))
+                    yield return t;
+
+                break;
+            }
+            case IPointerTypeSymbol pointerTypeSymbol:
+            {
+                foreach (var t in ExtractTypeParameters(pointerTypeSymbol.PointedAtType)) yield return t;
+
+                break;
+            }
+            case ITypeParameterSymbol typeParameterSymbol:
+            {
+                yield return typeParameterSymbol;
+                break;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(type));
+        }
+    }
 }
