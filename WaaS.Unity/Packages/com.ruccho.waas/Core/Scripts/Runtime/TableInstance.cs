@@ -6,7 +6,8 @@ namespace WaaS.Runtime
     public class TableInstance
     {
         public TableInstance(GlobalInstance globals,
-            ImportSection importSection, TableSection tableSection, ElementSection elementSection, Imports importObject)
+            ImportSection importSection, TableSection tableSection, ElementSection elementSection,
+            IImports importObject)
         {
             var numTables = tableSection?.TableTypes.Length ?? 0;
             var imports = importSection != null ? importSection.Imports.Span : Span<Import>.Empty;
@@ -26,7 +27,8 @@ namespace WaaS.Runtime
                 {
                     var t = tableType.Value;
 
-                    if (importObject[import.ModuleName][import.Name] is not Table<IInvocableFunction> externalTable)
+                    if (!importObject.TryGetImportable(import.ModuleName, import.Name,
+                            out Table<IInvocableFunction> externalTable))
                         throw new InvalidOperationException();
 
                     if (!externalTable.Limits.IsImportable(t.Limits))

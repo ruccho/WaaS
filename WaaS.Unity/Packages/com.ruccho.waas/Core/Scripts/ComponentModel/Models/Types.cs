@@ -1,0 +1,825 @@
+﻿#nullable enable
+
+using System;
+using System.Collections.Generic;
+using WaaS.ComponentModel.Runtime;
+using WaaS.Models;
+
+namespace WaaS.ComponentModel.Models
+{
+    [GenerateFormatter]
+    [Variant(0x40, typeof(FunctionType))]
+    [Variant(0x41, typeof(ComponentType))]
+    [Variant(0x42, typeof(InstanceType))]
+    [VariantFallback(typeof(IValueTypeDefinition))]
+    [VariantFallback(typeof(IResourceTypeDefinition))]
+    public partial interface ITypeDefinition : IUnresolved<IType>
+    {
+    }
+
+    [GenerateFormatter]
+    [Variant(0x68, typeof(BorrowedType))]
+    [Variant(0x69, typeof(OwnedType))]
+    [Variant(0x6A, typeof(ResultType))]
+    [Variant(0x6B, typeof(OptionType))]
+    [Variant(0x6D, typeof(EnumType))]
+    [Variant(0x6E, typeof(FlagsType))]
+    [Variant(0x6F, typeof(TupleType))]
+    [Variant(0x70, typeof(ListType))]
+    [Variant(0x71, typeof(VariantType))]
+    [Variant(0x72, typeof(RecordType))]
+    [VariantFallback(typeof(PrimitiveValueType))]
+    public partial interface IValueTypeDefinition : ITypeDefinition, IUnresolvedValueType
+    {
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct PrimitiveValueType : IValueTypeDefinition, IValueType, IEquatable<PrimitiveValueType>
+    {
+        public PrimitiveValueTypeKind Kind { get; init; }
+
+        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return this;
+        }
+
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return this;
+        }
+
+        public bool Equals(PrimitiveValueType other)
+        {
+            return Kind == other.Kind;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is PrimitiveValueType other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return (int)Kind;
+        }
+
+        public static bool operator ==(PrimitiveValueType left, PrimitiveValueType right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(PrimitiveValueType left, PrimitiveValueType right)
+        {
+            return !left.Equals(right);
+        }
+    }
+
+    public enum PrimitiveValueTypeKind : byte
+    {
+        String = 0x73,
+        Char,
+        F64,
+        F32,
+        U64,
+        S64,
+        U32,
+        S32,
+        U16,
+        S16,
+        U8,
+        S8,
+        Bool
+    }
+
+    [GenerateFormatter]
+    public partial class RecordType : IValueTypeDefinition
+    {
+        public ReadOnlyMemory<LabeledValueType> Fields { get; }
+
+        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
+        }
+
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            var fields = new IRecordField[Fields.Length];
+            for (var i = 0; i < Fields.Span.Length; i++)
+            {
+                var field = Fields.Span[i];
+                var resolvedType = context.Resolve(field.Type);
+
+                fields[i] = new ResolvedField(field.Label, resolvedType);
+            }
+
+            return new ResolvedRecordType(fields);
+        }
+
+        private class ResolvedField : IRecordField
+        {
+            public ResolvedField(string label, IType type)
+            {
+                Label = label;
+                Type = type;
+            }
+
+            public string Label { get; }
+            public IType Type { get; }
+        }
+
+        private readonly struct ResolvedRecordType : IRecordType
+        {
+            public ReadOnlyMemory<IRecordField> Fields { get; }
+
+            public ResolvedRecordType(ReadOnlyMemory<IRecordField> fields)
+            {
+                Fields = fields;
+            }
+        }
+    }
+
+    [GenerateFormatter]
+    public partial class VariantType : IValueTypeDefinition
+    {
+        public ReadOnlyMemory<Case> Cases { get; init; }
+
+        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
+        }
+
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            var cases = new IVariantCase[Cases.Length];
+            for (var i = 0; i < Cases.Span.Length; i++)
+            {
+                var @case = Cases.Span[i];
+                var resolvedType = @case.Type == null ? null : context.Resolve(@case.Type);
+
+                cases[i] = new ResolvedCase(@case.Label, resolvedType);
+            }
+
+            return new ResolvedVariantType(cases);
+        }
+
+        private class ResolvedCase : IVariantCase
+        {
+            public ResolvedCase(string label, IValueType? type)
+            {
+                Label = label;
+                Type = type;
+            }
+
+            public string Label { get; }
+            public IValueType? Type { get; }
+        }
+
+        private class ResolvedVariantType : IVariantType
+        {
+            public ResolvedVariantType(ReadOnlyMemory<IVariantCase> cases)
+            {
+                Cases = cases;
+            }
+
+            public ReadOnlyMemory<IVariantCase> Cases { get; }
+        }
+    }
+
+    [GenerateFormatter]
+    public partial class ListType : IValueTypeDefinition
+    {
+        public IUnresolvedValueType ElementType { get; }
+
+        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
+        }
+
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return new ResolvedListType(context.Resolve(ElementType));
+        }
+
+        private class ResolvedListType : IListType
+        {
+            public ResolvedListType(IType elementType)
+            {
+                ElementType = elementType;
+            }
+
+            public IType ElementType { get; }
+        }
+    }
+
+    [GenerateFormatter]
+    public partial class TupleType : IValueTypeDefinition
+    {
+        public ReadOnlyMemory<IUnresolvedValueType> Type { get; }
+
+        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
+        }
+
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            var resolvedTypes = new IValueType[Type.Length];
+            for (var i = 0; i < Type.Span.Length; i++) resolvedTypes[i] = context.Resolve(Type.Span[i]);
+
+            return new ResolverTupleType(resolvedTypes);
+        }
+
+        private class ResolverTupleType : ITupleType
+        {
+            public ResolverTupleType(ReadOnlyMemory<IValueType> cases)
+            {
+                Cases = cases;
+            }
+
+            public ReadOnlyMemory<IValueType> Cases { get; }
+        }
+    }
+
+    [GenerateFormatter]
+    public partial class FlagsType : IValueTypeDefinition, IFlagsType
+    {
+        public ReadOnlyMemory<string> Labels { get; }
+
+        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
+        }
+
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return this;
+        }
+    }
+
+    [GenerateFormatter]
+    public partial class EnumType : IValueTypeDefinition, IEnumType
+    {
+        public ReadOnlyMemory<string> Labels { get; }
+
+        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
+        }
+
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return this;
+        }
+    }
+
+    [GenerateFormatter]
+    public partial class OptionType : IValueTypeDefinition
+    {
+        public IUnresolvedValueType Type { get; init; }
+
+        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
+        }
+
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return new ResolvedOptionType(context.Resolve(Type));
+        }
+
+        private class ResolvedOptionType : IOptionType
+        {
+            public ResolvedOptionType(IType type)
+            {
+                Type = type;
+            }
+
+            public IType Type { get; }
+        }
+    }
+
+    [GenerateFormatter]
+    public partial class ResultType : IValueTypeDefinition
+    {
+        public IUnresolvedValueType? Type { get; }
+        public IUnresolvedValueType? ErrorType { get; }
+
+
+        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
+        }
+
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return new ResolvedResultType(context.Resolve(Type), context.Resolve(ErrorType));
+        }
+
+        private class ResolvedResultType : IResultType
+        {
+            public ResolvedResultType(IType type, IType errorType)
+            {
+                Type = type;
+                ErrorType = errorType;
+            }
+
+            public IType Type { get; }
+            public IType ErrorType { get; }
+        }
+    }
+
+    [GenerateFormatter]
+    public partial class OwnedType : IValueTypeDefinition
+    {
+        public IUnresolved<IType> Type { get; }
+
+        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
+        }
+
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return new ResolvedOwnedType(context.Resolve(Type) as IResourceType ?? throw new LinkException());
+        }
+
+        private class ResolvedOwnedType : IOwnedType
+        {
+            public ResolvedOwnedType(IResourceType type)
+            {
+                Type = type;
+            }
+
+            public IResourceType Type { get; }
+        }
+    }
+
+    [GenerateFormatter]
+    public partial class BorrowedType : IValueTypeDefinition
+    {
+        public IUnresolved<IType> Type { get; }
+
+        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
+        }
+
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return new ResolvedBorrowedType(context.Resolve(Type) as IResourceType ?? throw new LinkException());
+        }
+
+        private class ResolvedBorrowedType : IBorrowedType
+        {
+            public ResolvedBorrowedType(IResourceType type)
+            {
+                Type = type;
+            }
+
+            public IResourceType Type { get; }
+        }
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct LabeledValueType
+    {
+        public string Label { get; }
+        public IUnresolvedValueType Type { get; }
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct Case
+    {
+        public string Label { get; }
+        public IUnresolvedValueType? Type { get; }
+        private byte Unknown0 { get; }
+    }
+
+    public interface IUnresolvedValueType : IUnresolved<IValueType>
+    {
+        static IUnresolvedValueType()
+        {
+            Formatter<IUnresolvedValueType>.Default = new Formatter();
+        }
+
+        private class Formatter : IFormatter<IUnresolvedValueType>
+        {
+            public bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace, out IUnresolvedValueType result)
+            {
+                var first = reader.Clone().ReadUnaligned<byte>();
+                if (first >> 6 == 1)
+                {
+                    // negative one-byte SLEB128S
+                    result = Formatter<PrimitiveValueType>.Read(ref reader, indexSpace);
+                    return true;
+                }
+
+                var type = indexSpace.Get<IType>(reader.ReadUnalignedLeb128U32());
+
+                if (type is not IValueTypeDefinition valueTypeDef) throw new InvalidModuleException(); // validation
+
+                result = valueTypeDef;
+                return true;
+            }
+        }
+    }
+
+    [GenerateFormatter]
+    [Variant(0x3F, typeof(ResourceType))]
+    public partial interface IResourceTypeDefinition : IUnresolved<IResourceType>, ITypeDefinition
+    {
+    }
+
+    [GenerateFormatter]
+    public partial class ResourceType : IResourceTypeDefinition
+    {
+        private byte Unknown0 { get; init; }
+        public IUnresolved<IFunction>? Destructor { get; init; }
+
+        public IResourceType ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return new ResolvedResourceType(Destructor != null ? context.Resolve(Destructor) : null);
+        }
+
+        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return ResolveFirstTime(context);
+        }
+
+        private class ResolvedResourceType : IResourceType
+        {
+            public ResolvedResourceType(IFunction? destructor)
+            {
+                Destructor = destructor;
+            }
+
+            public IFunction? Destructor { get; }
+        }
+    }
+
+    [GenerateFormatter]
+    public partial class FunctionType : ITypeDefinition
+    {
+        public ReadOnlyMemory<LabeledValueType> Parameters { get; }
+        public IResultList Result { get; }
+
+        public IType ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            var parameters = new ResolvedParameter[Parameters.Length];
+            for (var i = 0; i < Parameters.Span.Length; i++)
+            {
+                var parameter = Parameters.Span[i];
+                var resolvedType = context.Resolve(parameter.Type);
+
+                parameters[i] = new ResolvedParameter(parameter.Label, resolvedType);
+            }
+
+            return new ResolvedFunctionType(parameters, Result.ResolveFirstTime(context));
+        }
+
+        private class ResolvedParameter : IParameter
+        {
+            public ResolvedParameter(string label, IValueType type)
+            {
+                Label = label;
+                Type = type;
+            }
+
+            public string Label { get; }
+            public IValueType Type { get; }
+        }
+
+        private class ResolvedFunctionType : IFunctionType
+        {
+            public ResolvedFunctionType(ReadOnlyMemory<IParameter> parameters, IValueType? result)
+            {
+                Parameters = parameters;
+                Result = result;
+            }
+
+            public ReadOnlyMemory<IParameter> Parameters { get; }
+            public IValueType? Result { get; }
+        }
+    }
+
+    [GenerateFormatter]
+    [Variant(0x00, typeof(ResultListSingle))]
+    [Variant(0x01, typeof(ResultListNone))]
+    public partial interface IResultList
+    {
+        IValueType? ResolveFirstTime(IInstanceResolutionContext context);
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct ResultListSingle : IResultList
+    {
+        public IUnresolvedValueType Type { get; init; }
+
+        public IValueType? ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return context.Resolve(Type);
+        }
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct ResultListNone : IResultList
+    {
+        private byte Unknown0 { get; init; }
+
+        public IValueType? ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return null;
+        }
+    }
+
+    public class ComponentType : ITypeDefinition
+    {
+        static ComponentType()
+        {
+            Formatter<ComponentType>.Default = new Formatter();
+        }
+
+        public ComponentType(IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> imports,
+            IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> exports)
+        {
+            Imports = imports;
+            Exports = exports;
+        }
+
+        public IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> Imports { get; }
+        public IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> Exports { get; }
+
+        public IType ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return new ResolvedComponentType();
+        }
+
+        private class Formatter : IFormatter<ComponentType>
+        {
+            public bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace, out ComponentType result)
+            {
+                var newIndexSpace = new IndexSpace(indexSpace);
+                var numDecls = reader.ReadVectorSize();
+                Dictionary<string, IExportableDescriptor<ISortedExportable>> imports = new();
+                Dictionary<string, IExportableDescriptor<ISortedExportable>> exports = new();
+                for (var i = 0; i < numDecls; i++)
+                {
+                    var decl = Formatter<IComponentDeclarator>.Read(ref reader, newIndexSpace);
+
+                    if (decl is ImportDeclarator importDeclaration)
+                        imports.Add(importDeclaration.ImportName.Name, importDeclaration.Descriptor);
+                    else if (decl is ExportDeclarator exportDeclaration)
+                        exports.Add(exportDeclaration.ExportName.Name, exportDeclaration.Descriptor);
+                }
+
+                result = new ComponentType(imports, exports);
+                return true;
+            }
+        }
+
+        private class ResolvedComponentType : IComponentType
+        {
+            // TODO
+        }
+    }
+
+    public class InstanceType : ITypeDefinition
+    {
+        static InstanceType()
+        {
+            Formatter<InstanceType>.Default = new Formatter();
+        }
+
+        public InstanceType(IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> exports)
+        {
+            Exports = exports;
+        }
+
+        public IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> Exports { get; }
+
+        public IType ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return new ResolvedInstanceType();
+        }
+
+        private class Formatter : IFormatter<InstanceType>
+        {
+            public bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace, out InstanceType result)
+            {
+                var newIndexSpace = new IndexSpace(indexSpace);
+                var numDecls = reader.ReadVectorSize();
+                Dictionary<string, IExportableDescriptor<ISortedExportable>> exports = new();
+                for (var i = 0; i < numDecls; i++)
+                {
+                    var decl = Formatter<IInstanceDeclarator>.Read(ref reader, newIndexSpace);
+
+                    if (decl is ExportDeclarator exportDeclaration)
+                        exports.Add(exportDeclaration.ExportName.Name, exportDeclaration.Descriptor);
+                }
+
+                result = new InstanceType(exports);
+                return true;
+            }
+        }
+
+        private class ResolvedInstanceType : IInstanceType
+        {
+            // TODO
+        }
+    }
+
+    [GenerateFormatter]
+    [Variant(0x03, typeof(ImportDeclarator))]
+    [VariantFallback(typeof(IInstanceDeclarator))]
+    public partial interface IComponentDeclarator
+    {
+    }
+
+    [GenerateFormatter]
+    [Variant(0x00, typeof(InstanceDeclaratorCoreType))]
+    [Variant(0x01, typeof(InstanceDeclaratorType))]
+    [Variant(0x02, typeof(InstanceDeclaratorAlias))]
+    [Variant(0x04, typeof(InstanceDeclaratorExportDecl))]
+    public partial interface IInstanceDeclarator : IComponentDeclarator
+    {
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct InstanceDeclaratorCoreType : IInstanceDeclarator
+    {
+        public ICoreTypeDefinition CoreType { get; }
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct InstanceDeclaratorType : IInstanceDeclarator
+    {
+        public ITypeDefinition Type { get; }
+    }
+
+
+    [GenerateFormatter]
+    public readonly partial struct InstanceDeclaratorAlias : IInstanceDeclarator
+    {
+        private Alias Alias { get; }
+    }
+
+
+    [GenerateFormatter]
+    public readonly partial struct InstanceDeclaratorExportDecl : IInstanceDeclarator
+    {
+        public ExportDeclarator Declaration { get; }
+    }
+
+
+    [GenerateFormatter]
+    public readonly partial struct ImportDeclarator : IComponentDeclarator
+    {
+        public ImportExportName ImportName { get; }
+        public IExportableDescriptor<ISortedExportable> Descriptor { get; init; }
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct ExportDeclarator : IInstanceDeclarator
+    {
+        public ImportExportName ExportName { get; }
+        public IExportableDescriptor<ISortedExportable> Descriptor { get; init; }
+    }
+
+    public interface IExportableDescriptor<out T> where T : ISortedExportable
+    {
+        static IExportableDescriptor()
+        {
+            Formatter<IExportableDescriptor<ISortedExportable>>.Default = new ExportableDescriptorFormatter();
+        }
+
+        bool ValidateArgument(ISortedExportable argument);
+    }
+
+    internal class ExportableDescriptorFormatter : IFormatter<IExportableDescriptor<ISortedExportable>>
+    {
+        public bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace,
+            out IExportableDescriptor<ISortedExportable> result)
+        {
+            var tag = reader.Clone().ReadUnaligned<byte>();
+            switch (tag)
+            {
+                case 0x00:
+                    reader.ReadUnaligned<byte>();
+                    result = Formatter<ExportableDescriptorCoreModule>.Read(ref reader, indexSpace);
+                    return true;
+                case 0x01:
+                    reader.ReadUnaligned<byte>();
+                    result = Formatter<ExportableDescriptorFunction>.Read(ref reader, indexSpace);
+                    return true;
+                case 0x03:
+                    reader.ReadUnaligned<byte>();
+                    result = Formatter<ExportableDescriptorType>.Read(ref reader, indexSpace);
+                    return true;
+                case 0x04:
+                    reader.ReadUnaligned<byte>();
+                    result = Formatter<ExportableDescriptorComponent>.Read(ref reader, indexSpace);
+                    return true;
+                case 0x05:
+                    reader.ReadUnaligned<byte>();
+                    result = Formatter<ExportableDescriptorInstance>.Read(ref reader, indexSpace);
+                    return true;
+            }
+
+            result = default;
+            return false;
+        }
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct ExportableDescriptorCoreModule : IExportableDescriptor<ICoreModule>
+    {
+        private byte Unknown0 { get; }
+        public ICoreModuleDeclaration Type { get; }
+
+        public bool ValidateArgument(ISortedExportable argument)
+        {
+            return argument is ICoreModule;
+        }
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct ExportableDescriptorFunction : IExportableDescriptor<IFunction>
+    {
+        public IUnresolved<IType> Type { get; }
+
+        public bool ValidateArgument(ISortedExportable argument)
+        {
+            return argument is IFunction;
+        }
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct ExportableDescriptorType : IExportableDescriptor<IType>
+    {
+        public ITypeBound Type { get; }
+
+        public bool ValidateArgument(ISortedExportable argument)
+        {
+            return argument is IType;
+        }
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct ExportableDescriptorComponent : IExportableDescriptor<IComponent>
+    {
+        public IUnresolved<IType> Type { get; }
+
+        public bool ValidateArgument(ISortedExportable argument)
+        {
+            return argument is IComponent;
+        }
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct ExportableDescriptorInstance : IExportableDescriptor<IInstance>
+    {
+        public IUnresolved<IType> Type { get; }
+
+        public bool ValidateArgument(ISortedExportable argument)
+        {
+            return argument is IInstance;
+        }
+    }
+
+    [GenerateFormatter]
+    [Variant(0x00, typeof(TypeBoundEquals))]
+    [Variant(0x01, typeof(TypeBoundSubResource))]
+    public partial interface ITypeBound : IValueTypeDefinition
+    {
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct TypeBoundEquals : ITypeBound
+    {
+        public IUnresolved<IType> Type { get; }
+
+        public IType ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            throw new NotImplementedException();
+        }
+
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    [GenerateFormatter]
+    public readonly partial struct TypeBoundSubResource : ITypeBound
+    {
+        public IType ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            throw new NotImplementedException();
+        }
+
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

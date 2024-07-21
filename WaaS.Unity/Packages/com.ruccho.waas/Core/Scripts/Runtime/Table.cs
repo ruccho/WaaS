@@ -3,7 +3,7 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
-    public abstract class Table : IImportItem, IExportItem
+    public abstract class Table : IExternal
     {
         protected Table(Limits limits)
         {

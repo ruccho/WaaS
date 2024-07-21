@@ -5,7 +5,7 @@ namespace WaaS.Runtime
 {
     public class MemoryInstance
     {
-        public MemoryInstance(MemorySection memorySection, ImportSection importSection, Imports imports,
+        public MemoryInstance(MemorySection memorySection, ImportSection importSection, IImports imports,
             DataSection dataSection, GlobalInstance globalInstance)
         {
             var internalMemoryTypes = memorySection != null ? memorySection.MemoryTypes.Span : Span<MemoryType>.Empty;
@@ -26,7 +26,7 @@ namespace WaaS.Runtime
 
                 if (t.HasValue)
                 {
-                    if (imports[import.ModuleName][import.Name] is not Memory importedMemory)
+                    if (!imports.TryGetImportable(import.ModuleName, import.Name, out Memory importedMemory))
                         throw new InvalidOperationException();
 
                     if (!importedMemory.PageLimits.IsImportable(t.Value.Limits))

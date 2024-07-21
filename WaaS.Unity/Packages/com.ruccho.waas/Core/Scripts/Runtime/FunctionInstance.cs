@@ -5,7 +5,7 @@ namespace WaaS.Runtime
 {
     public class FunctionInstance
     {
-        public FunctionInstance(Instance instance, ImportSection importSection, Imports importObject)
+        public FunctionInstance(Instance instance, ImportSection importSection, IImports importObject)
         {
             var moduleFunctions = instance.Module.InternalFunctions.Span;
 
@@ -27,7 +27,8 @@ namespace WaaS.Runtime
                 var t = import.Description.TypeIndex;
                 if (!t.HasValue) continue;
 
-                if (importObject[import.ModuleName][import.Name] is not IInvocableFunction invocableFunction)
+                if (!importObject.TryGetImportable(import.ModuleName, import.Name,
+                        out IInvocableFunction invocableFunction))
                     throw new InvalidOperationException();
 
                 var type = instance.Module.TypeSection.FuncTypes.Span[checked((int)t.Value)];

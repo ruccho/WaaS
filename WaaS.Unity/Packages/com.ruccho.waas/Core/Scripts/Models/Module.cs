@@ -6,8 +6,18 @@ namespace WaaS.Models
 {
     public class Module
     {
-        private Module(ref ModuleReader reader)
+        internal Module(ref ModuleReader reader, long? size = null)
         {
+            long rest = 0;
+            if (size.HasValue)
+                checked
+                {
+                    rest = reader.Available - size.Value;
+                }
+
+            if (rest < 0) throw new ArgumentException(nameof(size));
+
+
             var preamble = reader.ReadUnaligned<Preamble>();
 
             if (!preamble.IsValid())
@@ -19,7 +29,8 @@ namespace WaaS.Models
             FunctionSection functionSection = null;
             TypeSection typeSection = null;
             CodeSection codeSection = null;
-            while (reader.Available > 0)
+
+            while (reader.Available > rest)
             {
                 var section = Section.Read(ref reader);
                 sections.Add(section);

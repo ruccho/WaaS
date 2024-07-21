@@ -9,7 +9,6 @@ namespace WaaS.Tests;
 
 public class BindingTests
 {
-    private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
 
     [SetUp]
     public void Setup()
@@ -19,7 +18,7 @@ public class BindingTests
     [Test]
     public void TestExportCore()
     {
-        var function = GetInstance("""
+        var function = Utils.GetInstance("""
                                    (module
                                         (func $add (param $lhs i32) (param $rhs i32) (result i32)
                                            local.get $lhs
@@ -44,14 +43,14 @@ public class BindingTests
         var imports = new Imports
         {
             {
-                "waas", new ModuleImports
+                "waas", new ModuleExports
                 {
                     { "add", externalFunc }
                 }
             }
         };
 
-        var function = GetInstance(
+        var function = Utils.GetInstance(
 /*    */"""
         (module
             (import "waas" "add" (func $add (param i32) (param i32) (result i32)))
@@ -77,14 +76,14 @@ public class BindingTests
         var imports = new Imports
         {
             {
-                "waas", new ModuleImports
+                "waas", new ModuleExports
                 {
                     { "add", externalFunc }
                 }
             }
         };
 
-        var function = GetInstance(
+        var function = Utils.GetInstance(
 /*    */"""
         (module
             (import "waas" "add" (func $add (param i32) (param i32) (result i32)))
@@ -110,14 +109,14 @@ public class BindingTests
         var imports = new Imports
         {
             {
-                "waas", new ModuleImports
+                "waas", new ModuleExports
                 {
                     { "add", externalFunc }
                 }
             }
         };
 
-        var function = GetInstance(
+        var function = Utils.GetInstance(
 /*    */"""
         (module
             (import "waas" "add" (func $add (param i32) (param i32)))
@@ -145,14 +144,14 @@ public class BindingTests
         var imports = new Imports
         {
             {
-                "waas", new ModuleImports
+                "waas", new ModuleExports
                 {
                     { "add", externalFunc }
                 }
             }
         };
 
-        var function = GetInstance(
+        var function = Utils.GetInstance(
 /*    */"""
         (module
             (import "waas" "add" (func $add (param i32) (param i32) (result i32)))
@@ -167,38 +166,5 @@ public class BindingTests
         var result = await binder.InvokeAsync<int>(new ExecutionContext(), function, 1, 2);
 
         Assert.That(result, Is.EqualTo(3));
-    }
-
-    private static Instance GetInstance(string wat, Imports imports)
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "WaaS.Tests");
-        var watPath = Path.Combine(dir, "temp.wat");
-        var wasmPath = Path.Combine(dir, "temp.wasm");
-
-        File.WriteAllText(watPath, wat, Utf8NoBom);
-
-        var psi = new ProcessStartInfo("wat2wasm", watPath)
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            WorkingDirectory = dir
-        };
-
-        using var wat2wasm = new Process();
-
-        wat2wasm.StartInfo = psi;
-
-        wat2wasm.OutputDataReceived += (sender, args) => { Console.WriteLine(args.Data); };
-        wat2wasm.ErrorDataReceived += (sender, args) => { Console.WriteLine(args.Data); };
-
-        wat2wasm.Start();
-        wat2wasm.BeginErrorReadLine();
-        wat2wasm.BeginOutputReadLine();
-
-        wat2wasm.WaitForExit();
-
-        var module = Module.Create(File.ReadAllBytes(wasmPath));
-        return new Instance(module, imports);
     }
 }

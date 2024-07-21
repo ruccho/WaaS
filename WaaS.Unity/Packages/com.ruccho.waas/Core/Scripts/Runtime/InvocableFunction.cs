@@ -2,7 +2,7 @@
 
 namespace WaaS.Runtime
 {
-    public interface IInvocableFunction : IExportItem, IImportItem
+    public interface IInvocableFunction : IExternal
     {
         FunctionType Type { get; }
     }

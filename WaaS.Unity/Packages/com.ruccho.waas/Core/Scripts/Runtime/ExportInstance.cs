@@ -6,7 +6,7 @@ namespace WaaS.Runtime
 {
     public class ExportInstance
     {
-        private readonly Dictionary<string, IExportItem> items = new();
+        private readonly Dictionary<string, IExternal> items = new();
 
         public ExportInstance(FunctionInstance functionInstance, ExportSection exportSection,
             TableInstance tables, MemoryInstance memories, GlobalInstance globals)
@@ -15,7 +15,7 @@ namespace WaaS.Runtime
             foreach (var export in exportSection.Exports.Span)
             {
                 var desc = export.Descriptor;
-                IExportItem item = desc.Kind switch
+                IExternal item = desc.Kind switch
                 {
                     ExportKind.Function => functionInstance.Functions.Span[checked((int)desc.FunctionIndex.Value)],
                     ExportKind.Table => tables.Tables.Span[checked((int)desc.TableIndex.Value)],
@@ -27,10 +27,10 @@ namespace WaaS.Runtime
             }
         }
 
-        public IReadOnlyDictionary<string, IExportItem> Items => items;
+        public IReadOnlyDictionary<string, IExternal> Items => items;
     }
 
-    public interface IExportItem
+    public interface IExternal
     {
     }
 }

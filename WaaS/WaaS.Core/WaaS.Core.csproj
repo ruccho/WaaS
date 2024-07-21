@@ -14,7 +14,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="../../WaaS.Unity/Packages/com.ruccho.waas/Core/Scripts/**/*.cs"/>
+        <Compile Include="../../WaaS.Unity/Packages/com.ruccho.waas/Core/Scripts/**/*.cs" Link="Scripts/*"/>
     </ItemGroup>
 
     <ItemGroup>

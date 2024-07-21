@@ -4,7 +4,7 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
-    public class Global : IImportItem, IExportItem
+    public class Global : IExternal
     {
         protected StackValueItem stackValue;
 

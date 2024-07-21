@@ -3,11 +3,11 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
-    public class Instance : IDisposable
+    public class Instance : IDisposable, IModuleExports
     {
         private bool isDisposed;
 
-        public Instance(Module module, Imports importObject)
+        public Instance(Module module, IImports importObject)
         {
             var importSection = module.ImportSection;
             var globalSection = module.GlobalSection;
@@ -60,6 +60,18 @@ namespace WaaS.Runtime
         {
             DisposeCore();
             GC.SuppressFinalize(this);
+        }
+
+        public bool TryGetExport<T>(string name, out T value) where T : IExternal
+        {
+            if (ExportInstance.Items.TryGetValue(name, out var item) && item is T valueTyped)
+            {
+                value = valueTyped;
+                return true;
+            }
+
+            value = default;
+            return false;
         }
 
         public Span<byte> GetMemory(uint index)

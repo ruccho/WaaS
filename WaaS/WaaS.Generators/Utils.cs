@@ -34,4 +34,14 @@ public static class Utils
 
         return $"where {symbol.Name} : {string.Join(", ", _tempStringList)}";
     }
+
+    public static string ToCamelCase(ReadOnlySpan<char> source)
+    {
+        if (source.Length == 0) return source.ToString();
+        
+        Span<char> span = stackalloc char[source.Length];
+        source.CopyTo(span);
+        span[0] = span[0] is >= 'A' and <= 'Z' ? (char)(span[0] + ('a' - 'A')) : span[0];
+        return span.ToString();
+    }
 }
