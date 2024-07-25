@@ -39,6 +39,7 @@ internal static class Utils
         wat2wasm.BeginOutputReadLine();
 
         wat2wasm.WaitForExit();
+        if (wat2wasm.ExitCode != 0) throw new Exception();
         return wasmPath;
     }
 
@@ -56,7 +57,9 @@ internal static class Utils
 
     public static IInstance GetInstance(string wat, IReadOnlyDictionary<string, ISortedExportable> imports)
     {
-        var component = Component.Create(File.ReadAllBytes(ParseWat(wat)));
+        var path = ParseWat(wat);
+        Console.WriteLine($"output: {path}");
+        var component = Component.Create(File.ReadAllBytes(path));
         return component.Instantiate(null, imports);
     }
 }

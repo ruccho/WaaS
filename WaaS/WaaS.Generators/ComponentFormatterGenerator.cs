@@ -152,7 +152,9 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
 
                 sourceBuilder.Append("                ");
 
-                AppendValueReader(propertySymbol.Type, sourceBuilder);
+                bool dontAddToSort = propertySymbol.GetAttributes()
+                    .Any(attr => attr.AttributeClass.Matches($"{FormatNamespace}.DontAddToSortAttribute"));
+                AppendValueReader(propertySymbol.Type, dontAddToSort, sourceBuilder);
             }
 
             sourceBuilder.AppendLine("\n            );");
@@ -208,13 +210,13 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
     }
 
 
-    private static void AppendValueReader(ITypeSymbol type, StringBuilder sourceBuilder)
-    {
+    private static void AppendValueReader(ITypeSymbol type, bool dontAddToSort, StringBuilder sourceBuilder)
+    {   
         if (type.NullableAnnotation == NullableAnnotation.Annotated)
         {
             sourceBuilder.Append(
                 $"reader.ReadOptional(static (ref global::WaaS.Models.ModuleReader reader, IIndexSpace indexSpace) => ");
-            AppendValueReader(type.WithNullableAnnotation(NullableAnnotation.NotAnnotated), sourceBuilder);
+            AppendValueReader(type.WithNullableAnnotation(NullableAnnotation.NotAnnotated), dontAddToSort, sourceBuilder);
             sourceBuilder.Append($", indexSpace)");
             return;
         }
@@ -250,7 +252,7 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
             {
                 sourceBuilder.Append(
                     $"reader.ReadVector(static (ref global::WaaS.Models.ModuleReader reader, IIndexSpace indexSpace) => ");
-                AppendValueReader(namedType.TypeArguments[0], sourceBuilder);
+                AppendValueReader(namedType.TypeArguments[0], dontAddToSort, sourceBuilder);
                 sourceBuilder.Append($", indexSpace)");
                 return;
             }
@@ -264,6 +266,6 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
         }
 
         sourceBuilder.Append(
-            $"global::{FormatNamespace}.Formatter<{type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>.Read(ref reader, indexSpace)");
+            $"global::{FormatNamespace}.Formatter<{type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>.Read(ref reader, indexSpace, {(dontAddToSort ? "false" : "true")})");
     }
 }

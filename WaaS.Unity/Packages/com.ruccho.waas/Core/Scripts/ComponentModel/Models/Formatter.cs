@@ -47,6 +47,11 @@ namespace WaaS.ComponentModel.Models
     {
     }
 
+    [AttributeUsage(AttributeTargets.Property)]
+    internal class DontAddToSortAttribute : Attribute
+    {
+    }
+
     internal static class Formatter<T>
     {
         private static IFormatter<T> defaultFormatter;

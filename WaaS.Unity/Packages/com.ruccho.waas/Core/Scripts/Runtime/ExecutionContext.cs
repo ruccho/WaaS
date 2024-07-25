@@ -9,6 +9,8 @@ namespace WaaS.Runtime
         private readonly Stack<StackFrame> frames = new();
         private readonly uint? maxStackFrames;
         private ValueTaskSource currentPendingTaskSource;
+        private readonly object locker = new();
+        private bool moving;
 
         public ExecutionContext(uint? maxStackFrames = null)
         {
@@ -23,61 +25,90 @@ namespace WaaS.Runtime
 
         public void Dispose()
         {
-            LastFrame?.Dispose();
-            LastFrame = null;
+            lock (locker)
+            {
+                foreach (var f in frames) f.Dispose();
+                frames.Clear();
+
+                LastFrame?.Dispose();
+                LastFrame = null;
+            }
         }
 
         private void MoveToEndOrPending(out bool pending)
         {
-            try
+            lock (locker)
             {
-                Loop:
-                var current = Current;
-                if (current is null) throw new InvalidOperationException();
-
-                LoopCurrent:
-                switch (current.MoveNext(new Waker(currentPendingTaskSource)))
+                try
                 {
-                    case StackFrameState.Ready:
+                    var initial = Current;
+
+                    Loop:
+                    var current = Current;
+                    if (current is null) throw new InvalidOperationException();
+
+                    LoopCurrent:
+
+                    if (moving) throw new InvalidOperationException("ExecutionContext detected reentrant evaluation!");
+
+                    moving = true;
+                    StackFrameState state;
+                    try
                     {
-                        goto Loop;
+                        state = current.MoveNext(new Waker(currentPendingTaskSource));
                     }
-                    case StackFrameState.Pending:
+                    finally
                     {
-                        pending = true;
-                        return;
+                        moving = false;
                     }
-                    case StackFrameState.Completed:
+
+                    switch (state)
                     {
-                        frames.Pop();
-                        if (frames.TryPeek(out var next) && next is WasmStackFrame nextWasm)
+                        case StackFrameState.Ready:
                         {
-                            Span<StackValueItem> results = stackalloc StackValueItem[current.ResultLength];
-                            current.TakeResults(results);
+                            goto Loop;
+                        }
+                        case StackFrameState.Pending:
+                        {
+                            pending = true;
+                            return;
+                        }
+                        case StackFrameState.Completed:
+                        {
+                            if (frames.Pop() == initial)
+                            {
+                                if (frames.Count == 0)
+                                    // end
+                                    LastFrame = current;
+
+                                pending = false;
+                                return;
+                            }
+
+                            if (frames.TryPeek(out var next) && next is WasmStackFrame nextWasm)
+                            {
+                                Span<StackValueItem> results = stackalloc StackValueItem[current.ResultLength];
+                                current.TakeResults(results);
+
+                                foreach (var value in results) nextWasm.Push(value.ExpectValue());
+                            }
+
                             current.Dispose();
-
-                            foreach (var value in results) nextWasm.Push(value.ExpectValue());
-
                             current = next;
 
                             goto LoopCurrent;
                         }
-
-                        // end
-                        LastFrame = current;
-                        pending = false;
-                        return;
+                        default:
+                            throw new ArgumentOutOfRangeException();
                     }
-                    default:
-                        throw new ArgumentOutOfRangeException();
                 }
-            }
-            catch
-            {
-                foreach (var f in frames) f.Dispose();
+                catch
+                {
+                    foreach (var f in frames) f.Dispose();
 
-                frames.Clear();
-                throw;
+                    frames.Clear();
+                    throw;
+                }
             }
         }
 
@@ -90,33 +121,56 @@ namespace WaaS.Runtime
 
         public ValueTask InvokeAsync(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
         {
-            if (frames.Count > 0) throw new InvalidOperationException();
-            PushFrame(function, inputValues);
-            return RunAsync();
+            lock (locker)
+            {
+                if (frames.Count > 0) throw new InvalidOperationException();
+                PushFrame(function, inputValues);
+                return RunAsync();
+            }
         }
 
-        internal void PushFrame(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
+        internal StackFrame PushFrame(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
         {
-            if (frames.Count >= maxStackFrames) throw new InvalidOperationException();
-            if (frames.TryPeek(out var top) && top is not WasmStackFrame && function is not InstanceFunction)
-                throw new InvalidOperationException();
-
-            StackFrame frame = function switch
+            lock (locker)
             {
-                InstanceFunction instanceFunction => new WasmStackFrame(this, instanceFunction, inputValues),
-                ExternalFunction externalFunction => new ExternalStackFrame(externalFunction, inputValues),
-                AsyncExternalFunction asyncExternalFunction => new AsyncExternalStackFrame(asyncExternalFunction,
-                    inputValues),
-                _ => throw new InvalidOperationException()
-            };
-            frames.Push(frame);
+                if (frames.Count >= maxStackFrames) throw new InvalidOperationException();
+                if (frames.TryPeek(out var top) && top is not WasmStackFrame && function is not InstanceFunction)
+                    throw new InvalidOperationException();
+
+                var frame = function.CreateFrame(this, inputValues);
+                frames.Push(frame);
+                return frame;
+            }
+        }
+
+        internal void InterruptFrame(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues,
+            Span<StackValueItem> results)
+        {
+            lock (locker)
+            {
+                var frame = PushFrame(function, inputValues);
+                MoveToEndOrPending(out var pending);
+
+                if (pending)
+                {
+                    Dispose();
+                    throw new InvalidOperationException("InterruptFrame() cannot handle async frames.");
+                }
+
+                frame.TakeResults(results);
+                frame.Dispose();
+            }
         }
 
         private void Run()
         {
             MoveToEndOrPending(out var pending);
 
-            if (pending) throw new InvalidOperationException("Use RunAsync() instead of Run() to use coroutines.");
+            if (pending)
+            {
+                Dispose();
+                throw new InvalidOperationException("Use RunAsync() instead of Run() to use coroutines.");
+            }
         }
 
         private async ValueTask RunAsync()
@@ -130,10 +184,7 @@ namespace WaaS.Runtime
 
                 currentPendingTaskSource = null;
 
-                // wait for wake
-                Console.WriteLine("pending");
                 await source.AsValueTask();
-                Console.WriteLine("pending completed");
             }
         }
 

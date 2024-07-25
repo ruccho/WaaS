@@ -7,6 +7,12 @@ namespace WaaS.Runtime
     public abstract class AsyncExternalFunction : IInvocableFunction
     {
         public abstract FunctionType Type { get; }
+
+        public StackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues)
+        {
+            return new AsyncExternalStackFrame(this, inputValues);
+        }
+
         public abstract ValueTask InvokeAsync(ReadOnlySpan<StackValueItem> parameters, Memory<StackValueItem> results);
     }
 

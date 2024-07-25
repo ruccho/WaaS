@@ -34,9 +34,10 @@ namespace WaaS.ComponentModel.Models
     }
 
     [GenerateFormatter]
-    public readonly partial struct PrimitiveValueType : IValueTypeDefinition, IValueType, IEquatable<PrimitiveValueType>
+    public readonly partial struct PrimitiveValueType : IPrimitiveValueType, IValueTypeDefinition,
+        IEquatable<PrimitiveValueType>
     {
-        public PrimitiveValueTypeKind Kind { get; init; }
+        public PrimitiveValueTypeKind Kind { get; }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
         {
@@ -63,6 +64,11 @@ namespace WaaS.ComponentModel.Models
             return (int)Kind;
         }
 
+        public IDespecializedValueType Despecialize()
+        {
+            return this;
+        }
+
         public static bool operator ==(PrimitiveValueType left, PrimitiveValueType right)
         {
             return left.Equals(right);
@@ -72,23 +78,76 @@ namespace WaaS.ComponentModel.Models
         {
             return !left.Equals(right);
         }
-    }
 
-    public enum PrimitiveValueTypeKind : byte
-    {
-        String = 0x73,
-        Char,
-        F64,
-        F32,
-        U64,
-        S64,
-        U32,
-        S32,
-        U16,
-        S16,
-        U8,
-        S8,
-        Bool
+        [Ignore]
+        public byte AlignmentRank =>
+            Kind switch
+            {
+                PrimitiveValueTypeKind.String => 2,
+                PrimitiveValueTypeKind.Char => 2,
+                PrimitiveValueTypeKind.F64 => 3,
+                PrimitiveValueTypeKind.F32 => 2,
+                PrimitiveValueTypeKind.U64 => 3,
+                PrimitiveValueTypeKind.S64 => 3,
+                PrimitiveValueTypeKind.U32 => 2,
+                PrimitiveValueTypeKind.S32 => 2,
+                PrimitiveValueTypeKind.U16 => 1,
+                PrimitiveValueTypeKind.S16 => 1,
+                PrimitiveValueTypeKind.U8 => 0,
+                PrimitiveValueTypeKind.S8 => 0,
+                PrimitiveValueTypeKind.Bool => 0,
+                _ => throw new ArgumentOutOfRangeException()
+            };
+
+        [Ignore]
+        public ushort ElementSize =>
+            Kind switch
+            {
+                PrimitiveValueTypeKind.String => 8,
+                PrimitiveValueTypeKind.Char => 4,
+                PrimitiveValueTypeKind.F64 => 8,
+                PrimitiveValueTypeKind.F32 => 4,
+                PrimitiveValueTypeKind.U64 => 8,
+                PrimitiveValueTypeKind.S64 => 8,
+                PrimitiveValueTypeKind.U32 => 4,
+                PrimitiveValueTypeKind.S32 => 4,
+                PrimitiveValueTypeKind.U16 => 2,
+                PrimitiveValueTypeKind.S16 => 2,
+                PrimitiveValueTypeKind.U8 => 1,
+                PrimitiveValueTypeKind.S8 => 1,
+                PrimitiveValueTypeKind.Bool => 1,
+                _ => throw new ArgumentOutOfRangeException()
+            };
+
+        [Ignore]
+        public uint FlattenedCount => Kind switch
+        {
+            PrimitiveValueTypeKind.String => 2,
+            _ => 1
+        };
+
+        public void Flatten(Span<ValueType> dest)
+        {
+            dest[0] = Kind switch
+            {
+                PrimitiveValueTypeKind.String => ValueType.I32,
+                PrimitiveValueTypeKind.Char => ValueType.I32,
+                PrimitiveValueTypeKind.F64 => ValueType.F64,
+                PrimitiveValueTypeKind.F32 => ValueType.F32,
+                PrimitiveValueTypeKind.U64 => ValueType.I64,
+                PrimitiveValueTypeKind.S64 => ValueType.I64,
+                PrimitiveValueTypeKind.U32 => ValueType.I32,
+                PrimitiveValueTypeKind.S32 => ValueType.I32,
+                PrimitiveValueTypeKind.U16 => ValueType.I32,
+                PrimitiveValueTypeKind.S16 => ValueType.I32,
+                PrimitiveValueTypeKind.U8 => ValueType.I32,
+                PrimitiveValueTypeKind.S8 => ValueType.I32,
+                PrimitiveValueTypeKind.Bool => ValueType.I32,
+                _ => throw new ArgumentOutOfRangeException()
+            };
+
+            if (Kind is PrimitiveValueTypeKind.String) dest[1] = ValueType.I32;
+        }
     }
 
     [GenerateFormatter]
@@ -109,33 +168,103 @@ namespace WaaS.ComponentModel.Models
                 var field = Fields.Span[i];
                 var resolvedType = context.Resolve(field.Type);
 
-                fields[i] = new ResolvedField(field.Label, resolvedType);
+                fields[i] = new ResolvedRecordField(field.Label, resolvedType);
             }
 
             return new ResolvedRecordType(fields);
         }
+    }
 
-        private class ResolvedField : IRecordField
+    internal class ResolvedRecordType : IRecordType
+    {
+        public ResolvedRecordType(ReadOnlyMemory<IRecordField> fields)
         {
-            public ResolvedField(string label, IType type)
-            {
-                Label = label;
-                Type = type;
-            }
-
-            public string Label { get; }
-            public IType Type { get; }
+            Fields = fields;
         }
 
-        private readonly struct ResolvedRecordType : IRecordType
-        {
-            public ReadOnlyMemory<IRecordField> Fields { get; }
+        public ReadOnlyMemory<IRecordField> Fields { get; }
 
-            public ResolvedRecordType(ReadOnlyMemory<IRecordField> fields)
+        public IDespecializedValueType Despecialize()
+        {
+            return this;
+        }
+
+        public byte AlignmentRank
+        {
+            get
             {
-                Fields = fields;
+                byte result = 0;
+                foreach (var field in Fields.Span)
+                {
+                    var type = field.Type;
+                    if (type is not IDespecializedValueType despecialized) despecialized = type.Despecialize();
+                    result = Math.Max(result, despecialized.AlignmentRank);
+                }
+
+                return result;
             }
         }
+
+        public ushort ElementSize
+        {
+            get
+            {
+                uint s = 0;
+                foreach (var field in Fields.Span)
+                {
+                    var type = field.Type;
+                    if (type is not IDespecializedValueType despecialized) despecialized = type.Despecialize();
+                    s = Utils.ElementSizeAlignTo(s, despecialized.AlignmentRank);
+                    s += despecialized.ElementSize;
+                }
+
+                if (s == 0) throw new InvalidOperationException();
+
+                return checked((ushort)Utils.ElementSizeAlignTo(s, AlignmentRank));
+            }
+        }
+
+        public uint FlattenedCount
+        {
+            get
+            {
+                uint count = 0;
+                foreach (var field in Fields.Span)
+                {
+                    var type = field.Type;
+                    if (type is not IDespecializedValueType despecialized) despecialized = type.Despecialize();
+
+                    count += despecialized.FlattenedCount;
+                }
+
+                return count;
+            }
+        }
+
+        public void Flatten(Span<ValueType> dest)
+        {
+            foreach (var field in Fields.Span)
+            {
+                var type = field.Type;
+                if (type is not IDespecializedValueType despecialized) despecialized = type.Despecialize();
+
+                var count = checked((int)despecialized.FlattenedCount);
+                despecialized.Flatten(dest[..count]);
+                dest = dest[count..];
+            }
+        }
+    }
+
+    internal class ResolvedRecordField : IRecordField
+    {
+        public ResolvedRecordField(string label, IValueType type)
+        {
+            Label = label;
+            Type = type;
+        }
+
+        public string Label { get; }
+        public IValueType Type { get; }
     }
 
     [GenerateFormatter]
@@ -156,39 +285,158 @@ namespace WaaS.ComponentModel.Models
                 var @case = Cases.Span[i];
                 var resolvedType = @case.Type == null ? null : context.Resolve(@case.Type);
 
-                cases[i] = new ResolvedCase(@case.Label, resolvedType);
+                cases[i] = new ResolvedVariantCase(@case.Label, resolvedType);
             }
 
             return new ResolvedVariantType(cases);
         }
+    }
 
-        private class ResolvedCase : IVariantCase
+    internal class ResolvedVariantCase : IVariantCase
+    {
+        public ResolvedVariantCase(string label, IValueType? type)
         {
-            public ResolvedCase(string label, IValueType? type)
-            {
-                Label = label;
-                Type = type;
-            }
-
-            public string Label { get; }
-            public IValueType? Type { get; }
+            Label = label;
+            Type = type;
         }
 
-        private class ResolvedVariantType : IVariantType
-        {
-            public ResolvedVariantType(ReadOnlyMemory<IVariantCase> cases)
-            {
-                Cases = cases;
-            }
+        public string Label { get; }
+        public IValueType? Type { get; }
+    }
 
-            public ReadOnlyMemory<IVariantCase> Cases { get; }
+    internal class ResolvedVariantType : IVariantType
+    {
+        public ResolvedVariantType(ReadOnlyMemory<IVariantCase> cases)
+        {
+            Cases = cases;
+        }
+
+        private byte MaxCaseAlignmentRank
+        {
+            get
+            {
+                byte s = 1;
+                foreach (var @case in Cases.Span)
+                {
+                    var type = @case.Type;
+                    if (type == null) continue;
+                    if (type is not IDespecializedValueType despecialized) despecialized = type.Despecialize();
+                    s = Math.Max(s, despecialized.AlignmentRank);
+                }
+
+                return s;
+            }
+        }
+
+        public ReadOnlyMemory<IVariantCase> Cases { get; }
+
+        public IDespecializedValueType Despecialize()
+        {
+            return this;
+        }
+
+        public byte DiscriminantTypeSizeRank
+        {
+            get
+            {
+                var length = Cases.Length;
+                var n = length >> 8;
+                var d = 0;
+                for (; n >= 0; n >>= 1) d++;
+                if ((length & ((1 << 8) - 1)) != 0) d++; // ceil
+
+                return (d >> 3) switch
+                {
+                    0 or 1 => 1,
+                    2 => 2,
+                    3 => 4,
+                    _ => throw new InvalidOperationException()
+                };
+            }
+        }
+
+        public byte AlignmentRank => Math.Max(DiscriminantTypeSizeRank, MaxCaseAlignmentRank);
+
+        public ushort ElementSize
+        {
+            get
+            {
+                var s = checked((ushort)(1 << DiscriminantTypeSizeRank));
+                s = checked((ushort)Utils.ElementSizeAlignTo(s, MaxCaseAlignmentRank));
+                ushort cs = 0;
+                foreach (var @case in Cases.Span)
+                {
+                    var type = @case.Type;
+                    if (type == null) continue;
+                    if (type is not IDespecializedValueType despecialized) despecialized = type.Despecialize();
+                    cs = Math.Max(cs, despecialized.ElementSize);
+                }
+
+                s += cs;
+                return checked((ushort)Utils.ElementSizeAlignTo(s, AlignmentRank));
+            }
+        }
+
+        public uint FlattenedCount
+        {
+            get
+            {
+                uint count = 0;
+                foreach (var @case in Cases.Span)
+                {
+                    var type = @case.Type;
+                    if (type == null) continue;
+                    if (type is not IDespecializedValueType despecialized) despecialized = type.Despecialize();
+
+                    count = Math.Max(count, despecialized.FlattenedCount);
+                }
+
+                return count + 1 /* discriminant */;
+            }
+        }
+
+        public void Flatten(Span<ValueType> dest)
+        {
+            dest[0] = ValueType.I32; // discriminant
+            dest = dest[1..];
+
+            Span<ValueType> tempTypes = stackalloc ValueType[dest.Length];
+            uint count = 0;
+            foreach (var @case in Cases.Span)
+            {
+                var type = @case.Type;
+                if (type == null) continue;
+                if (type is not IDespecializedValueType despecialized) despecialized = type.Despecialize();
+                var tempCount = checked((int)despecialized.FlattenedCount);
+                var tempTypesSliced = tempTypes[..tempCount];
+                despecialized.Flatten(tempTypesSliced);
+
+                for (var i = 0; i < tempTypesSliced.Length; i++)
+                {
+                    var valueType = tempTypesSliced[i];
+                    if (i < count)
+                    {
+                        // join
+                        ref var existing = ref dest[i];
+                        if (existing == valueType) continue;
+                        if ((existing is ValueType.I32 && valueType is ValueType.F32) ||
+                            (existing is ValueType.F32 && valueType is ValueType.I32)) existing = ValueType.I32;
+                        else existing = ValueType.I64;
+                    }
+                    else
+                    {
+                        dest[i] = valueType;
+                        count++;
+                    }
+                }
+            }
         }
     }
 
     [GenerateFormatter]
     public partial class ListType : IValueTypeDefinition
     {
-        public IUnresolvedValueType ElementType { get; }
+        [DontAddToSort] public IUnresolvedValueType ElementType { get; }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
         {
@@ -202,19 +450,34 @@ namespace WaaS.ComponentModel.Models
 
         private class ResolvedListType : IListType
         {
-            public ResolvedListType(IType elementType)
+            public ResolvedListType(IValueType elementType)
             {
                 ElementType = elementType;
             }
 
-            public IType ElementType { get; }
+            public IValueType ElementType { get; }
+
+            public IDespecializedValueType Despecialize()
+            {
+                return this;
+            }
+
+            public byte AlignmentRank => 2;
+            public ushort ElementSize => 4;
+            public uint FlattenedCount => 2;
+
+            public void Flatten(Span<ValueType> dest)
+            {
+                dest[0] = ValueType.I32;
+                dest[1] = ValueType.I32;
+            }
         }
     }
 
     [GenerateFormatter]
     public partial class TupleType : IValueTypeDefinition
     {
-        public ReadOnlyMemory<IUnresolvedValueType> Type { get; }
+        [DontAddToSort] public ReadOnlyMemory<IUnresolvedValueType> Type { get; }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
         {
@@ -236,7 +499,26 @@ namespace WaaS.ComponentModel.Models
                 Cases = cases;
             }
 
+            private IDespecializedValueType? Despecialized { get; set; }
+
             public ReadOnlyMemory<IValueType> Cases { get; }
+
+            public IDespecializedValueType Despecialize()
+            {
+                if (Despecialized == null)
+                {
+                    var fields = new ResolvedRecordField[Cases.Length];
+                    for (var i = 0; i < Cases.Span.Length; i++)
+                    {
+                        var @case = Cases.Span[i];
+                        fields[i] = new ResolvedRecordField(i.ToString(), @case);
+                    }
+
+                    Despecialized = new ResolvedRecordType(fields);
+                }
+
+                return Despecialized;
+            }
         }
     }
 
@@ -244,6 +526,34 @@ namespace WaaS.ComponentModel.Models
     public partial class FlagsType : IValueTypeDefinition, IFlagsType
     {
         public ReadOnlyMemory<string> Labels { get; }
+
+        public IDespecializedValueType Despecialize()
+        {
+            return this;
+        }
+
+        [Ignore]
+        public byte AlignmentRank => Labels.Length switch
+        {
+            <= 8 => 0,
+            > 8 and <= 16 => 1,
+            _ => 2
+        };
+
+        [Ignore]
+        public ushort ElementSize => Labels.Length switch
+        {
+            <= 8 => 1,
+            > 8 and <= 16 => 2,
+            _ => 4
+        };
+
+        [Ignore] public uint FlattenedCount => 1;
+
+        public void Flatten(Span<ValueType> dest)
+        {
+            dest[0] = ValueType.I32;
+        }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
         {
@@ -259,7 +569,25 @@ namespace WaaS.ComponentModel.Models
     [GenerateFormatter]
     public partial class EnumType : IValueTypeDefinition, IEnumType
     {
+        private IDespecializedValueType? Despecialized { get; set; }
         public ReadOnlyMemory<string> Labels { get; }
+
+        public IDespecializedValueType Despecialize()
+        {
+            if (Despecialized == null)
+            {
+                var cases = new IVariantCase[Labels.Length];
+                for (var i = 0; i < Labels.Span.Length; i++)
+                {
+                    var label = Labels.Span[i];
+                    cases[i] = new ResolvedVariantCase(label, null);
+                }
+
+                Despecialized = new ResolvedVariantType(cases);
+            }
+
+            return Despecialized;
+        }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
         {
@@ -275,7 +603,7 @@ namespace WaaS.ComponentModel.Models
     [GenerateFormatter]
     public partial class OptionType : IValueTypeDefinition
     {
-        public IUnresolvedValueType Type { get; init; }
+        [DontAddToSort] public IUnresolvedValueType Type { get; init; }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
         {
@@ -289,20 +617,36 @@ namespace WaaS.ComponentModel.Models
 
         private class ResolvedOptionType : IOptionType
         {
-            public ResolvedOptionType(IType type)
+            public ResolvedOptionType(IValueType type)
             {
                 Type = type;
             }
 
-            public IType Type { get; }
+            private IDespecializedValueType? Despecialized { get; set; }
+
+            public IValueType Type { get; }
+
+            public IDespecializedValueType Despecialize()
+            {
+                if (Despecialized == null)
+                {
+                    var cases = new IVariantCase[2];
+                    cases[0] = new ResolvedVariantCase("none", null);
+                    cases[1] = new ResolvedVariantCase("some", Type);
+
+                    Despecialized = new ResolvedVariantType(cases);
+                }
+
+                return Despecialized;
+            }
         }
     }
 
     [GenerateFormatter]
     public partial class ResultType : IValueTypeDefinition
     {
-        public IUnresolvedValueType? Type { get; }
-        public IUnresolvedValueType? ErrorType { get; }
+        [DontAddToSort] public IUnresolvedValueType? Type { get; }
+        [DontAddToSort] public IUnresolvedValueType? ErrorType { get; }
 
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
@@ -317,14 +661,30 @@ namespace WaaS.ComponentModel.Models
 
         private class ResolvedResultType : IResultType
         {
-            public ResolvedResultType(IType type, IType errorType)
+            public ResolvedResultType(IValueType type, IValueType errorType)
             {
                 Type = type;
                 ErrorType = errorType;
             }
 
-            public IType Type { get; }
-            public IType ErrorType { get; }
+            private IDespecializedValueType? Despecialized { get; set; }
+
+            public IValueType Type { get; }
+            public IValueType ErrorType { get; }
+
+            public IDespecializedValueType Despecialize()
+            {
+                if (Despecialized == null)
+                {
+                    var cases = new IVariantCase[2];
+                    cases[0] = new ResolvedVariantCase("ok", Type);
+                    cases[1] = new ResolvedVariantCase("error", ErrorType);
+
+                    Despecialized = new ResolvedVariantType(cases);
+                }
+
+                return Despecialized;
+            }
         }
     }
 
@@ -351,6 +711,20 @@ namespace WaaS.ComponentModel.Models
             }
 
             public IResourceType Type { get; }
+
+            public IDespecializedValueType Despecialize()
+            {
+                return this;
+            }
+
+            public byte AlignmentRank => 2;
+            public ushort ElementSize => 4;
+            public uint FlattenedCount => 1;
+
+            public void Flatten(Span<ValueType> dest)
+            {
+                dest[0] = ValueType.I32;
+            }
         }
     }
 
@@ -377,6 +751,20 @@ namespace WaaS.ComponentModel.Models
             }
 
             public IResourceType Type { get; }
+
+            public IDespecializedValueType Despecialize()
+            {
+                return this;
+            }
+
+            public byte AlignmentRank => 2;
+            public ushort ElementSize => 4;
+            public uint FlattenedCount => 1;
+
+            public void Flatten(Span<ValueType> dest)
+            {
+                dest[0] = ValueType.I32;
+            }
         }
     }
 
@@ -384,14 +772,14 @@ namespace WaaS.ComponentModel.Models
     public readonly partial struct LabeledValueType
     {
         public string Label { get; }
-        public IUnresolvedValueType Type { get; }
+        [DontAddToSort] public IUnresolvedValueType Type { get; }
     }
 
     [GenerateFormatter]
     public readonly partial struct Case
     {
         public string Label { get; }
-        public IUnresolvedValueType? Type { get; }
+        [DontAddToSort] public IUnresolvedValueType? Type { get; }
         private byte Unknown0 { get; }
     }
 
@@ -410,7 +798,7 @@ namespace WaaS.ComponentModel.Models
                 if (first >> 6 == 1)
                 {
                     // negative one-byte SLEB128S
-                    result = Formatter<PrimitiveValueType>.Read(ref reader, indexSpace);
+                    result = Formatter<PrimitiveValueType>.Read(ref reader, indexSpace, false);
                     return true;
                 }
 
@@ -491,6 +879,8 @@ namespace WaaS.ComponentModel.Models
 
         private class ResolvedFunctionType : IFunctionType
         {
+            private IRecordType? parameterType;
+
             public ResolvedFunctionType(ReadOnlyMemory<IParameter> parameters, IValueType? result)
             {
                 Parameters = parameters;
@@ -499,6 +889,27 @@ namespace WaaS.ComponentModel.Models
 
             public ReadOnlyMemory<IParameter> Parameters { get; }
             public IValueType? Result { get; }
+
+            public IRecordType ParameterType
+            {
+                get
+                {
+                    if (parameterType == null)
+                    {
+                        var fields = new ResolvedRecordField[Parameters.Length];
+                        var parameters = Parameters.Span;
+                        for (var i = 0; i < fields.Length; i++)
+                        {
+                            var parameter = parameters[i];
+                            fields[i] = new ResolvedRecordField(parameter.Label, parameter.Type);
+                        }
+
+                        parameterType = new ResolvedRecordType(fields);
+                    }
+
+                    return parameterType;
+                }
+            }
         }
     }
 
@@ -513,7 +924,7 @@ namespace WaaS.ComponentModel.Models
     [GenerateFormatter]
     public readonly partial struct ResultListSingle : IResultList
     {
-        public IUnresolvedValueType Type { get; init; }
+        [DontAddToSort] public IUnresolvedValueType Type { get; init; }
 
         public IValueType? ResolveFirstTime(IInstanceResolutionContext context)
         {

@@ -2,6 +2,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using WaaS.ComponentModel.Runtime;
 using WaaS.Models;
 using WaaS.Runtime;
@@ -10,11 +11,10 @@ namespace WaaS.ComponentModel.Models
 {
     public class Component : IUnresolved<IComponent>, IComponent
     {
+        private readonly List<CustomSection> customSections = new();
         private readonly List<IExport<ISortedExportable>> exports = new();
 
         private readonly List<IImport<ISortedExportable>> imports = new();
-
-        private readonly List<CustomSection> customSections = new();
 
         internal Component(ref ModuleReader reader, long? size = null, IIndexSpace parentIndexSpace = null)
         {
@@ -134,7 +134,7 @@ namespace WaaS.ComponentModel.Models
             foreach (var import in imports)
                 if (!arguments.TryGetValue(import.Name.Name, out var argument) ||
                     !import.Descriptor.ValidateArgument(argument))
-                    throw new LinkException();
+                    throw new LinkException($"The import {import.Name.Name} is missing or invalid");
 
             var newContext = new InstanceResolutionContext(arguments, context);
             Dictionary<string, ISortedExportable> resolvedExports = new();
@@ -169,12 +169,12 @@ namespace WaaS.ComponentModel.Models
                 this.exports = exports;
             }
 
-            public bool TryGetExport<T>(string name, out T result) where T : ISortedExportable
+            public bool TryGetExport<T>(string name, [NotNullWhen(true)] out T? result) where T : ISortedExportable
             {
                 if (!exports.TryGetValue(name, out var export) || export is not T typed)
                 {
                     result = default;
-                    return true;
+                    return false;
                 }
 
                 result = typed;

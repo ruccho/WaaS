@@ -1,10 +1,12 @@
-﻿using WaaS.Models;
+﻿using System;
+using WaaS.Models;
 
 namespace WaaS.Runtime
 {
     public interface IInvocableFunction : IExternal
     {
         FunctionType Type { get; }
+        StackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues);
     }
 
     public class InstanceFunction : IInvocableFunction
@@ -19,5 +21,11 @@ namespace WaaS.Runtime
         }
 
         public FunctionType Type => function.Type;
+
+        public StackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues)
+        {
+            // TODO: pooling
+            return new WasmStackFrame(context, this, inputValues);
+        }
     }
 }

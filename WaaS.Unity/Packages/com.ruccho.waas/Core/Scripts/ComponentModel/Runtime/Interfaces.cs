@@ -41,6 +41,10 @@ namespace WaaS.ComponentModel.Runtime
 
     public interface IFunction : ISortedExportable
     {
+        IFunctionType Type { get; }
+        Memory? MemoryToRealloc { get; }
+        IInvocableFunction? ReallocFunction { get; }
+        IInvocableFunction CoreFunction { get; }
     }
 
     public interface IValue : ISortedExportable
@@ -64,9 +68,40 @@ namespace WaaS.ComponentModel.Runtime
 
     public interface IValueType : IType
     {
+        IDespecializedValueType Despecialize();
     }
 
-    public interface IRecordType : IValueType
+    public interface IDespecializedValueType : IValueType
+    {
+        byte AlignmentRank { get; }
+        ushort ElementSize { get; }
+        uint FlattenedCount { get; }
+        void Flatten(Span<ValueType> dest);
+    }
+
+    public interface IPrimitiveValueType : IDespecializedValueType
+    {
+        PrimitiveValueTypeKind Kind { get; }
+    }
+
+    public enum PrimitiveValueTypeKind : byte
+    {
+        String = 0x73,
+        Char,
+        F64,
+        F32,
+        U64,
+        S64,
+        U32,
+        S32,
+        U16,
+        S16,
+        U8,
+        S8,
+        Bool
+    }
+
+    public interface IRecordType : IDespecializedValueType
     {
         ReadOnlyMemory<IRecordField> Fields { get; }
     }
@@ -74,12 +109,13 @@ namespace WaaS.ComponentModel.Runtime
     public interface IRecordField
     {
         string Label { get; }
-        IType Type { get; }
+        IValueType Type { get; }
     }
 
-    public interface IVariantType : IValueType
+    public interface IVariantType : IDespecializedValueType
     {
         ReadOnlyMemory<IVariantCase> Cases { get; }
+        byte DiscriminantTypeSizeRank { get; }
     }
 
     public interface IVariantCase
@@ -88,9 +124,9 @@ namespace WaaS.ComponentModel.Runtime
         IValueType? Type { get; }
     }
 
-    public interface IListType : IValueType
+    public interface IListType : IDespecializedValueType
     {
-        IType ElementType { get; }
+        IValueType ElementType { get; }
     }
 
     public interface ITupleType : IValueType
@@ -98,7 +134,7 @@ namespace WaaS.ComponentModel.Runtime
         ReadOnlyMemory<IValueType> Cases { get; }
     }
 
-    public interface IFlagsType : IValueType
+    public interface IFlagsType : IDespecializedValueType
     {
         public ReadOnlyMemory<string> Labels { get; }
     }
@@ -110,21 +146,21 @@ namespace WaaS.ComponentModel.Runtime
 
     public interface IOptionType : IValueType
     {
-        IType Type { get; }
+        IValueType Type { get; }
     }
 
     public interface IResultType : IValueType
     {
-        IType Type { get; }
-        IType ErrorType { get; }
+        IValueType Type { get; }
+        IValueType ErrorType { get; }
     }
 
-    public interface IOwnedType : IValueType
+    public interface IOwnedType : IDespecializedValueType
     {
         IResourceType Type { get; }
     }
 
-    public interface IBorrowedType : IValueType
+    public interface IBorrowedType : IDespecializedValueType
     {
         IResourceType Type { get; }
     }
@@ -138,6 +174,8 @@ namespace WaaS.ComponentModel.Runtime
     {
         public ReadOnlyMemory<IParameter> Parameters { get; }
         public IValueType? Result { get; }
+
+        IRecordType ParameterType { get; }
     }
 
     public interface IParameter
