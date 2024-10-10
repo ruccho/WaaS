@@ -5,7 +5,7 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
-    public class WasmStackFrame : StackFrame
+    public class WasmStackFrame : IStackFrame
     {
         private bool isDisposed;
 
@@ -73,40 +73,15 @@ namespace WaaS.Runtime
 
         public Instance Instance => Function.instance;
 
-        public override int ResultLength => Function.function.Type.ResultTypes.Length;
+        public int ResultLength => Function.function.Type.ResultTypes.Length;
 
-        ~WasmStackFrame()
-        {
-            DisposeCore();
-        }
-
-        public override void Dispose()
+        public void Dispose()
         {
             DisposeCore();
             GC.SuppressFinalize(this);
         }
 
-        private void DisposeCore()
-        {
-            if (isDisposed) return;
-
-            if (stackBuffer != null) ArrayPool<StackValueItem>.Shared.Return(stackBuffer);
-            stackBuffer = default;
-            locals = default;
-            stack = default;
-
-            if (labelDepthStack != null) ArrayPool<int>.Shared.Return(labelDepthStack);
-            labelDepthStack = null;
-
-            isDisposed = true;
-        }
-
-        public ref StackValueItem GetLocal(int index)
-        {
-            return ref locals.Span[index];
-        }
-
-        public override StackFrameState MoveNext(Waker waker)
+        public StackFrameState MoveNext(Waker waker)
         {
             if (isEnd) return StackFrameState.Completed;
 
@@ -129,18 +104,7 @@ namespace WaaS.Runtime
             }
         }
 
-        public void End()
-        {
-            isEnd = true;
-        }
-
-        public void PushFrame(IInvocableFunction function, Span<StackValueItem> parameters)
-        {
-            isFramePushed = true;
-            Context.PushFrame(function, parameters);
-        }
-
-        public override void TakeResults(Span<StackValueItem> dest)
+        public void TakeResults(Span<StackValueItem> dest)
         {
             // validate
             var resultTypes = Function.function.Type.ResultTypes;
@@ -157,6 +121,42 @@ namespace WaaS.Runtime
                 if (!value.IsType(resultType)) throw new InvalidCodeException();
                 dest[i] = value;
             }
+        }
+
+        ~WasmStackFrame()
+        {
+            DisposeCore();
+        }
+
+        private void DisposeCore()
+        {
+            if (isDisposed) return;
+
+            if (stackBuffer != null) ArrayPool<StackValueItem>.Shared.Return(stackBuffer);
+            stackBuffer = default;
+            locals = default;
+            stack = default;
+
+            if (labelDepthStack != null) ArrayPool<int>.Shared.Return(labelDepthStack);
+            labelDepthStack = null;
+
+            isDisposed = true;
+        }
+
+        public ref StackValueItem GetLocal(int index)
+        {
+            return ref locals.Span[index];
+        }
+
+        public void End()
+        {
+            isEnd = true;
+        }
+
+        public void PushFrame(IInvocableFunction function, Span<StackValueItem> parameters)
+        {
+            isFramePushed = true;
+            Context.PushFrame(function, parameters);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

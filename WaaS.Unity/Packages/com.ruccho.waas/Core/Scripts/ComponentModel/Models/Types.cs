@@ -37,7 +37,7 @@ namespace WaaS.ComponentModel.Models
     public readonly partial struct PrimitiveValueType : IPrimitiveValueType, IValueTypeDefinition,
         IEquatable<PrimitiveValueType>
     {
-        public PrimitiveValueTypeKind Kind { get; }
+        public PrimitiveValueTypeKind Kind { get; init; }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
         {
@@ -447,30 +447,30 @@ namespace WaaS.ComponentModel.Models
         {
             return new ResolvedListType(context.Resolve(ElementType));
         }
+    }
 
-        private class ResolvedListType : IListType
+    internal class ResolvedListType : IListType
+    {
+        public ResolvedListType(IValueType elementType)
         {
-            public ResolvedListType(IValueType elementType)
-            {
-                ElementType = elementType;
-            }
+            ElementType = elementType;
+        }
 
-            public IValueType ElementType { get; }
+        public IValueType ElementType { get; }
 
-            public IDespecializedValueType Despecialize()
-            {
-                return this;
-            }
+        public IDespecializedValueType Despecialize()
+        {
+            return this;
+        }
 
-            public byte AlignmentRank => 2;
-            public ushort ElementSize => 4;
-            public uint FlattenedCount => 2;
+        public byte AlignmentRank => 2;
+        public ushort ElementSize => 4;
+        public uint FlattenedCount => 2;
 
-            public void Flatten(Span<ValueType> dest)
-            {
-                dest[0] = ValueType.I32;
-                dest[1] = ValueType.I32;
-            }
+        public void Flatten(Span<ValueType> dest)
+        {
+            dest[0] = ValueType.I32;
+            dest[1] = ValueType.I32;
         }
     }
 
@@ -491,34 +491,34 @@ namespace WaaS.ComponentModel.Models
 
             return new ResolverTupleType(resolvedTypes);
         }
+    }
 
-        private class ResolverTupleType : ITupleType
+    internal class ResolverTupleType : ITupleType
+    {
+        public ResolverTupleType(ReadOnlyMemory<IValueType> cases)
         {
-            public ResolverTupleType(ReadOnlyMemory<IValueType> cases)
+            Cases = cases;
+        }
+
+        private IDespecializedValueType? Despecialized { get; set; }
+
+        public ReadOnlyMemory<IValueType> Cases { get; }
+
+        public IDespecializedValueType Despecialize()
+        {
+            if (Despecialized == null)
             {
-                Cases = cases;
-            }
-
-            private IDespecializedValueType? Despecialized { get; set; }
-
-            public ReadOnlyMemory<IValueType> Cases { get; }
-
-            public IDespecializedValueType Despecialize()
-            {
-                if (Despecialized == null)
+                var fields = new ResolvedRecordField[Cases.Length];
+                for (var i = 0; i < Cases.Span.Length; i++)
                 {
-                    var fields = new ResolvedRecordField[Cases.Length];
-                    for (var i = 0; i < Cases.Span.Length; i++)
-                    {
-                        var @case = Cases.Span[i];
-                        fields[i] = new ResolvedRecordField(i.ToString(), @case);
-                    }
-
-                    Despecialized = new ResolvedRecordType(fields);
+                    var @case = Cases.Span[i];
+                    fields[i] = new ResolvedRecordField(i.ToString(), @case);
                 }
 
-                return Despecialized;
+                Despecialized = new ResolvedRecordType(fields);
             }
+
+            return Despecialized;
         }
     }
 
@@ -614,31 +614,31 @@ namespace WaaS.ComponentModel.Models
         {
             return new ResolvedOptionType(context.Resolve(Type));
         }
+    }
 
-        private class ResolvedOptionType : IOptionType
+    internal class ResolvedOptionType : IOptionType
+    {
+        public ResolvedOptionType(IValueType type)
         {
-            public ResolvedOptionType(IValueType type)
+            Type = type;
+        }
+
+        private IDespecializedValueType? Despecialized { get; set; }
+
+        public IValueType Type { get; }
+
+        public IDespecializedValueType Despecialize()
+        {
+            if (Despecialized == null)
             {
-                Type = type;
+                var cases = new IVariantCase[2];
+                cases[0] = new ResolvedVariantCase("none", null);
+                cases[1] = new ResolvedVariantCase("some", Type);
+
+                Despecialized = new ResolvedVariantType(cases);
             }
 
-            private IDespecializedValueType? Despecialized { get; set; }
-
-            public IValueType Type { get; }
-
-            public IDespecializedValueType Despecialize()
-            {
-                if (Despecialized == null)
-                {
-                    var cases = new IVariantCase[2];
-                    cases[0] = new ResolvedVariantCase("none", null);
-                    cases[1] = new ResolvedVariantCase("some", Type);
-
-                    Despecialized = new ResolvedVariantType(cases);
-                }
-
-                return Despecialized;
-            }
+            return Despecialized;
         }
     }
 
@@ -864,51 +864,51 @@ namespace WaaS.ComponentModel.Models
 
             return new ResolvedFunctionType(parameters, Result.ResolveFirstTime(context));
         }
+    }
 
-        private class ResolvedParameter : IParameter
+    internal class ResolvedParameter : IParameter
+    {
+        public ResolvedParameter(string label, IValueType type)
         {
-            public ResolvedParameter(string label, IValueType type)
-            {
-                Label = label;
-                Type = type;
-            }
-
-            public string Label { get; }
-            public IValueType Type { get; }
+            Label = label;
+            Type = type;
         }
 
-        private class ResolvedFunctionType : IFunctionType
+        public string Label { get; }
+        public IValueType Type { get; }
+    }
+
+    internal class ResolvedFunctionType : IFunctionType
+    {
+        private IRecordType? parameterType;
+
+        public ResolvedFunctionType(ReadOnlyMemory<IParameter> parameters, IValueType? result)
         {
-            private IRecordType? parameterType;
+            Parameters = parameters;
+            Result = result;
+        }
 
-            public ResolvedFunctionType(ReadOnlyMemory<IParameter> parameters, IValueType? result)
+        public ReadOnlyMemory<IParameter> Parameters { get; }
+        public IValueType? Result { get; }
+
+        public IRecordType ParameterType
+        {
+            get
             {
-                Parameters = parameters;
-                Result = result;
-            }
-
-            public ReadOnlyMemory<IParameter> Parameters { get; }
-            public IValueType? Result { get; }
-
-            public IRecordType ParameterType
-            {
-                get
+                if (parameterType == null)
                 {
-                    if (parameterType == null)
+                    var fields = new ResolvedRecordField[Parameters.Length];
+                    var parameters = Parameters.Span;
+                    for (var i = 0; i < fields.Length; i++)
                     {
-                        var fields = new ResolvedRecordField[Parameters.Length];
-                        var parameters = Parameters.Span;
-                        for (var i = 0; i < fields.Length; i++)
-                        {
-                            var parameter = parameters[i];
-                            fields[i] = new ResolvedRecordField(parameter.Label, parameter.Type);
-                        }
-
-                        parameterType = new ResolvedRecordType(fields);
+                        var parameter = parameters[i];
+                        fields[i] = new ResolvedRecordField(parameter.Label, parameter.Type);
                     }
 
-                    return parameterType;
+                    parameterType = new ResolvedRecordType(fields);
                 }
+
+                return parameterType;
             }
         }
     }

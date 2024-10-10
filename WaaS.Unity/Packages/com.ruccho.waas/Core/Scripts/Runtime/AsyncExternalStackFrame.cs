@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace WaaS.Runtime
 {
-    public class AsyncExternalStackFrame : StackFrame
+    public class AsyncExternalStackFrame : IStackFrame
     {
         private readonly AsyncExternalFunction function;
         private readonly Memory<StackValueItem> inputValues;
@@ -28,9 +28,9 @@ namespace WaaS.Runtime
             inputValues.CopyTo(this.inputValues.Span);
         }
 
-        public override int ResultLength => function.Type.ResultTypes.Length;
+        public int ResultLength => function.Type.ResultTypes.Length;
 
-        public override StackFrameState MoveNext(Waker waker)
+        public StackFrameState MoveNext(Waker waker)
         {
             if (state == StackFrameState.Ready)
             {
@@ -40,6 +40,26 @@ namespace WaaS.Runtime
             }
 
             return state;
+        }
+
+        public void TakeResults(Span<StackValueItem> dest)
+        {
+            outputValues.Span.CopyTo(dest);
+        }
+
+        public void Dispose()
+        {
+            if (inputValuesArray != null)
+            {
+                ArrayPool<StackValueItem>.Shared.Return(inputValuesArray);
+                inputValuesArray = null;
+            }
+
+            if (outputValuesArray != null)
+            {
+                ArrayPool<StackValueItem>.Shared.Return(outputValuesArray);
+                outputValuesArray = null;
+            }
         }
 
         private async ValueTask InvokeAsync(Waker waker)
@@ -58,26 +78,6 @@ namespace WaaS.Runtime
             state = StackFrameState.Completed;
 
             waker.Wake();
-        }
-
-        public override void TakeResults(Span<StackValueItem> dest)
-        {
-            outputValues.Span.CopyTo(dest);
-        }
-
-        public override void Dispose()
-        {
-            if (inputValuesArray != null)
-            {
-                ArrayPool<StackValueItem>.Shared.Return(inputValuesArray);
-                inputValuesArray = null;
-            }
-
-            if (outputValuesArray != null)
-            {
-                ArrayPool<StackValueItem>.Shared.Return(outputValuesArray);
-                outputValuesArray = null;
-            }
         }
     }
 }

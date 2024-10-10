@@ -2,7 +2,7 @@
 
 namespace WaaS.Runtime
 {
-    public class ExternalStackFrame : StackFrame
+    public class ExternalStackFrame : IStackFrame
     {
         private readonly ExternalFunction function;
         private readonly StackValueItem[] inputValues;
@@ -19,9 +19,9 @@ namespace WaaS.Runtime
             inputValues.CopyTo(this.inputValues);
         }
 
-        public override int ResultLength => function.Type.ResultTypes.Length;
+        public int ResultLength => function.Type.ResultTypes.Length;
 
-        public override StackFrameState MoveNext(Waker waker)
+        public StackFrameState MoveNext(Waker waker)
         {
             if (invoked) throw new InvalidOperationException();
             invoked = true;
@@ -29,12 +29,12 @@ namespace WaaS.Runtime
             return StackFrameState.Completed;
         }
 
-        public override void TakeResults(Span<StackValueItem> dest)
+        public void TakeResults(Span<StackValueItem> dest)
         {
             outputValues.CopyTo(dest);
         }
 
-        public override void Dispose()
+        public void Dispose()
         {
         }
     }

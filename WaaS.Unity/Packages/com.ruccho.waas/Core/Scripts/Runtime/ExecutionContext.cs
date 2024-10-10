@@ -6,10 +6,10 @@ namespace WaaS.Runtime
 {
     public class ExecutionContext : IDisposable
     {
-        private readonly Stack<StackFrame> frames = new();
+        private readonly Stack<IStackFrame> frames = new();
+        private readonly object locker = new();
         private readonly uint? maxStackFrames;
         private ValueTaskSource currentPendingTaskSource;
-        private readonly object locker = new();
         private bool moving;
 
         public ExecutionContext(uint? maxStackFrames = null)
@@ -17,9 +17,9 @@ namespace WaaS.Runtime
             this.maxStackFrames = maxStackFrames;
         }
 
-        public StackFrame LastFrame { get; private set; }
+        public IStackFrame LastFrame { get; private set; }
 
-        private StackFrame Current => frames.Peek();
+        private IStackFrame Current => frames.Peek();
 
         public int ResultLength => LastFrame.ResultLength;
 
@@ -119,6 +119,13 @@ namespace WaaS.Runtime
             Run();
         }
 
+        internal void Invoke(IStackFrame frame)
+        {
+            if (frames.Count > 0) throw new InvalidOperationException();
+            PushFrame(frame);
+            Run();
+        }
+
         public ValueTask InvokeAsync(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
         {
             lock (locker)
@@ -129,7 +136,7 @@ namespace WaaS.Runtime
             }
         }
 
-        internal StackFrame PushFrame(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
+        internal IStackFrame PushFrame(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
         {
             lock (locker)
             {
@@ -138,6 +145,16 @@ namespace WaaS.Runtime
                     throw new InvalidOperationException();
 
                 var frame = function.CreateFrame(this, inputValues);
+                frames.Push(frame);
+                return frame;
+            }
+        }
+
+        internal IStackFrame PushFrame(IStackFrame frame)
+        {
+            lock (locker)
+            {
+                if (frames.Count >= maxStackFrames) throw new InvalidOperationException();
                 frames.Push(frame);
                 return frame;
             }

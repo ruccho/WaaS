@@ -42,9 +42,7 @@ namespace WaaS.ComponentModel.Runtime
     public interface IFunction : ISortedExportable
     {
         IFunctionType Type { get; }
-        Memory? MemoryToRealloc { get; }
-        IInvocableFunction? ReallocFunction { get; }
-        IInvocableFunction CoreFunction { get; }
+        FunctionBinder GetBinder(ExecutionContext context);
     }
 
     public interface IValue : ISortedExportable
@@ -172,8 +170,8 @@ namespace WaaS.ComponentModel.Runtime
 
     public interface IFunctionType : IType
     {
-        public ReadOnlyMemory<IParameter> Parameters { get; }
-        public IValueType? Result { get; }
+        ReadOnlyMemory<IParameter> Parameters { get; }
+        IValueType? Result { get; }
 
         IRecordType ParameterType { get; }
     }

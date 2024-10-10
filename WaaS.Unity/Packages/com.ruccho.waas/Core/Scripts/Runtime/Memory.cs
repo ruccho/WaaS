@@ -22,7 +22,6 @@ namespace WaaS.Runtime
         }
 
         public Limits PageLimits { get; }
-
         public Span<byte> Span => buffer.AsSpan()[..Length];
 
         public int Length { get; private set; }
@@ -32,6 +31,11 @@ namespace WaaS.Runtime
         {
             GC.SuppressFinalize(this);
             DisposeCore();
+        }
+
+        public Memory<byte> AsMemory()
+        {
+            return buffer.AsMemory()[..Length];
         }
 
         ~Memory()

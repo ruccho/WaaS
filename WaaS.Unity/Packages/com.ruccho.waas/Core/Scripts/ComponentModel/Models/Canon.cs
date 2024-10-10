@@ -62,31 +62,9 @@ namespace WaaS.ComponentModel.Models
 
             stringEncoding ??= CanonOptionStringEncodingKind.Utf8;
 
-            return new LiftFunction(context.Resolve(CoreFunction).CoreExternal, functionType, stringEncoding.Value,
+            return new LiftedFunction(context.Resolve(CoreFunction).CoreExternal, functionType, stringEncoding.Value,
                 realloc,
                 postReturn, memory);
-        }
-
-        private class LiftFunction : IFunction
-        {
-            public LiftFunction(IInvocableFunction coreFunction, IFunctionType type,
-                CanonOptionStringEncodingKind stringEncoding, IInvocableFunction? reallocFunction,
-                IInvocableFunction? postReturnFunction, Memory? memoryToRealloc)
-            {
-                CoreFunction = coreFunction;
-                Type = type;
-                StringEncoding = stringEncoding;
-                ReallocFunction = reallocFunction;
-                PostReturnFunction = postReturnFunction;
-                MemoryToRealloc = memoryToRealloc;
-            }
-
-            private CanonOptionStringEncodingKind StringEncoding { get; }
-            private IInvocableFunction? PostReturnFunction { get; }
-            public IInvocableFunction CoreFunction { get; }
-            public IFunctionType Type { get; }
-            public IInvocableFunction? ReallocFunction { get; }
-            public Memory? MemoryToRealloc { get; }
         }
     }
 
@@ -99,23 +77,36 @@ namespace WaaS.ComponentModel.Models
 
         public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstanceResolutionContext context)
         {
-            throw new NotImplementedException();
-        }
+            var componentFunction = context.Resolve(Function);
 
-        private class Resolved : ExternalFunction, ICoreSortedExportable<IInvocableFunction>
-        {
-            private ICoreSortedExportable<IInvocableFunction> CoreFunction { get; }
-            private CanonOptionStringEncodingKind StringEncoding { get; }
-            private ICoreSortedExportable<Memory>? CoreMemory { get; }
-            private ICoreSortedExportable<IInvocableFunction>? ReallocFunction { get; }
-            public override WaaS.Models.FunctionType Type { get; }
+            Memory? memory = null;
+            IInvocableFunction? realloc = null;
+            CanonOptionStringEncodingKind? stringEncoding = null;
+            foreach (var canonOption in Options.Span)
+                switch (canonOption)
+                {
+                    case CanonOptionAsync:
+                    case CanonOptionCallback:
+                        break;
+                    case CanonOptionMemory canonOptionMemory:
+                        if (memory != null) throw new InvalidModuleException();
+                        memory = context.Resolve(canonOptionMemory.Memory).CoreExternal;
+                        break;
+                    case CanonOptionRealloc canonOptionRealloc:
+                        if (realloc != null) throw new InvalidModuleException();
+                        realloc = context.Resolve(canonOptionRealloc.Function).CoreExternal;
+                        break;
+                    case CanonOptionStringEncoding canonOptionStringEncoding:
+                        if (stringEncoding != null) throw new InvalidModuleException();
+                        stringEncoding = canonOptionStringEncoding.Kind;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(canonOption));
+                }
 
-            public IInvocableFunction CoreExternal => this;
+            stringEncoding ??= CanonOptionStringEncodingKind.Utf8;
 
-            public override void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results)
-            {
-                throw new NotImplementedException();
-            }
+            return new LoweredFunction(stringEncoding.Value, realloc, memory?.AsMemory() ?? default, componentFunction);
         }
     }
 

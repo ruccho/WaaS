@@ -1,5 +1,9 @@
-﻿using WaaS.ComponentModel.Models;
+﻿using System.Runtime.InteropServices;
+using WaaS.ComponentModel.Binding;
+using WaaS.ComponentModel.Models;
 using WaaS.ComponentModel.Runtime;
+using WaaS.Runtime;
+using ExecutionContext = WaaS.Runtime.ExecutionContext;
 
 namespace WaaS.Tests;
 
@@ -91,27 +95,14 @@ public class ComponentTests
 
         using var context = new ExecutionContext();
 
-        using (context.InvokeComponentFunctionScope(function, out var lowerer))
-        {
-            // 引数のプッシュ
-            lowerer.Push(123);
-            lowerer.Push(456);
-            
-            // 高度な型はこんな感じに
-            // var record = lowerer.PushRecord();
-            // record.Push(123);
-            // record.Push(true);
+        using var binder = function.GetBinder(context);
 
-            // var list = lowerer.PushList(length: 100);
-            // list.Push(123);
-            // list.Push(456);
+        var pusher = binder.ArgumentPusher;
+        pusher.Push(123);
+        pusher.Push(456);
+        binder.Invoke(context);
 
-        } // Dispose()で実行
+        Assert.That(binder.TakeResult<int>(), Is.EqualTo(123 + 456));
 
-        // 結果の取得
-        StackValueItem result = default;
-        context.TakeResults(MemoryMarshal.CreateSpan(ref result, 1));
-
-        Assert.That(result.ExpectValueI32(), Is.EqualTo(123 + 456));
     }
 }
