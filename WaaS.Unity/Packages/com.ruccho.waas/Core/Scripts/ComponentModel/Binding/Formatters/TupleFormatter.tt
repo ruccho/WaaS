@@ -47,7 +47,7 @@ namespace WaaS.ComponentModel.Binding
                 string.Join(", ",
                     Enumerable.Range(1, i).Select(x => $"FormatterProvider.GetFormatter<{GetTypeParam(x)}>().Type")) #> });
 
-        public async ValueTask<Tuple<<#= GetTypeParams(i, true) #>>> PullAsync(IPullable pullable)
+        public async ValueTask<Tuple<<#= GetTypeParams(i, true) #>>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new Tuple<<#= GetTypeParams(i, true) #>>(<#=
@@ -83,7 +83,7 @@ namespace WaaS.ComponentModel.Binding
                 string.Join(", ",
                     Enumerable.Range(1, i).Select(x => $"FormatterProvider.GetFormatter<{GetTypeParam(x)}>().Type")) #> });
 
-        public async ValueTask<ValueTuple<<#= GetTypeParams(i, true) #>>> PullAsync(IPullable pullable)
+        public async ValueTask<ValueTuple<<#= GetTypeParams(i, true) #>>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new ValueTuple<<#= GetTypeParams(i, true) #>>(<#=

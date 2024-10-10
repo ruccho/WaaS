@@ -15,7 +15,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type });
 
-        public async ValueTask<Tuple<T1?>> PullAsync(IPullable pullable)
+        public async ValueTask<Tuple<T1?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new Tuple<T1?>(await prelude.BodyPullable.PullValueAsync<T1>());
@@ -32,7 +32,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type });
 
-        public async ValueTask<ValueTuple<T1?>> PullAsync(IPullable pullable)
+        public async ValueTask<ValueTuple<T1?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new ValueTuple<T1?>(await prelude.BodyPullable.PullValueAsync<T1>());
@@ -50,7 +50,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type });
 
-        public async ValueTask<Tuple<T1?, T2?>> PullAsync(IPullable pullable)
+        public async ValueTask<Tuple<T1?, T2?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new Tuple<T1?, T2?>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>());
@@ -68,7 +68,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type });
 
-        public async ValueTask<ValueTuple<T1?, T2?>> PullAsync(IPullable pullable)
+        public async ValueTask<ValueTuple<T1?, T2?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new ValueTuple<T1?, T2?>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>());
@@ -87,7 +87,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type, FormatterProvider.GetFormatter<T3>().Type });
 
-        public async ValueTask<Tuple<T1?, T2?, T3?>> PullAsync(IPullable pullable)
+        public async ValueTask<Tuple<T1?, T2?, T3?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new Tuple<T1?, T2?, T3?>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>(), await prelude.BodyPullable.PullValueAsync<T3>());
@@ -106,7 +106,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type, FormatterProvider.GetFormatter<T3>().Type });
 
-        public async ValueTask<ValueTuple<T1?, T2?, T3?>> PullAsync(IPullable pullable)
+        public async ValueTask<ValueTuple<T1?, T2?, T3?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new ValueTuple<T1?, T2?, T3?>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>(), await prelude.BodyPullable.PullValueAsync<T3>());
@@ -126,7 +126,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type, FormatterProvider.GetFormatter<T3>().Type, FormatterProvider.GetFormatter<T4>().Type });
 
-        public async ValueTask<Tuple<T1?, T2?, T3?, T4?>> PullAsync(IPullable pullable)
+        public async ValueTask<Tuple<T1?, T2?, T3?, T4?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new Tuple<T1?, T2?, T3?, T4?>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>(), await prelude.BodyPullable.PullValueAsync<T3>(), await prelude.BodyPullable.PullValueAsync<T4>());
@@ -146,7 +146,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type, FormatterProvider.GetFormatter<T3>().Type, FormatterProvider.GetFormatter<T4>().Type });
 
-        public async ValueTask<ValueTuple<T1?, T2?, T3?, T4?>> PullAsync(IPullable pullable)
+        public async ValueTask<ValueTuple<T1?, T2?, T3?, T4?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new ValueTuple<T1?, T2?, T3?, T4?>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>(), await prelude.BodyPullable.PullValueAsync<T3>(), await prelude.BodyPullable.PullValueAsync<T4>());
@@ -167,7 +167,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type, FormatterProvider.GetFormatter<T3>().Type, FormatterProvider.GetFormatter<T4>().Type, FormatterProvider.GetFormatter<T5>().Type });
 
-        public async ValueTask<Tuple<T1?, T2?, T3?, T4?, T5?>> PullAsync(IPullable pullable)
+        public async ValueTask<Tuple<T1?, T2?, T3?, T4?, T5?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new Tuple<T1?, T2?, T3?, T4?, T5?>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>(), await prelude.BodyPullable.PullValueAsync<T3>(), await prelude.BodyPullable.PullValueAsync<T4>(), await prelude.BodyPullable.PullValueAsync<T5>());
@@ -188,7 +188,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type, FormatterProvider.GetFormatter<T3>().Type, FormatterProvider.GetFormatter<T4>().Type, FormatterProvider.GetFormatter<T5>().Type });
 
-        public async ValueTask<ValueTuple<T1?, T2?, T3?, T4?, T5?>> PullAsync(IPullable pullable)
+        public async ValueTask<ValueTuple<T1?, T2?, T3?, T4?, T5?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new ValueTuple<T1?, T2?, T3?, T4?, T5?>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>(), await prelude.BodyPullable.PullValueAsync<T3>(), await prelude.BodyPullable.PullValueAsync<T4>(), await prelude.BodyPullable.PullValueAsync<T5>());
@@ -210,7 +210,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type, FormatterProvider.GetFormatter<T3>().Type, FormatterProvider.GetFormatter<T4>().Type, FormatterProvider.GetFormatter<T5>().Type, FormatterProvider.GetFormatter<T6>().Type });
 
-        public async ValueTask<Tuple<T1?, T2?, T3?, T4?, T5?, T6?>> PullAsync(IPullable pullable)
+        public async ValueTask<Tuple<T1?, T2?, T3?, T4?, T5?, T6?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new Tuple<T1?, T2?, T3?, T4?, T5?, T6?>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>(), await prelude.BodyPullable.PullValueAsync<T3>(), await prelude.BodyPullable.PullValueAsync<T4>(), await prelude.BodyPullable.PullValueAsync<T5>(), await prelude.BodyPullable.PullValueAsync<T6>());
@@ -232,7 +232,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type, FormatterProvider.GetFormatter<T3>().Type, FormatterProvider.GetFormatter<T4>().Type, FormatterProvider.GetFormatter<T5>().Type, FormatterProvider.GetFormatter<T6>().Type });
 
-        public async ValueTask<ValueTuple<T1?, T2?, T3?, T4?, T5?, T6?>> PullAsync(IPullable pullable)
+        public async ValueTask<ValueTuple<T1?, T2?, T3?, T4?, T5?, T6?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new ValueTuple<T1?, T2?, T3?, T4?, T5?, T6?>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>(), await prelude.BodyPullable.PullValueAsync<T3>(), await prelude.BodyPullable.PullValueAsync<T4>(), await prelude.BodyPullable.PullValueAsync<T5>(), await prelude.BodyPullable.PullValueAsync<T6>());
@@ -255,7 +255,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type, FormatterProvider.GetFormatter<T3>().Type, FormatterProvider.GetFormatter<T4>().Type, FormatterProvider.GetFormatter<T5>().Type, FormatterProvider.GetFormatter<T6>().Type, FormatterProvider.GetFormatter<T7>().Type });
 
-        public async ValueTask<Tuple<T1?, T2?, T3?, T4?, T5?, T6?, T7?>> PullAsync(IPullable pullable)
+        public async ValueTask<Tuple<T1?, T2?, T3?, T4?, T5?, T6?, T7?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new Tuple<T1?, T2?, T3?, T4?, T5?, T6?, T7?>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>(), await prelude.BodyPullable.PullValueAsync<T3>(), await prelude.BodyPullable.PullValueAsync<T4>(), await prelude.BodyPullable.PullValueAsync<T5>(), await prelude.BodyPullable.PullValueAsync<T6>(), await prelude.BodyPullable.PullValueAsync<T7>());
@@ -278,7 +278,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type, FormatterProvider.GetFormatter<T3>().Type, FormatterProvider.GetFormatter<T4>().Type, FormatterProvider.GetFormatter<T5>().Type, FormatterProvider.GetFormatter<T6>().Type, FormatterProvider.GetFormatter<T7>().Type });
 
-        public async ValueTask<ValueTuple<T1?, T2?, T3?, T4?, T5?, T6?, T7?>> PullAsync(IPullable pullable)
+        public async ValueTask<ValueTuple<T1?, T2?, T3?, T4?, T5?, T6?, T7?>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new ValueTuple<T1?, T2?, T3?, T4?, T5?, T6?, T7?>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>(), await prelude.BodyPullable.PullValueAsync<T3>(), await prelude.BodyPullable.PullValueAsync<T4>(), await prelude.BodyPullable.PullValueAsync<T5>(), await prelude.BodyPullable.PullValueAsync<T6>(), await prelude.BodyPullable.PullValueAsync<T7>());
@@ -303,7 +303,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type, FormatterProvider.GetFormatter<T3>().Type, FormatterProvider.GetFormatter<T4>().Type, FormatterProvider.GetFormatter<T5>().Type, FormatterProvider.GetFormatter<T6>().Type, FormatterProvider.GetFormatter<T7>().Type, FormatterProvider.GetFormatter<TRest>().Type });
 
-        public async ValueTask<Tuple<T1?, T2?, T3?, T4?, T5?, T6?, T7?, TRest>> PullAsync(IPullable pullable)
+        public async ValueTask<Tuple<T1?, T2?, T3?, T4?, T5?, T6?, T7?, TRest>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new Tuple<T1?, T2?, T3?, T4?, T5?, T6?, T7?, TRest>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>(), await prelude.BodyPullable.PullValueAsync<T3>(), await prelude.BodyPullable.PullValueAsync<T4>(), await prelude.BodyPullable.PullValueAsync<T5>(), await prelude.BodyPullable.PullValueAsync<T6>(), await prelude.BodyPullable.PullValueAsync<T7>(), await prelude.BodyPullable.PullValueAsync<TRest>());
@@ -328,7 +328,7 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { FormatterProvider.GetFormatter<T1>().Type, FormatterProvider.GetFormatter<T2>().Type, FormatterProvider.GetFormatter<T3>().Type, FormatterProvider.GetFormatter<T4>().Type, FormatterProvider.GetFormatter<T5>().Type, FormatterProvider.GetFormatter<T6>().Type, FormatterProvider.GetFormatter<T7>().Type, FormatterProvider.GetFormatter<TRest>().Type });
 
-        public async ValueTask<ValueTuple<T1?, T2?, T3?, T4?, T5?, T6?, T7?, TRest>> PullAsync(IPullable pullable)
+        public async ValueTask<ValueTuple<T1?, T2?, T3?, T4?, T5?, T6?, T7?, TRest>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new ValueTuple<T1?, T2?, T3?, T4?, T5?, T6?, T7?, TRest>(await prelude.BodyPullable.PullValueAsync<T1>(), await prelude.BodyPullable.PullValueAsync<T2>(), await prelude.BodyPullable.PullValueAsync<T3>(), await prelude.BodyPullable.PullValueAsync<T4>(), await prelude.BodyPullable.PullValueAsync<T5>(), await prelude.BodyPullable.PullValueAsync<T6>(), await prelude.BodyPullable.PullValueAsync<T7>(), await prelude.BodyPullable.PullValueAsync<TRest>());
