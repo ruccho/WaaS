@@ -60,7 +60,7 @@ namespace WaaS.ComponentModel.Runtime
             core.TakeResults(resultValuePusher);
         }
 
-        public TResult TakeResult<TResult>(Func<Pullable, ValueTask<TResult>> resultPuller)
+        internal TResult TakeResult<TResult>(Func<Pullable, ValueTask<TResult>> resultPuller)
         {
             PushPullAdapter.Get(out var pullable, out var resultPusher);
             using (pullable)

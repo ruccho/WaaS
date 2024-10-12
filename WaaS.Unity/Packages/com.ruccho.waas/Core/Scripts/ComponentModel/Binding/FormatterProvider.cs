@@ -48,7 +48,7 @@ namespace WaaS.ComponentModel.Binding
         public static void Register<T>(IFormatter<T> formatter)
         {
             CacheCheck<T>.suppressAutoInitialization = true;
-            Cache<T>.formatter = formatter;
+            Cache<T>.formatter ??= formatter;
         }
 
         public static IFormatter<T> GetFormatter<T>()

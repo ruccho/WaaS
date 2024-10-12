@@ -9,20 +9,27 @@ namespace WaaS.ComponentModel.Binding
     ///     For value types, use Nullable&lt;T&gt; instead.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public readonly struct Option<T> where T : class
+    public readonly struct Option<T>
     {
-        public readonly T? value;
+        public readonly bool isSome;
+        public readonly T value;
 
-        public bool TryGetValue([NotNullWhen(true)] out T? value)
+        public bool TryGetValue([NotNullWhen(true)] out T value)
         {
-            if (this.value != null)
+            if (isSome)
             {
                 value = this.value;
                 return true;
             }
 
-            value = null;
+            value = default;
             return false;
+        }
+
+        public Option(T value)
+        {
+            this.isSome = true;
+            this.value = value;
         }
     }
 }
