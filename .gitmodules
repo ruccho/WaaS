@@ -1,3 +1,24 @@
 [submodule "WaaS/WaaS.Tests.Wast/spec"]
 	path = WaaS/WaaS.Tests.Wast/spec
 	url = https://github.com/WebAssembly/spec.git
+[submodule "WaaS/wit2waas/wasi/wasi-io"]
+	path = WaaS/wit2waas/wasi/wasi-io
+	url = https://github.com/WebAssembly/wasi-io.git
+[submodule "WaaS/wit2waas/wasi/wasi-clocks"]
+	path = WaaS/wit2waas/wasi/wasi-clocks
+	url = https://github.com/WebAssembly/wasi-clocks.git
+[submodule "WaaS/wit2waas/wasi/wasi-random"]
+	path = WaaS/wit2waas/wasi/wasi-random
+	url = https://github.com/WebAssembly/wasi-random.git
+[submodule "WaaS/wit2waas/wasi/wasi-filesystem"]
+	path = WaaS/wit2waas/wasi/wasi-filesystem
+	url = https://github.com/WebAssembly/wasi-filesystem.git
+[submodule "WaaS/wit2waas/wasi/wasi-sockets"]
+	path = WaaS/wit2waas/wasi/wasi-sockets
+	url = https://github.com/WebAssembly/wasi-sockets.git
+[submodule "WaaS/wit2waas/wasi/wasi-cli"]
+	path = WaaS/wit2waas/wasi/wasi-cli
+	url = https://github.com/WebAssembly/wasi-cli.git
+[submodule "WaaS/wit2waas/wasi/wasi-http"]
+	path = WaaS/wit2waas/wasi/wasi-http
+	url = https://github.com/WebAssembly/wasi-http.git

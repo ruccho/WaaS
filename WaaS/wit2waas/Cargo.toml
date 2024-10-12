@@ -1,0 +1,8 @@
+[package]
+name = "wit2waas"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.89"
+wit-parser = "0.219.1"
