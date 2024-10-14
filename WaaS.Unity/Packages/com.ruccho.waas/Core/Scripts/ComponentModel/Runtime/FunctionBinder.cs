@@ -54,6 +54,12 @@ namespace WaaS.ComponentModel.Runtime
             context.Invoke(core.CreateFrame());
         }
 
+        public ValueTask InvokeAsync(ExecutionContext context)
+        {
+            ThrowIfDisposed();
+            return context.InvokeAsync(core.CreateFrame());
+        }
+
         public void TakeResults(ValuePusher resultValuePusher)
         {
             ThrowIfDisposed();

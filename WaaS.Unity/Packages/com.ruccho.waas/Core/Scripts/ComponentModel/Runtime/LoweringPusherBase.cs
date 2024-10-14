@@ -159,7 +159,7 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.String })
                 throw new InvalidOperationException();
-            MoveNextType();
+            // MoveNextType();
 
             var destEncoding = Context.Options.StringEncoding;
             uint ptr;
@@ -192,12 +192,12 @@ namespace WaaS.ComponentModel.Runtime
 
             if (destEncoding == CanonOptionStringEncodingKind.Latin1Utf16) length |= (uint)1 << 31;
 
-            PushU32Core(ptr);
-            PushU32Core(length);
+            PushString(ptr, length);
         }
 
         public abstract ValuePusher PushRecord();
         public abstract ValuePusher PushVariant(int caseIndex);
+        public abstract void PushString(uint ptr, uint length);
 
         public IValueType GetNextType()
         {

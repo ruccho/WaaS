@@ -354,7 +354,7 @@ namespace WaaS.Models
     public partial class CallIndirect : Instruction
     {
         [Operand(0)] public uint FunctionTypeIndex { get; }
-        [Operand(1)] public byte Reserved { get; }
+        [Operand(1)] public uint TableIndex { get; }
 
         public override void Execute(WasmStackFrame current)
         {
@@ -387,7 +387,7 @@ namespace WaaS.Models
         public override void Validate(in ValidationContext context)
         {
             base.Validate(context);
-            if (Reserved != 0) throw new InvalidModuleException();
+            if (TableIndex != 0) throw new InvalidModuleException($"Reserved byte must be 0 but {TableIndex}");
         }
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)

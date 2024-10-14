@@ -51,6 +51,8 @@ public class BindingExtensionsGenerator : IIncrementalGenerator
 
         sourceBuilder.AppendLine(
 /*  lang=c# */"""
+              using System;
+              using System.Threading.Tasks;
               namespace WaaS.Runtime.Bindings
               {
                   internal static partial class BindingExtensionsLocal

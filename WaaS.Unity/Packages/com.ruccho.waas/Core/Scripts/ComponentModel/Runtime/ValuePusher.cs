@@ -26,7 +26,6 @@ namespace WaaS.ComponentModel.Runtime
 
         public void Dispose()
         {
-            ThrowIfDisposed();
             core.Dispose(version);
         }
 

@@ -63,6 +63,19 @@ namespace WaaS.ComponentModel.Runtime
             MoveNextType();
         }
 
+        public override void PushString(uint ptr, uint length)
+        {
+            if (MoveNextType<IPrimitiveValueType>() is not { Kind: PrimitiveValueTypeKind.String })
+                throw new InvalidOperationException();
+
+            destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
+            var dest = Destination.Slice(checked((int)destinationCursor), 8);
+            Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = ptr;
+            destinationCursor += 4;
+            Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = length;
+            destinationCursor += 4;
+        }
+
         public override ValuePusher PushRecord()
         {
             var recordType = MoveNextType<IRecordType>();

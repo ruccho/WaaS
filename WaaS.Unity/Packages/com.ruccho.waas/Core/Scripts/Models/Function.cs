@@ -88,8 +88,9 @@ namespace WaaS.Models
                     var instructions = Body.Instructions.Span;
                     var maxBlockDepth = 1;
                     var blockDepth = 1;
-                    foreach (var instr in instructions)
+                    for (var i = 0; i < instructions.Length; i++)
                     {
+                        var instr = instructions[i];
                         instr.Validate(context);
 
                         if (instr is BlockInstruction)

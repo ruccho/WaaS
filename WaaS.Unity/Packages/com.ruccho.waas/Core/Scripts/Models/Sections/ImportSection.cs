@@ -66,6 +66,8 @@ namespace WaaS.Models
         [FieldOffset(1)] private readonly MemoryType memoryType;
         [FieldOffset(1)] private readonly GlobalType globalType;
 
+        public ImportKind Kind => kind;
+
         public uint? TypeIndex => kind == ImportKind.Type ? typeIndex : null;
         public TableType? TableType => kind == ImportKind.Table ? tableType : null;
         public MemoryType? MemoryType => kind == ImportKind.Memory ? memoryType : null;

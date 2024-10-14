@@ -9,20 +9,6 @@ using WaaS.ComponentModel.Binding;
 
 namespace WaaS.ComponentModel.Runtime
 {
-    /*
-    public interface IOwned<out T> : IDisposable where T : class, IResourceType
-    {
-        T Type { get; }
-        uint MoveOut();
-    }
-
-    public interface IBorrowed<out T> where T : class, IResourceType
-    {
-        T Type { get; }
-        uint MoveOut();
-    }
-    */
-
     internal class OwnedCore
     {
         [ThreadStatic] private static Stack<OwnedCore>? pool;

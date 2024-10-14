@@ -35,14 +35,12 @@ namespace WaaS.Runtime
             }
         }
 
-        private void MoveToEndOrPending(out bool pending)
+        private void MoveToEndOrPending(IStackFrame initial, out bool pending)
         {
             lock (locker)
             {
                 try
                 {
-                    var initial = Current;
-
                     Loop:
                     var current = Current;
                     if (current is null) throw new InvalidOperationException();
@@ -136,6 +134,16 @@ namespace WaaS.Runtime
             }
         }
 
+        internal ValueTask InvokeAsync(IStackFrame frame)
+        {
+            lock (locker)
+            {
+                if (frames.Count > 0) throw new InvalidOperationException();
+                PushFrame(frame);
+                return RunAsync();
+            }
+        }
+
         internal IStackFrame PushFrame(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
         {
             lock (locker)
@@ -166,7 +174,7 @@ namespace WaaS.Runtime
             lock (locker)
             {
                 var frame = PushFrame(function, inputValues);
-                MoveToEndOrPending(out var pending);
+                MoveToEndOrPending(frame, out var pending);
 
                 if (pending)
                 {
@@ -181,7 +189,7 @@ namespace WaaS.Runtime
 
         private void Run()
         {
-            MoveToEndOrPending(out var pending);
+            MoveToEndOrPending(Current, out var pending);
 
             if (pending)
             {
@@ -192,10 +200,11 @@ namespace WaaS.Runtime
 
         private async ValueTask RunAsync()
         {
+            var initial = Current;
             while (true)
             {
                 var source = currentPendingTaskSource ??= ValueTaskSource.Create();
-                MoveToEndOrPending(out var pending);
+                MoveToEndOrPending(initial, out var pending);
 
                 if (!pending) return;
 
