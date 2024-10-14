@@ -20,6 +20,7 @@ namespace WaaS.ComponentModel.Runtime
             destination = pooled.Destination =
                 (pooled.rentDestination = ArrayPool<StackValueItem>.Shared.Rent(flattenedCount))
                 .AsMemory().Slice(0, flattenedCount);
+            pooled.destinationCursor = 0;
             return pooled;
         }
 
@@ -27,16 +28,20 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (!Pool.TryPop(out var pooled)) pooled = new FlattenedLoweringPusher();
             pooled.Destination = destination;
+            pooled.destinationCursor = 0;
+            pooled.rentDestination = default;
             return pooled;
         }
 
-        protected override void Dispose()
+        protected override void Dispose(bool reuse)
         {
             if (rentDestination != null) ArrayPool<StackValueItem>.Shared.Return(rentDestination);
+            rentDestination = null;
 
             Destination = default;
+            destinationCursor = 0;
 
-            Pool.Push(this);
+            if (reuse) Pool.Push(this);
         }
 
         protected override void PushU8Core(byte value)

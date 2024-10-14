@@ -15,11 +15,13 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (!Pool.TryPop(out var pooled)) pooled = new SerializedLoweringPusher();
             pooled.Destination = destination;
+            pooled.destinationCursor = 0;
             return pooled;
         }
 
-        protected override void Dispose()
+        protected override void Dispose(bool reuse)
         {
+            if(reuse) Pool.Push(this);
         }
 
         protected override void PushU8Core(byte value)

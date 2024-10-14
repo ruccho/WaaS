@@ -19,8 +19,9 @@ namespace WaaS.ComponentModel.Runtime
         public void Dispose(ushort version)
         {
             if (version != Version) return;
-            if (++Version == ushort.MaxValue) return;
-            Dispose();
+            var reuse = ++Version != ushort.MaxValue;
+            typeCursor = default;
+            Dispose(reuse);
         }
 
         public void Push(bool value)
@@ -308,7 +309,7 @@ namespace WaaS.ComponentModel.Runtime
             return Context.Realloc(originalPtr, originalSize, alignment, newSize);
         }
 
-        protected abstract void Dispose();
+        protected abstract void Dispose(bool reuse);
 
         protected abstract void PushU8Core(byte value);
 
