@@ -16,6 +16,7 @@ namespace Wasi.Cli
         /// <summary>
         ///     The input side of a terminal.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface ITerminalInputResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
         }

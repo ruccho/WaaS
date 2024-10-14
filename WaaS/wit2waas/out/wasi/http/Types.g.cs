@@ -33,15 +33,25 @@ namespace Wasi.Http
         [global::WaaS.ComponentModel.Binding.ComponentVariant]
         public readonly partial struct Method
         {
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Get { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Head { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Post { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Put { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Delete { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Connect { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Options { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Trace { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Patch { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.Option<string> Other { get; init; }
         }
 
@@ -51,8 +61,11 @@ namespace Wasi.Http
         [global::WaaS.ComponentModel.Binding.ComponentVariant]
         public readonly partial struct Scheme
         {
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTP { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPS { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.Option<string> Other { get; init; }
         }
 
@@ -62,7 +75,9 @@ namespace Wasi.Http
         [global::WaaS.ComponentModel.Binding.ComponentRecord]
         public readonly partial struct DNSErrorPayload
         {
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public global::WaaS.ComponentModel.Binding.Option<string> Rcode { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public ushort? InfoCode { get; init; }
         }
 
@@ -72,7 +87,9 @@ namespace Wasi.Http
         [global::WaaS.ComponentModel.Binding.ComponentRecord]
         public readonly partial struct TLSAlertReceivedPayload
         {
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public byte? AlertId { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public global::WaaS.ComponentModel.Binding.Option<string> AlertMessage { get; init; }
         }
 
@@ -82,7 +99,9 @@ namespace Wasi.Http
         [global::WaaS.ComponentModel.Binding.ComponentRecord]
         public readonly partial struct FieldSizePayload
         {
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public global::WaaS.ComponentModel.Binding.Option<string> FieldName { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public uint? FieldSize { get; init; }
         }
 
@@ -93,43 +112,81 @@ namespace Wasi.Http
         [global::WaaS.ComponentModel.Binding.ComponentVariant]
         public readonly partial struct ErrorCode
         {
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? DNSTimeout { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public Wasi.Http.ITypes.DNSErrorPayload? DNSError { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? DestinationNotFound { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? DestinationUnavailable { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? DestinationIPProhibited { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? DestinationIPUnroutable { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? ConnectionRefused { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? ConnectionTerminated { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? ConnectionTimeout { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? ConnectionReadTimeout { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? ConnectionWriteTimeout { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? ConnectionLimitReached { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? TLSProtocolError { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? TLSCertificateError { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public Wasi.Http.ITypes.TLSAlertReceivedPayload? TLSAlertReceived { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPRequestDenied { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPRequestLengthRequired { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.Option<ulong?> HTTPRequestBodySize { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPRequestMethodInvalid { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPRequestURIInvalid { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPRequestURITooLong { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.Option<uint?> HTTPRequestHeaderSectionSize { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.Option<Wasi.Http.ITypes.FieldSizePayload?> HTTPRequestHeaderSize { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.Option<uint?> HTTPRequestTrailerSectionSize { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public Wasi.Http.ITypes.FieldSizePayload? HTTPRequestTrailerSize { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPResponseIncomplete { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.Option<uint?> HTTPResponseHeaderSectionSize { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public Wasi.Http.ITypes.FieldSizePayload? HTTPResponseHeaderSize { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.Option<ulong?> HTTPResponseBodySize { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.Option<uint?> HTTPResponseTrailerSectionSize { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public Wasi.Http.ITypes.FieldSizePayload? HTTPResponseTrailerSize { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.Option<string>? HTTPResponseTransferCoding { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.Option<string>? HTTPResponseContentCoding { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPResponseTimeout { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPUpgradeFailed { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPProtocolError { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? LoopDetected { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? ConfigurationError { get; init; }
             /// <summary>
             ///     This is a catch-all error for anything that doesn't fit cleanly into a
@@ -138,6 +195,7 @@ namespace Wasi.Http
             ///     string for diagnosing errors, as it's not required to be consistent
             ///     between implementations.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.Option<string>? InternalError { get; init; }
         }
 
@@ -153,16 +211,19 @@ namespace Wasi.Http
             ///     syntactically invalid when used with an operation that sets headers in a
             ///     `fields`.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? InvalidSyntax { get; init; }
             /// <summary>
             ///     This error indicates that a forbidden `field-name` was used when trying
             ///     to set a header in a `fields`.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Forbidden { get; init; }
             /// <summary>
             ///     This error indicates that the operation on the `fields` was not
             ///     permitted because the fields are immutable.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Immutable { get; init; }
         }
 
@@ -219,6 +280,7 @@ namespace Wasi.Http
         ///     immutable. In an immutable fields, the `set`, `append`, and `delete`
         ///     operations will fail with `header-error.immutable`.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IFieldsResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -332,6 +394,7 @@ namespace Wasi.Http
         /// <summary>
         ///     Represents an incoming HTTP Request.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IIncomingRequestResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -383,6 +446,7 @@ namespace Wasi.Http
         /// <summary>
         ///     Represents an outgoing HTTP Request.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IOutgoingRequestResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -494,6 +558,7 @@ namespace Wasi.Http
         ///     These timeouts are separate from any the user may use to bound a
         ///     blocking call to `wasi:io/poll.poll`.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IRequestOptionsResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -552,6 +617,7 @@ namespace Wasi.Http
         ///     allow a Response to be sent corresponding to the Request provided as the
         ///     other argument to `incoming-handler.handle`.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IResponseOutparamResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -585,6 +651,7 @@ namespace Wasi.Http
         /// <summary>
         ///     Represents an incoming HTTP Response.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IIncomingResponseResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -624,6 +691,7 @@ namespace Wasi.Http
         ///     and ensures that the user of this interface may only be consuming either
         ///     the body contents or waiting on trailers at any given time.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IIncomingBodyResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -662,6 +730,7 @@ namespace Wasi.Http
         ///     trailers, this future will resolve to the empty set of trailers once the
         ///     complete Request or Response body has been received.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IFutureTrailersResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -701,6 +770,7 @@ namespace Wasi.Http
         /// <summary>
         ///     Represents an outgoing HTTP Response.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IOutgoingResponseResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -769,6 +839,7 @@ namespace Wasi.Http
         ///     including: corrupting the body on the wire, aborting the associated
         ///     Request, or sending a late status code for the Response.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IOutgoingBodyResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -808,6 +879,7 @@ namespace Wasi.Http
         ///     This resource is returned by the `wasi:http/outgoing-handler` interface to
         ///     provide the HTTP Response corresponding to the sent Request.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IFutureIncomingResponseResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>

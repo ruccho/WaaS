@@ -28,7 +28,7 @@ namespace WaaS.ComponentModel.Binding
 
         public Option(T value)
         {
-            this.isSome = true;
+            isSome = true;
             this.value = value;
         }
     }

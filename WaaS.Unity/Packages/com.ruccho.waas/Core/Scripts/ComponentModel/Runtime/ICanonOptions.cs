@@ -1,5 +1,4 @@
 ﻿#nullable enable
-using System;
 using WaaS.ComponentModel.Models;
 using WaaS.Runtime;
 
@@ -9,6 +8,6 @@ namespace WaaS.ComponentModel.Runtime
     {
         CanonOptionStringEncodingKind StringEncoding { get; }
         IInvocableFunction? ReallocFunction { get; }
-        Memory<byte> MemoryToRealloc { get; }
+        Memory? MemoryToRealloc { get; }
     }
 }

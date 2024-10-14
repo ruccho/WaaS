@@ -3,6 +3,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using WaaS.ComponentModel.Runtime;
 using WaaS.Models;
 using WaaS.Runtime;
@@ -38,7 +39,7 @@ namespace WaaS.ComponentModel.Models
                 var sectionId = reader.ReadUnaligned<SectionId>();
                 var sectionSize = reader.ReadUnalignedLeb128U32();
 
-                Console.WriteLine(sectionId.ToString());
+                // Console.WriteLine(sectionId.ToString());
 
                 var next = reader.Position + sectionSize;
 
@@ -131,10 +132,18 @@ namespace WaaS.ComponentModel.Models
             IReadOnlyDictionary<string, ISortedExportable> arguments)
         {
             // validate
+            List<IImport<ISortedExportable>>? missingImports = null;
             foreach (var import in imports)
                 if (!arguments.TryGetValue(import.Name.Name, out var argument) ||
                     !import.Descriptor.ValidateArgument(argument))
-                    throw new LinkException($"The import {import.Name.Name} is missing or invalid");
+                {
+                    missingImports ??= new List<IImport<ISortedExportable>>();
+                    missingImports.Add(import);
+                }
+
+            if (missingImports != null)
+                throw new LinkException(
+                    $"The import is missing or invalid: \n{string.Join("\n", missingImports.Select(i => i.Name.Name))}");
 
             var newContext = new InstanceResolutionContext(arguments, context);
             Dictionary<string, ISortedExportable> resolvedExports = new();

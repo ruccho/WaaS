@@ -31,6 +31,7 @@ namespace Wasi.Sockets
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"resolve-addresses")]
         global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Sockets.IIpNameLookup.IResolveAddressStreamResource>, Wasi.Sockets.INetwork.ErrorCode> ResolveAddresses(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.INetwork.INetworkResource> @network, string @name);
 
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IResolveAddressStreamResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>

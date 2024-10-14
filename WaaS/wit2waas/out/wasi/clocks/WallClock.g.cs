@@ -54,7 +54,9 @@ namespace Wasi.Clocks
         [global::WaaS.ComponentModel.Binding.ComponentRecord]
         public readonly partial struct Datetime
         {
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public ulong Seconds { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public uint Nanoseconds { get; init; }
         }
 

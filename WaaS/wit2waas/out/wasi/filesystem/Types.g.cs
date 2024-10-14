@@ -220,15 +220,18 @@ namespace Wasi.Filesystem
             /// <summary>
             ///     File type.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public Wasi.Filesystem.ITypes.DescriptorType Type { get; init; }
             /// <summary>
             ///     Number of hard links to the file.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public Wasi.Filesystem.ITypes.LinkCount LinkCount { get; init; }
             /// <summary>
             ///     For regular files, the file size in bytes. For symbolic links, the
             ///     length in bytes of the pathname contained in the symbolic link.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public Wasi.Filesystem.ITypes.Filesize Size { get; init; }
             /// <summary>
             ///     Last data access timestamp.
@@ -236,6 +239,7 @@ namespace Wasi.Filesystem
             ///     If the `option` is none, the platform doesn't maintain an access
             ///     timestamp for this file.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public Wasi.Clocks.IWallClock.Datetime? DataAccessTimestamp { get; init; }
             /// <summary>
             ///     Last data modification timestamp.
@@ -243,6 +247,7 @@ namespace Wasi.Filesystem
             ///     If the `option` is none, the platform doesn't maintain a
             ///     modification timestamp for this file.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public Wasi.Clocks.IWallClock.Datetime? DataModificationTimestamp { get; init; }
             /// <summary>
             ///     Last file status-change timestamp.
@@ -250,6 +255,7 @@ namespace Wasi.Filesystem
             ///     If the `option` is none, the platform doesn't maintain a
             ///     status-change timestamp for this file.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public Wasi.Clocks.IWallClock.Datetime? StatusChangeTimestamp { get; init; }
         }
 
@@ -262,15 +268,18 @@ namespace Wasi.Filesystem
             /// <summary>
             ///     Leave the timestamp set to its previous value.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? NoChange { get; init; }
             /// <summary>
             ///     Set the timestamp to the current time of the system clock associated
             ///     with the filesystem.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Now { get; init; }
             /// <summary>
             ///     Set the timestamp to the given value.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public Wasi.Clocks.IWallClock.Datetime? Timestamp { get; init; }
         }
 
@@ -283,10 +292,12 @@ namespace Wasi.Filesystem
             /// <summary>
             ///     The type of the file referred to by this directory entry.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public Wasi.Filesystem.ITypes.DescriptorType Type { get; init; }
             /// <summary>
             ///     The name of the object.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public string Name { get; init; }
         }
 
@@ -495,10 +506,12 @@ namespace Wasi.Filesystem
             /// <summary>
             ///     64 bits of a 128-bit hash value.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public ulong Lower { get; init; }
             /// <summary>
             ///     Another 64 bits of a 128-bit hash value.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public ulong Upper { get; init; }
         }
 
@@ -507,6 +520,7 @@ namespace Wasi.Filesystem
         ///     directory, named pipe, special file, or other object on which filesystem
         ///     calls may be made.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IDescriptorResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -831,6 +845,7 @@ namespace Wasi.Filesystem
         /// <summary>
         ///     A stream of directory entries.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IDirectoryEntryStreamResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>

@@ -17,7 +17,7 @@ fn main() {
         let ty = entry.file_type().unwrap();
         if ty.is_dir() || ty.is_symlink_dir() {
             let mut resolve = Resolve::default();
-            let (id, _) = resolve.push_dir(&format!("{path}/wit")).unwrap();
+            let (id, _) = resolve.push_dir(format!("{path}/wit")).unwrap();
             process_dir(&resolve, id).unwrap();
         }
     }
@@ -65,16 +65,16 @@ fn process_func(resolve: &Resolve, function: &Function, source: &mut Source) -> 
         }
         FunctionKind::Constructor(method_type) => {
             if name.starts_with("[constructor]") {
-                &name["[constructor]".len()..]
+                &name.strip_prefix("[constructor]").unwrap().to_string()
             } else {
                 name
             }
         }
     };
 
-    line.push_str(" ");
-    line.push_str(&to_upper_camel(&name));
-    line.push_str("(");
+    line.push(' ');
+    line.push_str(&to_upper_camel(name));
+    line.push('(');
 
     // params
     let mut first = true;
@@ -99,7 +99,7 @@ fn process_func(resolve: &Resolve, function: &Function, source: &mut Source) -> 
 fn process_dir(resolve: &Resolve, package_id: PackageId) -> Result<()> {
     let package = resolve.packages.get(package_id).unwrap();
     for (name, id) in &package.interfaces {
-        let interface = resolve.interfaces.get(id.clone()).unwrap();
+        let interface = resolve.interfaces.get(*id).unwrap();
 
         let mut source = Source::default();
 
@@ -126,25 +126,26 @@ fn process_dir(resolve: &Resolve, package_id: PackageId) -> Result<()> {
                 // types
                 for (name, id) in &interface.types
                 {
-                    let ty = resolve.types.get(id.clone()).unwrap();
+                    let ty = resolve.types.get(*id).unwrap();
                     source.push_docs(&ty.docs);
                     match &ty.kind {
                         TypeDefKind::Record(element) => {
                             source.push_line("[global::WaaS.ComponentModel.Binding.ComponentRecord]");
-                            source.push_line(&format!("public readonly partial struct {}", to_upper_camel(&name)));
+                            source.push_line(&format!("public readonly partial struct {}", to_upper_camel(name)));
                             source.open_block();
                             {
                                 for field in &element.fields {
                                     source.push_docs(&field.docs);
-                                    source.push_line(&format!("public {} {} {{ get; init; }}", &field.ty.to_waas(&resolve)?, to_upper_camel(&field.name)));
+                                    source.push_line("[global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]");
+                                    source.push_line(&format!("public {} {} {{ get; init; }}", &field.ty.to_waas(resolve)?, to_upper_camel(&field.name)));
                                 }
                             }
                             source.close_block();
                             source.push_line_empty();
                         }
                         TypeDefKind::Resource => {
-                            // source.push_line("[global::WaaS.ComponentModel.Binding.ComponentRecord]");
-                            source.push_line(&format!("public partial interface I{}Resource : global::WaaS.ComponentModel.Runtime.IResourceType", to_upper_camel(&name)));
+                            source.push_line("[global::WaaS.ComponentModel.Binding.ComponentResource]");
+                            source.push_line(&format!("public partial interface I{}Resource : global::WaaS.ComponentModel.Runtime.IResourceType", to_upper_camel(name)));
                             source.open_block();
                             {
                                 for (name, function) in &interface.functions {
@@ -174,12 +175,16 @@ fn process_dir(resolve: &Resolve, package_id: PackageId) -> Result<()> {
                             }
                             source.close_block();
                             source.push_line_empty();
+                            /*
+                            source.push_line(&format!("{} {} {{ get; }}", ty.to_waas(resolve)?, to_upper_camel(&name)));
+                            source.push_line_empty();
+                            */
                         }
                         TypeDefKind::Flags(element) => {
                             source.push_line("[global::System.Flags]");
-                            source.push_line(&format!("public enum {} : {}", to_upper_camel(&name), match element.flags.len() {
-                                0..8 => "byte",
-                                9..16 => "ushort",
+                            source.push_line(&format!("public enum {} : {}", to_upper_camel(name), match element.flags.len() {
+                                0..=8 => "byte",
+                                9..=16 => "ushort",
                                 _ => "uint",
                             }));
                             source.open_block();
@@ -194,16 +199,17 @@ fn process_dir(resolve: &Resolve, package_id: PackageId) -> Result<()> {
                         }
                         TypeDefKind::Variant(element) => {
                             source.push_line("[global::WaaS.ComponentModel.Binding.ComponentVariant]");
-                            source.push_line(&format!("public readonly partial struct {}", to_upper_camel(&name)));
+                            source.push_line(&format!("public readonly partial struct {}", to_upper_camel(name)));
                             source.open_block();
                             {
                                 for case in &element.cases {
                                     source.push_docs(&case.docs);
+                                    source.push_line("[global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]");
                                     let ty = if let Some(ty) = &case.ty {
                                         if ty.is_value_type(resolve)? {
-                                            format!("{}?", ty.to_waas(&resolve)?)
+                                            format!("{}?", ty.to_waas(resolve)?)
                                         } else {
-                                            format!("global::WaaS.ComponentModel.Binding.Option<{}>", ty.to_waas(&resolve)?)
+                                            format!("global::WaaS.ComponentModel.Binding.Option<{}>", ty.to_waas(resolve)?)
                                         }
                                     } else {
                                         "global::WaaS.ComponentModel.Binding.None?".to_string()
@@ -216,7 +222,7 @@ fn process_dir(resolve: &Resolve, package_id: PackageId) -> Result<()> {
                             source.push_line_empty();
                         }
                         TypeDefKind::Enum(element) => {
-                            source.push_line(&format!("public enum {} : uint", to_upper_camel(&name)));
+                            source.push_line(&format!("public enum {} : uint", to_upper_camel(name)));
                             source.open_block();
                             {
                                 for case in &element.cases {
@@ -229,13 +235,13 @@ fn process_dir(resolve: &Resolve, package_id: PackageId) -> Result<()> {
                         }
                         TypeDefKind::Type(element) => {
                             if element.is_alias_compatible(ty, resolve)? {
-                                source.push_alias(&element.to_waas(resolve)?, &name, resolve)?;
+                                source.push_alias(&element.to_waas(resolve)?, name, resolve)?;
                             }
                         }
                         TypeDefKind::Tuple(element) => {
                             if let Some(name) = &ty.name {
                                 // named tuple
-                                source.push_alias(&to_raw_tuple(element, resolve), &name, resolve)?;
+                                source.push_alias(&to_raw_tuple(element, resolve), name, resolve)?;
                             }
                         }
                         _ => {
@@ -252,7 +258,7 @@ fn process_dir(resolve: &Resolve, package_id: PackageId) -> Result<()> {
         let dir = format!("out/{}/{}", package.name.namespace, package.name.name);
         fs::create_dir_all(&dir)?;
 
-        let file = format!("{}/{}.g.cs", dir, to_upper_camel(&name));
+        let file = format!("{}/{}.g.cs", dir, to_upper_camel(name));
 
         fs::write(&file, source.finish())?;
     }

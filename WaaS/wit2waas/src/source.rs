@@ -12,11 +12,11 @@ impl Source {
     pub fn push_line(&mut self, line: &str) {
         self.content.push_str(&"    ".repeat(self.indent as usize));
         self.content.push_str(line);
-        self.content.push_str("\n");
+        self.content.push('\n');
     }
 
     pub fn push_line_empty(&mut self) {
-        self.content.push_str("\n");
+        self.content.push('\n');
     }
 
     pub fn open_block(&mut self) {

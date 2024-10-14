@@ -58,18 +58,11 @@ namespace WaaS.ComponentModel.Binding
                 pooled.frameMoveContinuation = default;
                 pooled.frameMoveState = default;
 
-                static async void PullArgumentsAsync(ushort version, Binder pooled, ExternalFunction function,
-                    ExecutionContext context,
-                    PushPullAdapter pusher)
-                {
-                    await function.PullArgumentsAsync(
-                        context,
-                        pusher,
-                        new ValueTask(pooled, unchecked((short)pooled.Version)),
-                        new ValueTask<ValuePusher>(pooled, unchecked((short)pooled.Version)));
-                }
-
-                PullArgumentsAsync(pooled.Version, pooled, function, context, pusher);
+                function.PullArgumentsAsync(
+                    context,
+                    pusher,
+                    new ValueTask(pooled, unchecked((short)pooled.Version)),
+                    new ValueTask<ValuePusher>(pooled, unchecked((short)pooled.Version)));
 
                 return pooled;
             }

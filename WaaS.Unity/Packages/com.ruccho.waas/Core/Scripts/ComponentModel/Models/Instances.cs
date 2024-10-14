@@ -56,7 +56,7 @@ namespace WaaS.ComponentModel.Models
                 this.exports = exports;
             }
 
-            public IModuleExports CoreExports { get; }
+            public IModuleExports CoreExports => this;
 
             public bool TryGetExport<T>(string name, out ICoreSortedExportable<T> result) where T : IExternal
             {

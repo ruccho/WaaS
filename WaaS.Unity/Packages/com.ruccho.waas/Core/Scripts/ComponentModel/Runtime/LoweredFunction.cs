@@ -11,7 +11,7 @@ namespace WaaS.ComponentModel.Runtime
         ICanonContext
     {
         public LoweredFunction(CanonOptionStringEncodingKind stringEncoding, IInvocableFunction? reallocFunction,
-            Memory<byte> memoryToRealloc, IFunction componentFunction)
+            Memory? memoryToRealloc, IFunction componentFunction)
         {
             StringEncoding = stringEncoding;
             ReallocFunction = reallocFunction;
@@ -51,7 +51,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public CanonOptionStringEncodingKind StringEncoding { get; }
         public IInvocableFunction? ReallocFunction { get; }
-        public Memory<byte> MemoryToRealloc { get; }
+        public Memory? MemoryToRealloc { get; }
 
         public IInvocableFunction CoreExternal => this;
         public FunctionType Type { get; }

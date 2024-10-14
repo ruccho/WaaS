@@ -31,7 +31,7 @@ namespace WaaS.ComponentModel.Runtime
         public CanonOptionStringEncodingKind StringEncoding { get; }
 
         public IInvocableFunction? ReallocFunction { get; }
-        public System.Memory<byte> MemoryToRealloc => memoryToRealloc!.AsMemory();
+        public Memory MemoryToRealloc => memoryToRealloc;
         public IFunctionType Type { get; }
 
         public FunctionBinder GetBinder(ExecutionContext context)

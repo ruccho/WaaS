@@ -5,5 +5,6 @@
     </PropertyGroup>
     <ItemGroup>
       <ProjectReference Include="..\..\..\WaaS.Core\WaaS.Core.csproj" />
+      <ProjectReference Include="..\..\..\WaaS.Generators\WaaS.Generators.csproj"  OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
     </ItemGroup>
 </Project>

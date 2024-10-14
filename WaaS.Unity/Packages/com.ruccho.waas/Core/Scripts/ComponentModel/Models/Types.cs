@@ -175,7 +175,7 @@ namespace WaaS.ComponentModel.Models
         }
     }
 
-    internal class ResolvedRecordType : IRecordType
+    public class ResolvedRecordType : IRecordType
     {
         public ResolvedRecordType(ReadOnlyMemory<IRecordField> fields)
         {
@@ -255,7 +255,7 @@ namespace WaaS.ComponentModel.Models
         }
     }
 
-    internal class ResolvedRecordField : IRecordField
+    public class ResolvedRecordField : IRecordField
     {
         public ResolvedRecordField(string label, IValueType type)
         {
@@ -292,7 +292,7 @@ namespace WaaS.ComponentModel.Models
         }
     }
 
-    internal class ResolvedVariantCase : IVariantCase
+    public class ResolvedVariantCase : IVariantCase
     {
         public ResolvedVariantCase(string label, IValueType? type)
         {
@@ -304,7 +304,7 @@ namespace WaaS.ComponentModel.Models
         public IValueType? Type { get; }
     }
 
-    internal class ResolvedVariantType : IVariantType
+    public class ResolvedVariantType : IVariantType
     {
         public ResolvedVariantType(ReadOnlyMemory<IVariantCase> cases)
         {
@@ -569,7 +569,7 @@ namespace WaaS.ComponentModel.Models
     [GenerateFormatter]
     public partial class EnumType : IValueTypeDefinition, IEnumType
     {
-        private IDespecializedValueType? Despecialized { get; set; }
+        [Ignore] private IDespecializedValueType? Despecialized { get; set; }
         public ReadOnlyMemory<string> Labels { get; }
 
         public IDespecializedValueType Despecialize()
@@ -866,7 +866,7 @@ namespace WaaS.ComponentModel.Models
         }
     }
 
-    internal class ResolvedParameter : IParameter
+    public class ResolvedParameter : IParameter
     {
         public ResolvedParameter(string label, IValueType type)
         {
@@ -878,7 +878,7 @@ namespace WaaS.ComponentModel.Models
         public IValueType Type { get; }
     }
 
-    internal class ResolvedFunctionType : IFunctionType
+    public class ResolvedFunctionType : IFunctionType
     {
         private IRecordType? parameterType;
 

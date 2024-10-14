@@ -11,6 +11,7 @@ namespace Wasi.Sockets
         ///     This enables context-based security for networking.
         ///     There is no need for this to map 1:1 to a physical network interface.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface INetworkResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
         }
@@ -167,7 +168,9 @@ namespace Wasi.Sockets
         [global::WaaS.ComponentModel.Binding.ComponentVariant]
         public readonly partial struct IpAddress
         {
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public Wasi.Sockets.INetwork.Ipv4Address? Ipv4 { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public Wasi.Sockets.INetwork.Ipv6Address? Ipv6 { get; init; }
         }
 
@@ -177,10 +180,12 @@ namespace Wasi.Sockets
             /// <summary>
             ///     sin_port
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public ushort Port { get; init; }
             /// <summary>
             ///     sin_addr
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public Wasi.Sockets.INetwork.Ipv4Address Address { get; init; }
         }
 
@@ -190,25 +195,31 @@ namespace Wasi.Sockets
             /// <summary>
             ///     sin6_port
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public ushort Port { get; init; }
             /// <summary>
             ///     sin6_flowinfo
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public uint FlowInfo { get; init; }
             /// <summary>
             ///     sin6_addr
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public Wasi.Sockets.INetwork.Ipv6Address Address { get; init; }
             /// <summary>
             ///     sin6_scope_id
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public uint ScopeId { get; init; }
         }
 
         [global::WaaS.ComponentModel.Binding.ComponentVariant]
         public readonly partial struct IpSocketAddress
         {
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public Wasi.Sockets.INetwork.Ipv4SocketAddress? Ipv4 { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public Wasi.Sockets.INetwork.Ipv6SocketAddress? Ipv6 { get; init; }
         }
 

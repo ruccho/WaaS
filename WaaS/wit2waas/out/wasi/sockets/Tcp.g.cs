@@ -45,6 +45,7 @@ namespace Wasi.Sockets
         ///     `network::error-code` type, TCP socket methods may always return
         ///     `error(invalid-state)` when in the `closed` state.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface ITcpSocketResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>

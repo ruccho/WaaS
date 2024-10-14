@@ -37,6 +37,7 @@ namespace WaaS.ComponentModel.Runtime
 
             if (!resolving.Add(unresolved)) throw new LinkException(); // circular resolution
             var result = unresolved.ResolveFirstTime(this);
+            resolved.Add(unresolved, result);
             resolving.Remove(unresolved);
 
             return result;

@@ -37,6 +37,7 @@ namespace Wasi.Io
         /// <summary>
         ///     `pollable` represents a single I/O event which may be ready, or not.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IPollableResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>

@@ -17,6 +17,7 @@ namespace Wasi.Sockets
             ///     
             ///     Theoretical max size: ~64 KiB. In practice, typically less than 1500 bytes.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public global::System.ReadOnlyMemory<byte> Data { get; init; }
             /// <summary>
             ///     The source address.
@@ -25,6 +26,7 @@ namespace Wasi.Sockets
             ///     
             ///     Equivalent to the `src_addr` out parameter of `recvfrom`.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public Wasi.Sockets.INetwork.IpSocketAddress RemoteAddress { get; init; }
         }
 
@@ -37,6 +39,7 @@ namespace Wasi.Sockets
             /// <summary>
             ///     The payload.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public global::System.ReadOnlyMemory<byte> Data { get; init; }
             /// <summary>
             ///     The destination address.
@@ -47,12 +50,14 @@ namespace Wasi.Sockets
             ///     
             ///     If this value is None, the send operation is equivalent to `send` in POSIX. Otherwise it is equivalent to `sendto`.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public Wasi.Sockets.INetwork.IpSocketAddress? RemoteAddress { get; init; }
         }
 
         /// <summary>
         ///     A UDP socket handle.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IUdpSocketResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -227,6 +232,7 @@ namespace Wasi.Sockets
 
         }
 
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IIncomingDatagramStreamResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -268,6 +274,7 @@ namespace Wasi.Sockets
 
         }
 
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IOutgoingDatagramStreamResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>

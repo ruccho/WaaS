@@ -20,6 +20,7 @@
     <ItemGroup>
         <ProjectReference Include="..\WaaS.Core\WaaS.Core.csproj"/>
         <ProjectReference Include="..\WaaS.Generators\WaaS.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
+        <ProjectReference Include="..\wit2waas\out\wasi\wasi.csproj" />
     </ItemGroup>
 
 </Project>

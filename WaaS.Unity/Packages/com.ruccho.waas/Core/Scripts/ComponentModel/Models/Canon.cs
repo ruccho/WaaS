@@ -106,7 +106,7 @@ namespace WaaS.ComponentModel.Models
 
             stringEncoding ??= CanonOptionStringEncodingKind.Utf8;
 
-            return new LoweredFunction(stringEncoding.Value, realloc, memory?.AsMemory() ?? default, componentFunction);
+            return new LoweredFunction(stringEncoding.Value, realloc, memory, componentFunction);
         }
     }
 

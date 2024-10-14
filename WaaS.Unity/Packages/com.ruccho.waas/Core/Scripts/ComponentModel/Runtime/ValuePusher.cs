@@ -194,17 +194,17 @@ namespace WaaS.ComponentModel.Runtime
         */
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void PushOwned<THandle, T>(THandle handle) where THandle : IOwned<T> where T : IResourceType
+        public void PushOwned(Owned<IResourceType> handle)
         {
             ThrowIfDisposed();
-            core.PushOwned<THandle, T>(handle);
+            core.PushOwned(handle);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void PushBorrowed<THandle, T>(THandle handle) where THandle : IBorrowed<T> where T : IResourceType
+        public void PushBorrowed(Borrowed<IResourceType> handle)
         {
             ThrowIfDisposed();
-            core.PushBorrowed<THandle, T>(handle);
+            core.PushBorrowed(handle);
         }
     }
 }

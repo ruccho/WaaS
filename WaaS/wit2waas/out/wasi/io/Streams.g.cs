@@ -27,12 +27,14 @@ namespace Wasi.Io
             ///     After this, the stream will be closed. All future operations return
             ///     `stream-error::closed`.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IError.IErrorResource>? LastOperationFailed { get; init; }
             /// <summary>
             ///     The stream is closed: no more input will be accepted by the
             ///     stream. A closed output-stream will return this error on all
             ///     future operations.
             /// </summary>
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Closed { get; init; }
         }
 
@@ -46,6 +48,7 @@ namespace Wasi.Io
         ///     use the `subscribe` function to obtain a `pollable` which can be polled
         ///     for using `wasi:io/poll`.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IInputStreamResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>
@@ -129,6 +132,7 @@ namespace Wasi.Io
         ///     progress may result in the data being lost. Before dropping the stream,
         ///     be sure to fully flush your writes.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IOutputStreamResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>

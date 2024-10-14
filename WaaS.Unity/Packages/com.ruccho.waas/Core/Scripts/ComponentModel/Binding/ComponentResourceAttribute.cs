@@ -2,7 +2,7 @@
 
 namespace WaaS.ComponentModel.Binding
 {
-    public class ComponentFieldAttribute : Attribute
+    public class ComponentResourceAttribute : Attribute
     {
     }
 }

@@ -16,6 +16,7 @@ namespace Wasi.Cli
         /// <summary>
         ///     The output side of a terminal.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface ITerminalOutputResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
         }

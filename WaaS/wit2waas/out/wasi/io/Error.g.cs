@@ -25,6 +25,7 @@ namespace Wasi.Io
         ///     The set of functions which can "downcast" an `error` into a more
         ///     concrete type is open.
         /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentResource]
         public partial interface IErrorResource : global::WaaS.ComponentModel.Runtime.IResourceType
         {
             /// <summary>

@@ -44,15 +44,15 @@ namespace WaaS.ComponentModel.Binding
 #>
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { <#=
-                string.Join(", ",
-                    Enumerable.Range(1, i).Select(x => $"FormatterProvider.GetFormatter<{GetTypeParam(x)}>().Type")) #> });
+            string.Join(", ",
+                Enumerable.Range(1, i).Select(x => $"FormatterProvider.GetFormatter<{GetTypeParam(x)}>().Type")) #> });
 
         public async ValueTask<Tuple<<#= GetTypeParams(i, true) #>>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new Tuple<<#= GetTypeParams(i, true) #>>(<#=
-                string.Join(", ",
-                    Enumerable.Range(1, i).Select(x => $"await prelude.BodyPullable.PullValueAsync<{GetTypeParam(x)}>()")) #>);
+            string.Join(", ",
+                Enumerable.Range(1, i).Select(x => $"await prelude.BodyPullable.PullValueAsync<{GetTypeParam(x)}>()")) #>);
         }
 
         public void Push(Tuple<<#= GetTypeParams(i, true) #>> value, ValuePusher pusher)
@@ -80,15 +80,15 @@ namespace WaaS.ComponentModel.Binding
 #>
     {
         public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { <#=
-                string.Join(", ",
-                    Enumerable.Range(1, i).Select(x => $"FormatterProvider.GetFormatter<{GetTypeParam(x)}>().Type")) #> });
+            string.Join(", ",
+                Enumerable.Range(1, i).Select(x => $"FormatterProvider.GetFormatter<{GetTypeParam(x)}>().Type")) #> });
 
         public async ValueTask<ValueTuple<<#= GetTypeParams(i, true) #>>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
             return new ValueTuple<<#= GetTypeParams(i, true) #>>(<#=
-                string.Join(", ",
-                    Enumerable.Range(1, i).Select(x => $"await prelude.BodyPullable.PullValueAsync<{GetTypeParam(x)}>()")) #>);
+            string.Join(", ",
+                Enumerable.Range(1, i).Select(x => $"await prelude.BodyPullable.PullValueAsync<{GetTypeParam(x)}>()")) #>);
         }
 
         public void Push(ValueTuple<<#= GetTypeParams(i, true) #>> value, ValuePusher pusher)

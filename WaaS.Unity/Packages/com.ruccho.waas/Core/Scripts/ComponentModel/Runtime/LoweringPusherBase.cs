@@ -121,7 +121,7 @@ namespace WaaS.ComponentModel.Runtime
             PushU32Core(checked((uint)length));
 
             return SerializedLoweringPusher.Get(
-                    Context.Options.MemoryToRealloc.Slice(checked((int)ptr), checked((int)size)))
+                    Context.Options.MemoryToRealloc!.AsMemory().Slice(checked((int)ptr), checked((int)size)))
                 .Init(Context, ElementTypeSelector.FromList(listType, length))
                 .Wrap();
         }
@@ -143,13 +143,13 @@ namespace WaaS.ComponentModel.Runtime
             }
         }
 
-        public void PushOwned<THandle, T>(THandle handle) where THandle : IOwned<T> where T : IResourceType
+        public void PushOwned<T>(Owned<T> handle) where T : class, IResourceType
         {
             if (GetNextType() is not IOwnedType { Type: T }) throw new InvalidOperationException();
             PushU32Core(handle.MoveOut());
         }
 
-        public void PushBorrowed<THandle, T>(THandle handle) where THandle : IBorrowed<T> where T : IResourceType
+        public void PushBorrowed<T>(Borrowed<T> handle) where T : class, IResourceType
         {
             if (GetNextType() is not IBorrowedType { Type: T }) throw new InvalidOperationException();
             PushU32Core(handle.MoveOut());
@@ -266,7 +266,7 @@ namespace WaaS.ComponentModel.Runtime
                 var ptr = context.Realloc(0, 0, checked((uint)(1 << type.AlignmentRank)),
                     type.ElementSize);
                 result = SerializedLoweringPusher.Get(
-                    context.Options.MemoryToRealloc.Slice(checked((int)ptr), type.ElementSize));
+                    context.Options.MemoryToRealloc!.AsMemory().Slice(checked((int)ptr), type.ElementSize));
                 values = new StackValueItems(new StackValueItem(ptr));
             }
 

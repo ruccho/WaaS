@@ -335,13 +335,33 @@ namespace WaaS.ComponentModel.Runtime
             }
         }
 
-        private void PollStringInfo(out uint begin, out byte alignment, out uint byteLength,
-            out Encoding encoding)
+        public readonly struct StringInfo
+        {
+            public readonly uint begin;
+            public readonly byte alignment;
+            public readonly uint byteLength;
+            public readonly Encoding encoding;
+
+            public StringInfo(uint begin, byte alignment, uint byteLength, Encoding encoding)
+            {
+                this.begin = begin;
+                this.alignment = alignment;
+                this.byteLength = byteLength;
+                this.encoding = encoding;
+            }
+        }
+
+        public StringInfo PullStringInfo()
         {
             if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.String })
                 throw new InvalidOperationException();
 
             const uint UTF16_TAG = unchecked((uint)(1 << 31));
+
+            uint begin;
+            byte alignment;
+            uint byteLength;
+            Encoding encoding;
 
             uint taggedCodeUints;
             if (Flattened)
@@ -364,39 +384,38 @@ namespace WaaS.ComponentModel.Runtime
                     : ((byte)2, taggedCodeUints, Encoding.GetEncoding(28591 /* latin-1 */)),
                 _ => throw new ArgumentOutOfRangeException(nameof(Context.Options.StringEncoding))
             };
+
+            return new StringInfo(begin, alignment, byteLength, encoding);
         }
 
-        public int PollStringCharCount()
+        public int PollStringCharCount(in StringInfo info)
         {
-            PollStringInfo(out var begin, out var alignment, out var byteLength, out var encoding);
+            if ((info.begin & (info.alignment - 1)) != 0) throw new InvalidOperationException();
 
-            if ((begin & (alignment - 1)) != 0) throw new InvalidOperationException();
-
-            var bytes = Context.Options.MemoryToRealloc.Span.Slice(checked((int)begin), checked((int)byteLength));
-            return encoding.GetCharCount(bytes);
+            var bytes = Context.Options.MemoryToRealloc.Span.Slice(checked((int)info.begin),
+                checked((int)info.byteLength));
+            return info.encoding.GetCharCount(bytes);
         }
 
-        public int PollStringMaxCharCount()
+        public int GetStringMaxCharCount(in StringInfo info)
         {
-            PollStringInfo(out var begin, out var alignment, out var byteLength, out var encoding);
+            if ((info.begin & (info.alignment - 1)) != 0) throw new InvalidOperationException();
 
-            if ((begin & (alignment - 1)) != 0) throw new InvalidOperationException();
-
-            var bytes = Context.Options.MemoryToRealloc.Span.Slice(checked((int)begin), checked((int)byteLength));
-            return encoding.GetMaxCharCount(bytes.Length);
+            var bytes = Context.Options.MemoryToRealloc.Span.Slice(checked((int)info.begin),
+                checked((int)info.byteLength));
+            return info.encoding.GetMaxCharCount(bytes.Length);
         }
 
-        public string PullString()
+        public string PullString(in StringInfo info)
         {
             try
             {
-                PollStringInfo(out var begin, out var alignment, out var byteLength, out var encoding);
+                if ((info.begin & (info.alignment - 1)) != 0) throw new InvalidOperationException();
 
-                if ((begin & (alignment - 1)) != 0) throw new InvalidOperationException();
+                var bytes = Context.Options.MemoryToRealloc.Span.Slice(checked((int)info.begin),
+                    checked((int)info.byteLength));
 
-                var bytes = Context.Options.MemoryToRealloc.Span.Slice(checked((int)begin), checked((int)byteLength));
-
-                return encoding.GetString(bytes);
+                return info.encoding.GetString(bytes);
             }
             finally
             {
@@ -404,18 +423,16 @@ namespace WaaS.ComponentModel.Runtime
             }
         }
 
-        public int PullString(Span<char> result)
+        public int GetString(in StringInfo info, Span<char> result)
         {
             try
             {
-                PollStringInfo(out var begin, out var alignment, out var byteLength,
-                    out var encoding);
+                if ((info.begin & (info.alignment - 1)) != 0) throw new InvalidOperationException();
 
-                if ((begin & (alignment - 1)) != 0) throw new InvalidOperationException();
+                var bytes = Context.Options.MemoryToRealloc.Span.Slice(checked((int)info.begin),
+                    checked((int)info.byteLength));
 
-                var bytes = Context.Options.MemoryToRealloc.Span.Slice(checked((int)begin), checked((int)byteLength));
-
-                return encoding.GetChars(bytes, result);
+                return info.encoding.GetChars(bytes, result);
             }
             finally
             {
@@ -541,7 +558,7 @@ namespace WaaS.ComponentModel.Runtime
             }
         }
 
-        public Owned<T> PullOwned<THandle, T>() where T : IResourceType
+        public Owned<T> PullOwned<THandle, T>() where T : class, IResourceType
         {
             if (GetNextType().Despecialize() is not IOwnedType { Type: T resourceType })
                 throw new InvalidOperationException();
@@ -575,7 +592,7 @@ namespace WaaS.ComponentModel.Runtime
             }
         }
 
-        public Borrowed<T> PullBorrowed<T>() where T : IResourceType
+        public Borrowed<T> PullBorrowed<T>() where T : class, IResourceType
         {
             if (GetNextType().Despecialize() is not IBorrowedType { Type: T resourceType })
                 throw new InvalidOperationException();

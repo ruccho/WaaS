@@ -9,13 +9,15 @@ namespace WaaS.ComponentModel.Runtime
     {
         private static void TransferString(ValueLifter lifter, ValuePusher pusher)
         {
-            var maxLength = lifter.PollStringMaxCharCount();
+            var info = lifter.PullStringInfo();
+
+            var maxLength = lifter.GetStringMaxCharCount(info);
             if (maxLength > 1024)
             {
                 var array = ArrayPool<char>.Shared.Rent(maxLength);
                 try
                 {
-                    TransferStringCore(lifter, pusher, array);
+                    TransferStringCore(info, lifter, pusher, array);
                 }
                 finally
                 {
@@ -24,12 +26,13 @@ namespace WaaS.ComponentModel.Runtime
             }
             else
             {
-                TransferStringCore(lifter, pusher, stackalloc char[maxLength]);
+                TransferStringCore(info, lifter, pusher, stackalloc char[maxLength]);
             }
 
-            static void TransferStringCore(ValueLifter lifter, ValuePusher pusher, Span<char> buffer)
+            static void TransferStringCore(in ValueLifter.StringInfo info, ValueLifter lifter, ValuePusher pusher,
+                Span<char> buffer)
             {
-                var length = lifter.PullString(buffer);
+                var length = lifter.GetString(info, buffer);
                 buffer = buffer.Slice(0, length);
                 pusher.Push(buffer);
             }
@@ -91,12 +94,12 @@ namespace WaaS.ComponentModel.Runtime
                 }
                 case IBorrowedType borrowedType:
                 {
-                    pusher.PushBorrowed<Borrowed<IResourceType>, IResourceType>(lifter.PullBorrowed());
+                    pusher.PushBorrowed(lifter.PullBorrowed());
                     break;
                 }
                 case IOwnedType ownedType:
                 {
-                    pusher.PushOwned<Owned<IResourceType>, IResourceType>(lifter.PullOwned());
+                    pusher.PushOwned(lifter.PullOwned());
                     break;
                 }
                 case IFlagsType flagsType:

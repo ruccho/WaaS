@@ -59,7 +59,7 @@ impl ToWaas for Type {
             Type::Char => "global:WaaS.ComponentModel.Binding.ComponentChar".into(),
             Type::String => "string".into(),
             Type::Id(id) => {
-                let ty = resolve.types.get(id.clone()).unwrap();
+                let ty = resolve.types.get(*id).unwrap();
                 ty.to_waas(resolve)?
             }
         })
@@ -71,11 +71,11 @@ impl ToWaas for TypeDef {
         fn to_waas_from_name(ty: &TypeDef, resolve: &Resolve, prefix: &str) -> anyhow::Result<String> {
             match &ty.owner {
                 TypeOwner::World(id) => {
-                    let world = resolve.worlds.get(id.clone()).unwrap();
+                    let world = resolve.worlds.get(*id).unwrap();
                     Ok(format!("{}.{}{}", world.to_waas(resolve)?, prefix, to_upper_camel(&ty.name.clone().unwrap())))
                 }
                 TypeOwner::Interface(id) => {
-                    let interface = resolve.interfaces.get(id.clone()).unwrap();
+                    let interface = resolve.interfaces.get(*id).unwrap();
                     Ok(format!("{}.{}{}", interface.to_waas(resolve)?, prefix, to_upper_camel(&ty.name.clone().unwrap())))
                 }
                 TypeOwner::None => Err(anyhow::anyhow!("type owner not set"))?,
@@ -87,8 +87,8 @@ impl ToWaas for TypeDef {
             TypeDefKind::Resource => Ok(format!("{}Resource", to_waas_from_name(self, resolve, "I")?)),
             TypeDefKind::Handle(element) => {
                 match element {
-                    Handle::Own(element) => Ok(format!("global::WaaS.ComponentModel.Runtime.Owned<{}>", resolve.types.get(element.clone()).unwrap().to_waas(resolve)?)),
-                    Handle::Borrow(element) => Ok(format!("global::WaaS.ComponentModel.Runtime.Borrowed<{}>", resolve.types.get(element.clone()).unwrap().to_waas(resolve)?)),
+                    Handle::Own(element) => Ok(format!("global::WaaS.ComponentModel.Runtime.Owned<{}>", resolve.types.get(*element).unwrap().to_waas(resolve)?)),
+                    Handle::Borrow(element) => Ok(format!("global::WaaS.ComponentModel.Runtime.Borrowed<{}>", resolve.types.get(*element).unwrap().to_waas(resolve)?)),
                 }
             }
             TypeDefKind::Flags(_) => to_waas_from_name(self, resolve, ""),
@@ -98,7 +98,7 @@ impl ToWaas for TypeDef {
                     return to_waas_from_name(self, resolve, "");
                 }
 
-                Ok(to_raw_tuple(&element, resolve))
+                Ok(to_raw_tuple(element, resolve))
             }
             TypeDefKind::Variant(_) => to_waas_from_name(self, resolve, ""),
             TypeDefKind::Enum(_) => to_waas_from_name(self, resolve, ""),
@@ -155,7 +155,7 @@ impl IsValueType for Type {
         Ok(match self {
             Type::String => false,
             Type::Id(id) => {
-                let ty = resolve.types.get(id.clone()).unwrap();
+                let ty = resolve.types.get(*id).unwrap();
                 match &ty.kind {
                     TypeDefKind::Resource => false,
                     TypeDefKind::Option(element) => !element.is_value_type(resolve)?,
@@ -186,7 +186,7 @@ impl TypeExt for Type {
     fn is_alias_compatible(&self, from: &TypeDef, resolve: &Resolve) -> anyhow::Result<bool> {
         Ok(match self {
             Type::Id(element) => {
-                let ty = resolve.types.get(element.clone()).unwrap();
+                let ty = resolve.types.get(*element).unwrap();
 
 
                 if from.name == ty.name {
@@ -216,6 +216,6 @@ pub fn to_raw_tuple(tuple: &Tuple, resolve: &Resolve) -> String {
         }
         result.push_str(&ty.to_waas(resolve).unwrap());
     }
-    result.push_str(")");
+    result.push(')');
     result
 }
