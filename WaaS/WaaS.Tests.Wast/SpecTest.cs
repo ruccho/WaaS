@@ -9,7 +9,7 @@ public static class SpecTest
     public static Imports CreateImports()
     {
         var imports = new Imports();
-        var binder = new CoreBinder();
+        var binder = CoreBinder.Instance;
 
         imports["spectest"] = new ModuleExports
         {
