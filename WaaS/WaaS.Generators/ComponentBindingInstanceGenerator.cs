@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -64,15 +63,45 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
             namedSymbol.ToDisplayString(
                 SymbolDisplayFormat.FullyQualifiedFormat.WithGenericsOptions(SymbolDisplayGenericsOptions.None));
 
-        var members = namedSymbol.GetMembers()
-            .Where(member =>
-                member.DeclaredAccessibility == Accessibility.Public &&
-                member.IsAbstract &&
-                !member.IsStatic &&
-                member.GetAttributes().Any(attr => attr.AttributeClass.Matches("WaaS.ComponentModel.Binding.ComponentApiAttribute")) &&
-                member is IMethodSymbol or IPropertySymbol &&
-                member is not (IMethodSymbol and ({ IsGenericMethod: true } or
-                    { MethodKind: MethodKind.PropertyGet or MethodKind.PropertySet })));
+        static IEnumerable<ComponentApi> ExtractApis(INamedTypeSymbol symbol, bool includeBases = false)
+        {
+            var members = symbol.GetMembers().Where(member =>
+                    member is { DeclaredAccessibility: Accessibility.Public, IsAbstract: true, IsStatic: false } &&
+                    member.GetAttributes().Any(attr =>
+                        attr.AttributeClass.Matches("WaaS.ComponentModel.Binding.ComponentApiAttribute")) &&
+                    member is IMethodSymbol or IPropertySymbol &&
+                    member is not (IMethodSymbol and ({ IsGenericMethod: true } or
+                        { MethodKind: MethodKind.PropertyGet or MethodKind.PropertySet })))
+                .Select(member => new ComponentApi(member));
+            if (includeBases)
+            {
+                members = members.Concat(symbol.AllInterfaces.SelectMany(@interface => ExtractApis(@interface, false)));
+            }
+
+            return members;
+        }
+
+        static IEnumerable<IPropertySymbol> ExtractResourceProperties(INamedTypeSymbol symbol,
+            bool includeBases = false)
+        {
+            return symbol.GetMembers().OfType<IPropertySymbol>().Where(prop =>
+                prop.DeclaredAccessibility == Accessibility.Public &&
+                prop is
+                {
+                    DeclaredAccessibility: Accessibility.Public, IsAbstract: true, IsStatic: false, GetMethod: not null
+                } &&
+                prop.Type is INamedTypeSymbol propertyType && propertyType.AllInterfaces.Any(@interface =>
+                    @interface.Matches("WaaS.ComponentModel.Runtime.IResourceType")) &&
+                prop.GetAttributes().Any(attr =>
+                    attr.AttributeClass.Matches("WaaS.ComponentModel.Binding.ComponentResourceAttribute")));
+        }
+
+        var directMembers = ExtractApis(namedSymbol).ToArray();
+
+        var resourceProperties = ExtractResourceProperties(namedSymbol);
+
+        var allMembers =
+            directMembers.Concat(resourceProperties.Select(p => (p.Type as INamedTypeSymbol)!).SelectMany(t => ExtractApis(t)));
 
         // TODO: generics
         sourceBuilder.AppendLine(
@@ -80,7 +109,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                     partial interface {{namedSymbol.Name}}
                     {
                         public static global::WaaS.ComponentModel.Runtime.IInstance CreateWaaSInstance({{name}} target) => new Instance(target);
-
+                
                         private class Instance : global::WaaS.ComponentModel.Runtime.IInstance
                         {
                             private readonly {{name}} __waas__target;
@@ -103,11 +132,18 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                 """);
 
 
-        foreach (var member in members)
+        foreach (var member in directMembers)
             sourceBuilder.AppendLine(
                 /* lang=c#  */
                 $$"""
-                                      @"{{Utils.ToComponentApiName(member)}}" => __{{member.Name}} ??= new {{member.Name}}(__waas__target),
+                                      @"{{Utils.ToComponentApiName(member.memberSymbol)}}" => __{{member.ExternalFunctionName}} ??= new {{member.ExternalFunctionName}}(__waas__target),
+                  """);
+        foreach (var prop in resourceProperties)
+        foreach (var member in ExtractApis((prop.Type as INamedTypeSymbol)!))
+            sourceBuilder.AppendLine(
+                /* lang=c#  */
+                $$"""
+                                      @"{{Utils.ToComponentApiName(member.memberSymbol)}}" => __{{member.ExternalFunctionName}} ??= new {{member.ExternalFunctionName}}(__waas__target.{{prop.Name}}),
                   """);
 
         sourceBuilder.AppendLine(
@@ -120,37 +156,20 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                           }
               """);
 
-        foreach (var member in members)
+        foreach (var member in allMembers)
         {
-            ITypeSymbol? returnType;
-            IEnumerable<IParameterSymbol> parameterTypes;
-            {
-                if (member is IMethodSymbol method)
-                {
-                    returnType = method.ReturnsVoid ? null : method.ReturnType;
-                    parameterTypes = method.Parameters;
-                }
-                else if (member is IPropertySymbol property)
-                {
-                    returnType = property.Type;
-                    parameterTypes = Array.Empty<IParameterSymbol>();
-                }
-                else
-                {
-                    returnType = null;
-                    parameterTypes = Array.Empty<IParameterSymbol>();
-                }
-            }
+            var declaringType = member.memberSymbol.ContainingType;
+            var declaringTypeName = declaringType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
             sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
-                            private global::WaaS.ComponentModel.Runtime.IFunction? __{{member.Name}};
+                            private global::WaaS.ComponentModel.Runtime.IFunction? __{{member.ExternalFunctionName}};
                 
-                            class {{member.Name}} : global::WaaS.ComponentModel.Binding.ExternalFunction
+                            class {{member.ExternalFunctionName}} : global::WaaS.ComponentModel.Binding.ExternalFunction
                             {
-                                private readonly {{name}} __waas__target;
+                                private readonly {{declaringTypeName}} __waas__target;
                             
-                                public {{member.Name}}({{name}} target)
+                                public {{member.ExternalFunctionName}}({{declaringTypeName}} target)
                                 {
                                     this.__waas__target = target;
                                 }
@@ -159,7 +178,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                                     new global::WaaS.ComponentModel.Models.ResolvedFunctionType(
                 """);
 
-            if (!parameterTypes.Any())
+            if (!member.parameters.Any())
             {
                 sourceBuilder.AppendLine(
 /* lang=c#  */
@@ -172,7 +191,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                                       new global::WaaS.ComponentModel.Runtime.IParameter[]
                                       {
               """);
-                foreach (var parameterType in parameterTypes)
+                foreach (var parameterType in member.parameters)
                     sourceBuilder.AppendLine(
                         /* lang=c#  */
                         $$"""
@@ -180,25 +199,25 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                           """);
 
                 sourceBuilder.AppendLine(
-/* lang=c#  */"""                        },""");
+/* lang=c#    */"""                        },""");
             }
 
             sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
-                                        {{(returnType != null ? $"global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{returnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>().Type" : "null")}});
+                                        {{(member.returnType != null ? $"global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{member.returnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>().Type" : "null")}});
                 """);
 
             sourceBuilder.AppendLine(
-/* lang=c#  */"""
-                          
-                              protected override async global::System.Threading.Tasks.ValueTask PullArgumentsAsync(
-                                  global::WaaS.Runtime.ExecutionContext context,
-                                  global::WaaS.ComponentModel.Binding.PushPullAdapter adapter,
-                                  global::System.Threading.Tasks.ValueTask frameMove,
-                                  global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Runtime.ValuePusher> resultPusherTask)
-                              {
-              """);
-            foreach (var parameterSymbol in parameterTypes)
+/* lang=c#    */"""
+                            
+                                protected override async global::System.Threading.Tasks.ValueTask PullArgumentsAsync(
+                                    global::WaaS.Runtime.ExecutionContext context,
+                                    global::WaaS.ComponentModel.Binding.PushPullAdapter adapter,
+                                    global::System.Threading.Tasks.ValueTask frameMove,
+                                    global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Runtime.ValuePusher> resultPusherTask)
+                                {
+                """);
+            foreach (var parameterSymbol in member.parameters)
                 sourceBuilder.AppendLine(
                     /* lang=c#  */
                     $$"""
@@ -211,42 +230,141 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
             sourceBuilder.Append(
 /* lang=c#  */"""                    """);
 
-            if (returnType != null) sourceBuilder.Append("var __waas__result =");
+            if (member.returnType != null) sourceBuilder.Append("var __waas__result = ");
+
+            if (member.isAwaitable) sourceBuilder.Append("await ");
 
             sourceBuilder.AppendLine(
-                member switch
+                member.memberSymbol switch
                 {
                     IMethodSymbol method =>
-                        $"__waas__target.{method.Name}({string.Join(", ", parameterTypes.Select(param => $"@{param.Name}"))});",
+                        $"__waas__target.{method.Name}({string.Join(", ", member.parameters.Select(param => $"@{param.Name}"))});",
                     IPropertySymbol property => $"__waas__target.{property.Name};"
                 });
 
-            if (returnType != null)
+            if (member.returnType != null)
                 sourceBuilder.AppendLine(
                     /* lang=c#  */
                     $$"""
                                           var __waas__resultPusher = await resultPusherTask;
-                                          global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{returnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push(__waas__result, __waas__resultPusher);
+                                          global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{member.returnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push(__waas__result, __waas__resultPusher);
                       """);
             sourceBuilder.AppendLine(
-/* lang=c#  */"""
-                              }
-                          }
-              """);
+/* lang=c#    */"""
+                                }
+                            }
+                """);
         }
 
         sourceBuilder.AppendLine(
-/* lang=c#  */"""
-                      }
-                  }
-              """);
+/* lang=c#    */"""
+                        }
+                """);
+
+        // wrapper
+
+        static void AppendWrapperBody(StringBuilder sourceBuilder, IEnumerable<ComponentApi> apis, string wrapperName)
+        {
+            sourceBuilder.AppendLine(
+/* lang=c#  */$$"""
+                            private readonly global::WaaS.ComponentModel.Runtime.IInstance instance;
+                            private readonly global::WaaS.Runtime.ExecutionContext context;
+                
+                            public {{wrapperName}}(global::WaaS.ComponentModel.Runtime.IInstance instance,
+                                global::WaaS.Runtime.ExecutionContext context)
+                            {
+                                this.instance = instance;
+                                this.context = context;
+                            }
+                """);
+
+            foreach (var member in apis)
+            {
+                sourceBuilder.AppendLine(
+/* lang=c#  */$$"""
+                            public {{(member.isAwaitable ? "async " : "")}}{{member.unawaitedReturnType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "void"}} {{member.memberSymbol.Name}}({{string.Join(", ", member.parameters.Select(param => $"{param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} @{param.Name}"))}})
+                            {
+                                if (!instance.TryGetExport(@"{{Utils.ToComponentApiName(member.memberSymbol)}}", out global::WaaS.ComponentModel.Runtime.IFunction? function))
+                                {
+                                    throw new global::System.InvalidOperationException(@"A function ""{{Utils.ToComponentApiName(member.memberSymbol)}}"" is not found.");
+                                }
+                
+                                using var binder = function.GetBinder(context);
+                                using var pusher = binder.ArgumentPusher;
+                """);
+
+                foreach (var param in member.parameters)
+                    sourceBuilder.AppendLine(
+                        /* lang=c#  */
+                        $$"""
+                                          global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push(@{{param.Name}}, pusher);
+                          """);
+                sourceBuilder.Append(
+/* lang=c#  */"""                """);
+
+                if (member.isAwaitable)
+                    sourceBuilder.AppendLine("await binder.InvokeAsync(context);");
+                else
+                    sourceBuilder.AppendLine("await binder.Invoke;");
+
+                if (member.returnType != null)
+                    sourceBuilder.AppendLine(
+                        /* lang=c#  */
+                        $$"""
+                                          return binder.TakeResult<{{member.returnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>();
+                          """);
+                sourceBuilder.AppendLine(
+/* lang=c#  */"""            }""");
+            }
+        }
+
+        sourceBuilder.AppendLine(
+/* lang=c#  */$$"""
+                        public readonly struct Wrapper : {{namedSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}
+                        {
+                """);
+
+
+        var directImplMembers = ExtractApis(namedSymbol, true).ToArray();
+        AppendWrapperBody(sourceBuilder, directImplMembers, "Wrapper");
+        
+        var resourcePropertiesImpl = ExtractResourceProperties(namedSymbol, true);
+
+        foreach (var prop in resourcePropertiesImpl)
+        {
+            sourceBuilder.AppendLine(
+                $"            {prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} {namedSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}.{prop.Name} => this.{prop.Name};");
+            sourceBuilder.AppendLine(
+                $"            public {prop.Name}Wrapper {prop.Name} => new(instance, context);");
+            sourceBuilder.AppendLine(
+/* lang=c#  */$$"""
+                        public readonly struct {{prop.Name}}Wrapper : {{prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}
+                        {
+                """);
+            AppendWrapperBody(sourceBuilder, ExtractApis((prop.Type as INamedTypeSymbol)!), $"{prop.Name}Wrapper");
+            sourceBuilder.AppendLine(
+/* lang=c#    */"""
+                             global::WaaS.ComponentModel.Runtime.IFunction global::WaaS.ComponentModel.Runtime.IResourceType.Destructor => throw new global::System.InvalidOperationException("generated wrapper has no destructor");
+                        }
+                """);
+        }
+
+        sourceBuilder.AppendLine(
+/* lang=c#    */"""
+                        }
+                """);
+
+        sourceBuilder.AppendLine(
+/* lang=c#    */"""
+                    }
+                """);
 
 
         if (!namedSymbol.ContainingNamespace.IsGlobalNamespace)
             sourceBuilder.AppendLine(
                 /* lang=c#  */
                 $$"""
-                      } // namespace {{namedSymbol.ContainingNamespace}}
+                  } // namespace {{namedSymbol.ContainingNamespace}}
                   """);
 
 

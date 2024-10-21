@@ -33,7 +33,7 @@ namespace WaaS.ComponentModel.Binding
     {
 #>
 
-    public class TupleFormatter<<#= GetTypeParams(i) #>> : IFormatter<Tuple<<#= GetTypeParams(i, true) #>>>
+    public class TupleFormatter<<#= GetTypeParams(i) #>> : IFormatter<Tuple<<#= GetTypeParams(i) #>>>
 <#
         if (i == 8)
         {
@@ -47,15 +47,15 @@ namespace WaaS.ComponentModel.Binding
             string.Join(", ",
                 Enumerable.Range(1, i).Select(x => $"FormatterProvider.GetFormatter<{GetTypeParam(x)}>().Type")) #> });
 
-        public async ValueTask<Tuple<<#= GetTypeParams(i, true) #>>> PullAsync(Pullable pullable)
+        public async ValueTask<Tuple<<#= GetTypeParams(i) #>>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
-            return new Tuple<<#= GetTypeParams(i, true) #>>(<#=
+            return new Tuple<<#= GetTypeParams(i) #>>(<#=
             string.Join(", ",
                 Enumerable.Range(1, i).Select(x => $"await prelude.BodyPullable.PullValueAsync<{GetTypeParam(x)}>()")) #>);
         }
 
-        public void Push(Tuple<<#= GetTypeParams(i, true) #>> value, ValuePusher pusher)
+        public void Push(Tuple<<#= GetTypeParams(i) #>> value, ValuePusher pusher)
         {
             using var tuplePusher = pusher.PushRecord();
 <#
@@ -69,7 +69,7 @@ namespace WaaS.ComponentModel.Binding
         }
     }
 
-    public class ValueTupleFormatter<<#= GetTypeParams(i) #>> : IFormatter<ValueTuple<<#= GetTypeParams(i, true) #>>>
+    public class ValueTupleFormatter<<#= GetTypeParams(i) #>> : IFormatter<ValueTuple<<#= GetTypeParams(i) #>>>
 <#
         if (i == 8)
         {
@@ -83,15 +83,15 @@ namespace WaaS.ComponentModel.Binding
             string.Join(", ",
                 Enumerable.Range(1, i).Select(x => $"FormatterProvider.GetFormatter<{GetTypeParam(x)}>().Type")) #> });
 
-        public async ValueTask<ValueTuple<<#= GetTypeParams(i, true) #>>> PullAsync(Pullable pullable)
+        public async ValueTask<ValueTuple<<#= GetTypeParams(i) #>>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
-            return new ValueTuple<<#= GetTypeParams(i, true) #>>(<#=
+            return new ValueTuple<<#= GetTypeParams(i) #>>(<#=
             string.Join(", ",
                 Enumerable.Range(1, i).Select(x => $"await prelude.BodyPullable.PullValueAsync<{GetTypeParam(x)}>()")) #>);
         }
 
-        public void Push(ValueTuple<<#= GetTypeParams(i, true) #>> value, ValuePusher pusher)
+        public void Push(ValueTuple<<#= GetTypeParams(i) #>> value, ValuePusher pusher)
         {
             using var tuplePusher = pusher.PushRecord();
 <#

@@ -354,6 +354,9 @@ namespace WaaS.Models
     public partial class CallIndirect : Instruction
     {
         [Operand(0)] public uint FunctionTypeIndex { get; }
+        
+        // NOTE: Rust 1.82 and later don't emit 1-byte fixed 0x00 defined in wasm 1.0 but LEB128 32-bit number.  
+        // https://blog.rust-lang.org/2024/09/24/webassembly-targets-change-in-default-target-features.html
         [Operand(1)] public uint TableIndex { get; }
 
         public override void Execute(WasmStackFrame current)

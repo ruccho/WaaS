@@ -43,7 +43,7 @@ impl Source {
         }
     }
 
-    pub fn push_alias(&mut self, target: &str, name: &str, resolve: &Resolve) -> Result<()> {
+    pub fn push_alias(&mut self, target: &str, name: &str, _resolve: &Resolve) -> Result<()> {
 
         self.push_line(&format!("[global::WaaS.ComponentModel.Binding.ComponentAlias(typeof({}))]", target));
         self.push_line(&format!("public readonly partial struct {}", to_upper_camel(name)));

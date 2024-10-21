@@ -38,13 +38,13 @@ public static class Utils
     public static string ToCamelCase(ReadOnlySpan<char> source)
     {
         if (source.Length == 0) return source.ToString();
-        
+
         Span<char> span = stackalloc char[source.Length];
         source.CopyTo(span);
         span[0] = span[0] is >= 'A' and <= 'Z' ? (char)(span[0] + ('a' - 'A')) : span[0];
         return span.ToString();
     }
-    
+
     public static string ToComponentApiName(ISymbol member)
     {
         {
@@ -83,5 +83,49 @@ public static class Utils
 
             return apiName.ToString();
         }
+    }
+
+    public static bool IsAwaitable(this ITypeSymbol symbol, out ITypeSymbol? resultType)
+    {
+        var getAwaiters = symbol.GetMembers().OfType<IMethodSymbol>().Where(x =>
+            x.Name == WellKnownMemberNames.GetAwaiter && x.DeclaredAccessibility == Accessibility.Public &&
+            !x.Parameters.Any());
+        foreach (var methodSymbol in getAwaiters)
+        {
+            if (!VerifyGetAwaiter(methodSymbol, out resultType)) continue;
+            return true;
+        }
+
+        resultType = null;
+        return false;
+    }
+
+    private static bool VerifyGetAwaiter(IMethodSymbol getAwaiter, out ITypeSymbol? resultType)
+    {
+        resultType = default;
+
+        var returnType = getAwaiter.ReturnType;
+        if (returnType == null) return false;
+
+        if (!returnType.GetMembers().OfType<IPropertySymbol>().Any(p =>
+                p.Name == WellKnownMemberNames.IsCompleted && p.Type.SpecialType == SpecialType.System_Boolean &&
+                p.GetMethod != null))
+            return false;
+
+        var methods = returnType.GetMembers().OfType<IMethodSymbol>();
+
+        if (!methods.Any(x =>
+                x.Name == WellKnownMemberNames.OnCompleted && x.ReturnsVoid &&
+                x.Parameters.Length == 1 && x.Parameters.First().Type.TypeKind == TypeKind.Delegate))
+            return false;
+
+        foreach (var m in methods)
+            if (m.Name == WellKnownMemberNames.GetResult && !m.Parameters.Any())
+            {
+                if (!m.ReturnsVoid) resultType = m.ReturnType;
+                return true;
+            }
+
+        return false;
     }
 }

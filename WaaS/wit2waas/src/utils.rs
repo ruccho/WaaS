@@ -37,7 +37,7 @@ pub trait ToWaas {
 }
 
 impl ToWaas for Package {
-    fn to_waas(&self, resolve: &Resolve) -> anyhow::Result<String> {
+    fn to_waas(&self, _resolve: &Resolve) -> anyhow::Result<String> {
         Ok(format!("{}.{}", to_upper_camel(&self.name.namespace), to_upper_camel(&self.name.name)))
     }
 }
@@ -93,7 +93,7 @@ impl ToWaas for TypeDef {
             }
             TypeDefKind::Flags(_) => to_waas_from_name(self, resolve, ""),
             TypeDefKind::Tuple(element) => {
-                if let Some(name) = &self.name {
+                if let Some(_name) = &self.name {
                     // named tuple
                     return to_waas_from_name(self, resolve, "");
                 }

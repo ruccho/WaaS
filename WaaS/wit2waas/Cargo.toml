@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.89"
+clap = { version = "4.5.20", features = ["derive"] }
 wit-parser = "0.219.1"
