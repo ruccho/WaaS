@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using STask;
 using WaaS.ComponentModel.Binding;
 using WaaS.Runtime;
 
@@ -66,7 +67,7 @@ namespace WaaS.ComponentModel.Runtime
             core.TakeResults(resultValuePusher);
         }
 
-        internal TResult TakeResult<TResult>(Func<Pullable, ValueTask<TResult>> resultPuller)
+        internal TResult TakeResult<TResult>(Func<Pullable, STask<TResult>> resultPuller)
         {
             PushPullAdapter.Get(out var pullable, out var resultPusher);
             using (pullable)
@@ -74,13 +75,13 @@ namespace WaaS.ComponentModel.Runtime
             {
                 var task = resultPuller(pullable);
                 TakeResults(resultPusher);
-                return task.Result;
+                return task.source.GetResult();
             }
         }
 
         public TResult TakeResult<TResult>()
         {
-            static ValueTask<TResult> PullAsync(Pullable pullable)
+            static STask<TResult> PullAsync(Pullable pullable)
             {
                 return pullable.PullValueAsync<TResult>();
             }

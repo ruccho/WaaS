@@ -210,11 +210,11 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
             sourceBuilder.AppendLine(
 /* lang=c#    */"""
                             
-                                protected override async global::System.Threading.Tasks.ValueTask PullArgumentsAsync(
+                                protected override async global::STask.STaskVoid PullArgumentsAsync(
                                     global::WaaS.Runtime.ExecutionContext context,
                                     global::WaaS.ComponentModel.Binding.PushPullAdapter adapter,
-                                    global::System.Threading.Tasks.ValueTask frameMove,
-                                    global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Runtime.ValuePusher> resultPusherTask)
+                                    global::STask.STaskVoid frameMove,
+                                    global::STask.STask<global::WaaS.ComponentModel.Runtime.ValuePusher> resultPusherTask)
                                 {
                 """);
             foreach (var parameterSymbol in member.parameters)
@@ -234,13 +234,14 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
 
             if (member.isAwaitable) sourceBuilder.Append("await ");
 
-            sourceBuilder.AppendLine(
+            sourceBuilder.Append(
                 member.memberSymbol switch
                 {
                     IMethodSymbol method =>
-                        $"__waas__target.{method.Name}({string.Join(", ", member.parameters.Select(param => $"@{param.Name}"))});",
-                    IPropertySymbol property => $"__waas__target.{property.Name};"
+                        $"__waas__target.{method.Name}({string.Join(", ", member.parameters.Select(param => $"@{param.Name}"))})",
+                    IPropertySymbol property => $"__waas__target.{property.Name}"
                 });
+            sourceBuilder.AppendLine(";");
 
             if (member.returnType != null)
                 sourceBuilder.AppendLine(
@@ -305,7 +306,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                 if (member.isAwaitable)
                     sourceBuilder.AppendLine("await binder.InvokeAsync(context);");
                 else
-                    sourceBuilder.AppendLine("await binder.Invoke;");
+                    sourceBuilder.AppendLine("binder.Invoke(context);");
 
                 if (member.returnType != null)
                     sourceBuilder.AppendLine(

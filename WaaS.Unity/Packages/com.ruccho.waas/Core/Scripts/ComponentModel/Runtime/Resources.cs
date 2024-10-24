@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Threading.Tasks;
+using STask;
 using WaaS.ComponentModel.Binding;
 
 namespace WaaS.ComponentModel.Runtime
@@ -87,7 +87,7 @@ namespace WaaS.ComponentModel.Runtime
         {
             public IValueType Type { get; }
 
-            public async ValueTask<Owned<T>> PullAsync(Pullable adapter)
+            public async STask<Owned<T>> PullAsync(Pullable adapter)
             {
                 var borrowed = await adapter.PullPrimitiveValueAsync<Owned<IResourceType>>();
                 if (borrowed.Type is not T) throw new InvalidOperationException("Invalid type");
@@ -181,7 +181,7 @@ namespace WaaS.ComponentModel.Runtime
         {
             public IValueType Type { get; }
 
-            public async ValueTask<Borrowed<T>> PullAsync(Pullable adapter)
+            public async STask<Borrowed<T>> PullAsync(Pullable adapter)
             {
                 var borrowed = await adapter.PullPrimitiveValueAsync<Borrowed<IResourceType>>();
                 if (borrowed.Type is not T) throw new InvalidOperationException("Invalid type");

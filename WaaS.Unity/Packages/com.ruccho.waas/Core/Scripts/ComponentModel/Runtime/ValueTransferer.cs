@@ -2,12 +2,13 @@
 
 using System;
 using System.Buffers;
+using System.Runtime.InteropServices;
 
 namespace WaaS.ComponentModel.Runtime
 {
     public static class ValueTransfer
     {
-        private static void TransferString(ValueLifter lifter, ValuePusher pusher)
+        private static void TransferString(ref ValueLifter lifter, ValuePusher pusher)
         {
             var info = lifter.PullStringInfo();
 
@@ -17,7 +18,7 @@ namespace WaaS.ComponentModel.Runtime
                 var array = ArrayPool<char>.Shared.Rent(maxLength);
                 try
                 {
-                    TransferStringCore(info, lifter, pusher, array);
+                    TransferStringCore(info, ref lifter, pusher, array);
                 }
                 finally
                 {
@@ -26,19 +27,21 @@ namespace WaaS.ComponentModel.Runtime
             }
             else
             {
-                TransferStringCore(info, lifter, pusher, stackalloc char[maxLength]);
+                Span<char> buffer = stackalloc char[maxLength];
+                // suppress escape analysis
+                var buffer1 = MemoryMarshal.CreateSpan(ref buffer[0], buffer.Length);
+                TransferStringCore(info, ref lifter, pusher, buffer1);
             }
 
-            static void TransferStringCore(in ValueLifter.StringInfo info, ValueLifter lifter, ValuePusher pusher,
+            static void TransferStringCore(in ValueLifter.StringInfo info, ref ValueLifter lifter, ValuePusher pusher,
                 Span<char> buffer)
             {
                 var length = lifter.GetString(info, buffer);
-                buffer = buffer.Slice(0, length);
-                pusher.Push(buffer);
+                pusher.Push(buffer.Slice(0, length));
             }
         }
 
-        public static void TransferNext(ValueLifter lifter, ValuePusher pusher)
+        public static void TransferNext(ref ValueLifter lifter, ValuePusher pusher)
         {
             var next = lifter.GetNextType().Despecialize();
             switch (next)
@@ -48,7 +51,7 @@ namespace WaaS.ComponentModel.Runtime
                     switch (primitiveValueType.Kind)
                     {
                         case PrimitiveValueTypeKind.String:
-                            TransferString(lifter, pusher);
+                            TransferString(ref lifter, pusher);
                             break;
                         case PrimitiveValueTypeKind.Char:
                             pusher.PushChar32(lifter.PullChar());
@@ -111,7 +114,7 @@ namespace WaaS.ComponentModel.Runtime
                 {
                     var listLifter = lifter.PullList(out var length);
                     var listPusher = pusher.PushList(checked((int)length));
-                    for (var i = 0; i < length; i++) TransferNext(listLifter, listPusher);
+                    for (var i = 0; i < length; i++) TransferNext(ref listLifter, listPusher);
 
                     break;
                 }
@@ -120,7 +123,7 @@ namespace WaaS.ComponentModel.Runtime
                     var recordLifter = lifter.PullRecord();
                     var recordPusher = pusher.PushRecord();
                     for (var i = 0; i < recordType.Fields.Length; i++)
-                        TransferNext(recordLifter, recordPusher);
+                        TransferNext(ref recordLifter, recordPusher);
 
                     break;
                 }
@@ -128,7 +131,7 @@ namespace WaaS.ComponentModel.Runtime
                 {
                     var recordLifter = lifter.PullVariant(out var caseIndex);
                     var recordPusher = pusher.PushVariant(checked((int)caseIndex));
-                    TransferNext(recordLifter, recordPusher);
+                    TransferNext(ref recordLifter, recordPusher);
                     break;
                 }
                 default:

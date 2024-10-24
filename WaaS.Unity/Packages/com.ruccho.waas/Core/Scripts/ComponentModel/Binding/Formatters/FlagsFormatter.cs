@@ -2,7 +2,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
+using STask;
 using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
@@ -12,7 +12,7 @@ namespace WaaS.ComponentModel.Binding
         private static readonly IValueType type = new FlagsType();
         public IValueType Type => type;
 
-        public async ValueTask<TEnum> PullAsync(Pullable adapter)
+        public async STask<TEnum> PullAsync(Pullable adapter)
         {
             var value = await adapter.PullPrimitiveValueAsync<uint>();
             return Convert(value);

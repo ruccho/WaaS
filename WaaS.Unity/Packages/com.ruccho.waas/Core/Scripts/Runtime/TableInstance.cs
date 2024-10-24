@@ -5,7 +5,7 @@ namespace WaaS.Runtime
 {
     public class TableInstance
     {
-        public TableInstance(GlobalInstance globals,
+        public TableInstance(GlobalInstance globals, FunctionInstance functions,
             ImportSection importSection, TableSection tableSection, ElementSection elementSection,
             IImports importObject)
         {
@@ -63,6 +63,14 @@ namespace WaaS.Runtime
 
                 if (funcTable.Limits.Min < offset + elementInitializer.FunctionIndices.Length)
                     throw new InvalidModuleException();
+
+                var subrange = funcTable.Elements.Slice(checked((int)offset));
+
+                for (var i = 0; i < elementInitializer.FunctionIndices.Span.Length; i++)
+                {
+                    var index = elementInitializer.FunctionIndices.Span[i];
+                    subrange[i] = functions.Functions.Span[checked((int)index)];
+                }
             }
 
             Tables = tables;

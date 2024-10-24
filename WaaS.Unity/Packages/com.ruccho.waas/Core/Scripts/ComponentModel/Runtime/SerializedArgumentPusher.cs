@@ -21,7 +21,7 @@ namespace WaaS.ComponentModel.Runtime
 
         protected override void Dispose(bool reuse)
         {
-            if(reuse) Pool.Push(this);
+            if (reuse) Pool.Push(this);
         }
 
         protected override void PushU8Core(byte value)

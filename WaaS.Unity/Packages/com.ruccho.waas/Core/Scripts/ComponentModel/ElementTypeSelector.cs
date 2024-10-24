@@ -7,7 +7,7 @@ namespace WaaS.ComponentModel.Runtime
     public readonly struct ElementTypeSelector
     {
         private readonly Kind kind;
-        private readonly IValueType type;
+        private readonly IValueType? type;
         private readonly int listLength;
 
         private enum Kind
@@ -17,7 +17,7 @@ namespace WaaS.ComponentModel.Runtime
             Single
         }
 
-        private ElementTypeSelector(Kind kind, IValueType type, int listLength)
+        private ElementTypeSelector(Kind kind, IValueType? type, int listLength)
         {
             this.kind = kind;
             this.type = type;
@@ -35,13 +35,12 @@ namespace WaaS.ComponentModel.Runtime
             return new ElementTypeSelector(Kind.List, list, length);
         }
 
-        public static ElementTypeSelector FromSingle(IValueType single)
+        public static ElementTypeSelector FromSingle(IValueType? single)
         {
             return new ElementTypeSelector(Kind.Single, single, -1);
         }
 
         public IValueType GetNextType(int index)
-
         {
             return kind switch
             {
@@ -49,7 +48,7 @@ namespace WaaS.ComponentModel.Runtime
                 Kind.List => index < listLength
                     ? (type as IListType)!.ElementType
                     : throw new ArgumentOutOfRangeException(),
-                Kind.Single => index == 0 ? type : throw new ArgumentOutOfRangeException(),
+                Kind.Single => type != null && index == 0 ? type : throw new ArgumentOutOfRangeException(),
                 _ => throw new ArgumentOutOfRangeException()
             };
         }

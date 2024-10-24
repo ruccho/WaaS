@@ -354,7 +354,7 @@ namespace WaaS.Models
     public partial class CallIndirect : Instruction
     {
         [Operand(0)] public uint FunctionTypeIndex { get; }
-        
+
         // NOTE: Rust 1.82 and later don't emit 1-byte fixed 0x00 defined in wasm 1.0 but LEB128 32-bit number.  
         // https://blog.rust-lang.org/2024/09/24/webassembly-targets-change-in-default-target-features.html
         [Operand(1)] public uint TableIndex { get; }
@@ -368,9 +368,11 @@ namespace WaaS.Models
             var functionType = current.Instance.Module.TypeSection.FuncTypes.Span[checked((int)FunctionTypeIndex)];
 
             var function = table.Elements[checked((int)functionIndex)];
-            if (function == null) throw new TrapException();
+            if (function == null)
+                throw new TrapException($"[{nameof(CallIndirect)}] Function is null. index: {functionIndex}");
 
-            if (!function.Type.Match(functionType)) throw new TrapException();
+            if (!function.Type.Match(functionType))
+                throw new TrapException($"[{nameof(CallIndirect)}] Function type mismatch.");
 
             var paramTypes = function.Type.ParameterTypes.Span;
 
@@ -390,7 +392,8 @@ namespace WaaS.Models
         public override void Validate(in ValidationContext context)
         {
             base.Validate(context);
-            if (TableIndex != 0) throw new InvalidModuleException($"Reserved byte must be 0 but {TableIndex}");
+            if (TableIndex != 0)
+                throw new InvalidModuleException("Non-zero table index for call_indirect is not supported.");
         }
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)

@@ -94,7 +94,14 @@ namespace WaaS.Runtime
                 var instr = instrs[checked((int)programCounter)];
 
                 isFramePushed = false;
-                instr.Execute(this);
+                try
+                {
+                    instr.Execute(this);
+                }
+                catch (Exception ex) when (ex is not WasmException)
+                {
+                    throw new WasmException(Function, instr, innerException: ex);
+                }
 
                 programCounter++;
 

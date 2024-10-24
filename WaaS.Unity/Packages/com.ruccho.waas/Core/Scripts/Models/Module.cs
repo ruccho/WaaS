@@ -113,7 +113,7 @@ namespace WaaS.Models
                 var typeIndex = typeIndices[i];
                 var functionType = types[checked((int)typeIndex)];
 
-                functionInstances[i] = new Function(functionType, function, typeIndex);
+                functionInstances[i] = new Function(functionType, function, typeIndex, i);
             }
 
             InternalFunctions = functionInstances;
@@ -134,6 +134,8 @@ namespace WaaS.Models
         public StartSection StartSection { get; }
         public ExportSection ExportSection { get; }
         public TypeSection TypeSection { get; }
+
+        public string SourceDescription { get; set; }
 
         public static Module Create(ReadOnlySpan<byte> buffer)
         {

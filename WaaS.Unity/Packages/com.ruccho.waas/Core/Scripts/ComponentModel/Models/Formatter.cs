@@ -198,12 +198,17 @@ namespace WaaS.ComponentModel.Models
 
         public void Add<T>(IUnresolved<T> value) where T : ISorted
         {
-            sorts.OfType<IWriteOnlySort<T>>().Single().Add(value);
+            Add(value, out _);
+        }
+
+        public void Add<T>(IUnresolved<T> value, out int index) where T : ISorted
+        {
+            sorts.OfType<IWriteOnlySort<T>>().Single().Add(value, out index);
         }
 
         private interface IWriteOnlySort<in T> where T : ISorted
         {
-            void Add(IUnresolved<T> value);
+            void Add(IUnresolved<T> value, out int index);
         }
 
         private interface IReadOnlySort<out T> where T : ISorted
@@ -221,9 +226,10 @@ namespace WaaS.ComponentModel.Models
                 return items[checked((int)index)];
             }
 
-            public void Add(IUnresolved<T> value)
+            public void Add(IUnresolved<T> value, out int index)
             {
                 // Console.WriteLine($"Add {typeof(T).Name}({value.GetType().Name}) #{items.Count}");
+                index = items.Count;
                 items.Add(value);
             }
         }

@@ -104,7 +104,7 @@ namespace WaaS.ComponentModel.Runtime
                         : new ValueLifter(this, ElementTypeSelector.FromSingle(resultType),
                             function.MemoryToRealloc.Span.Slice(checked((int)resultValues[0].ExpectValueI32())));
 
-                    ValueTransfer.TransferNext(lifter, resultValuePusher);
+                    ValueTransfer.TransferNext(ref lifter, resultValuePusher);
                 }
 
                 // post-return
@@ -121,7 +121,7 @@ namespace WaaS.ComponentModel.Runtime
                 invoked = 0;
                 frame = null;
                 ArgumentPusher = LoweringPusherBase
-                    .GetRoot(this, 16 /* MAX_FLAT_PARAMS */, out stackValueItems).Wrap();
+                    .GetRoot(this, true, 16 /* MAX_FLAT_PARAMS */, out stackValueItems).Wrap();
             }
 
             public static Binder Get(ExecutionContext context, LiftedFunction function)

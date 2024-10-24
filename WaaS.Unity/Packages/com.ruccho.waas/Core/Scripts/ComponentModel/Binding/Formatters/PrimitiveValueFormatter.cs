@@ -1,7 +1,7 @@
 ﻿#nullable enable
 
 using System;
-using System.Threading.Tasks;
+using STask;
 using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
@@ -15,7 +15,7 @@ namespace WaaS.ComponentModel.Binding
 
         public IValueType Type { get; }
 
-        public ValueTask<T> PullAsync(Pullable adapter)
+        public STask<T> PullAsync(Pullable adapter)
         {
             return adapter.PullPrimitiveValueAsync<T>();
         }

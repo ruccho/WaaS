@@ -16,6 +16,7 @@ namespace WaaS.ComponentModel.Models
         private readonly List<IExport<ISortedExportable>> exports = new();
 
         private readonly List<IImport<ISortedExportable>> imports = new();
+        private readonly List<IUnresolved<ISorted>> instantiations = new();
 
         internal Component(ref ModuleReader reader, long? size = null, IIndexSpace parentIndexSpace = null)
         {
@@ -52,14 +53,16 @@ namespace WaaS.ComponentModel.Models
                     }
                     case SectionId.CoreModule:
                     {
-                        indexSpace.Add(new CoreModule(ref reader, sectionSize));
+                        var module = new CoreModule(ref reader, sectionSize);
+                        indexSpace.Add(module, out var index);
+                        module.Module.SourceDescription = $"core module (;{index};)";
                         break;
                     }
                     case SectionId.CoreInstance:
                     {
-                        reader.ReadVector(
+                        instantiations.AddRange(reader.ReadVector(
                             static (ref ModuleReader reader, IIndexSpace indexSpace) =>
-                                Formatter<ICoreInstantiation>.Read(ref reader, indexSpace), indexSpace);
+                                Formatter<ICoreInstantiation>.Read(ref reader, indexSpace), indexSpace));
                         break;
                     }
                     case SectionId.CoreType:
@@ -76,9 +79,9 @@ namespace WaaS.ComponentModel.Models
                     }
                     case SectionId.Instance:
                     {
-                        reader.ReadVector(
+                        instantiations.AddRange(reader.ReadVector(
                             static (ref ModuleReader reader, IIndexSpace indexSpace) =>
-                                Formatter<IInstantiation>.Read(ref reader, indexSpace), indexSpace);
+                                Formatter<IInstantiation>.Read(ref reader, indexSpace), indexSpace));
                         break;
                     }
                     case SectionId.Alias:
@@ -149,6 +152,9 @@ namespace WaaS.ComponentModel.Models
             Dictionary<string, ISortedExportable> resolvedExports = new();
             foreach (var export in exports) resolvedExports.Add(export.Name.Name, newContext.Resolve(export.Target));
 
+            // instantiations need to be resolved (unexposed instances may initialize other instance's state)
+            foreach (var instantiation in instantiations) newContext.Resolve(instantiation);
+
             return new Instance(resolvedExports);
         }
 
@@ -194,19 +200,19 @@ namespace WaaS.ComponentModel.Models
 
     internal class CoreModule : IUnresolved<ICoreModule>, ICoreModule
     {
-        private readonly Module module;
-
         public CoreModule(ref ModuleReader reader, long? moduleSize)
         {
-            module = new Module(ref reader, moduleSize);
+            Module = new Module(ref reader, moduleSize);
         }
+
+        public Module Module { get; }
 
         public ICoreInstance Instantiate(IReadOnlyDictionary<string, ICoreInstance> imports)
         {
             Imports moduleImports = new();
             foreach (var (key, value) in imports) moduleImports.Add(key, value.CoreExports);
 
-            return new CoreInstance(new Instance(module, moduleImports));
+            return new CoreInstance(new Instance(Module, moduleImports));
         }
 
         public ICoreModule ResolveFirstTime(IInstanceResolutionContext context)

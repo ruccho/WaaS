@@ -423,7 +423,7 @@ namespace WaaS.ComponentModel.Runtime
             }
         }
 
-        public int GetString(in StringInfo info, Span<char> result)
+        public int GetString(in StringInfo info, /* scoped */Span<char> result)
         {
             try
             {

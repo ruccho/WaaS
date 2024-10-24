@@ -205,56 +205,24 @@ namespace WaaS.ComponentModel.Runtime
             return RootType.GetNextType(typeCursor);
         }
 
-        public ValuePusher PushTuple()
-        {
-            if (GetNextType() is not ITupleType) throw new InvalidOperationException();
-            return PushRecord();
-        }
-
-        public void PushEnum(int labelIndex)
-        {
-            if (GetNextType() is not IEnumType) throw new InvalidOperationException();
-            PushVariant(labelIndex);
-        }
-
-        public void PushOptionNone()
-        {
-            if (GetNextType() is not IOptionType) throw new InvalidOperationException();
-            PushVariant(0);
-        }
-
-        public ValuePusher PushOptionSome()
-        {
-            if (GetNextType() is not IOptionType) throw new InvalidOperationException();
-            return PushVariant(1);
-        }
-
-        public ValuePusher PushResultOk()
-        {
-            if (GetNextType() is not IResultType) throw new InvalidOperationException();
-            return PushVariant(0);
-        }
-
-        public ValuePusher PushResultError()
-        {
-            if (GetNextType() is not IResultType) throw new InvalidOperationException();
-            return PushVariant(1);
-        }
-
-        public static LoweringPusherBase GetRoot(ICanonContext context, int flattenThreshold,
+        public static LoweringPusherBase GetRoot(ICanonContext context, bool isArgument, int flattenThreshold,
             out StackValueItems values)
         {
             uint count = 0;
-            foreach (var parameter in context.ComponentFunction.Type.Parameters.Span)
-            {
-                if (parameter.Type is not IDespecializedValueType despecialized)
-                    despecialized = parameter.Type.Despecialize();
+            if (isArgument)
+                foreach (var parameter in context.ComponentFunction.Type.Parameters.Span)
+                {
+                    if (parameter.Type is not IDespecializedValueType despecialized)
+                        despecialized = parameter.Type.Despecialize();
 
-                count += despecialized.FlattenedCount;
-            }
+                    count += despecialized.FlattenedCount;
+                }
+            else
+                count = context.ComponentFunction.Type.Result?.Despecialize().FlattenedCount ?? 0;
 
             var flatten = count <= flattenThreshold;
-            var type = context.ComponentFunction.Type.ParameterType;
+            var resultType = context.ComponentFunction.Type.Result?.Despecialize();
+            var type = isArgument ? context.ComponentFunction.Type.ParameterType : resultType;
 
             LoweringPusherBase result;
             if (flatten)
@@ -271,7 +239,10 @@ namespace WaaS.ComponentModel.Runtime
                 values = new StackValueItems(new StackValueItem(ptr));
             }
 
-            result.Init(context, ElementTypeSelector.FromRecord(type));
+            var selector = isArgument
+                ? ElementTypeSelector.FromRecord(context.ComponentFunction.Type.ParameterType)
+                : ElementTypeSelector.FromSingle(resultType);
+            result.Init(context, selector);
 
             return result;
         }

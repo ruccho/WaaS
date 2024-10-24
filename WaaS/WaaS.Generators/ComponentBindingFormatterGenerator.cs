@@ -270,7 +270,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
 /* lang=c#  */$$"""
                             public async global::System.Threading.Tasks.ValueTask<{{name}}> PullAsync(global::WaaS.ComponentModel.Binding.Pullable pullable)
                             {
-                                var prelude = await pullable.PullPrimitiveValueAsync<global::WaaS.ComponentModel.Binding.RecordPrelude>();
+                                var prelude = await pullable.PullPrimitiveValueAsync<global::WaaS.ComponentModel.Binding.RecordPrelude>().ConfigureAwait(false);
                                 pullable = prelude.BodyPullable;
                                 
                                 return new {{name}}()
@@ -282,7 +282,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
             sourceBuilder.AppendLine(
                 /* lang=c#  */
                 $$"""
-                                      {{member.Name}} = await pullable.PullValueAsync<{{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>(),
+                                      {{member.Name}} = await pullable.PullValueAsync<{{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().ConfigureAwait(false),
                   """);
 
         sourceBuilder.AppendLine(
@@ -350,7 +350,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
 /* lang=c#  */$$"""
                             public async global::System.Threading.Tasks.ValueTask<{{name}}> PullAsync(global::WaaS.ComponentModel.Binding.Pullable pullable)
                             {
-                                var prelude = await pullable.PullPrimitiveValueAsync<global::WaaS.ComponentModel.Binding.VariantPrelude>();
+                                var prelude = await pullable.PullPrimitiveValueAsync<global::WaaS.ComponentModel.Binding.VariantPrelude>().ConfigureAwait(false);
                                 pullable = prelude.BodyPullable;
                                 
                                 return prelude.CaseIndex switch
@@ -366,7 +366,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
                          elementType!.Matches("WaaS.ComponentModel.Binding.None");
             var valueExpression = isNone
                 ? "default(global::WaaS.ComponentModel.Binding.None)"
-                : $"await pullable.PullValueAsync<{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>()";
+                : $"await pullable.PullValueAsync<{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>().ConfigureAwait(false)";
 
             sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
@@ -430,7 +430,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
                             public global::WaaS.ComponentModel.Runtime.IValueType Type { get; } = global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Type;
                             public async global::System.Threading.Tasks.ValueTask<{{name}}> PullAsync(global::WaaS.ComponentModel.Binding.Pullable pullable)
                             {
-                                return await pullable.PullValueAsync<{{targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>();
+                                return await pullable.PullValueAsync<{{targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().ConfigureAwait(false);
                             }
                                 
                             public void Push({{name}} value, global::WaaS.ComponentModel.Runtime.ValuePusher pusher)

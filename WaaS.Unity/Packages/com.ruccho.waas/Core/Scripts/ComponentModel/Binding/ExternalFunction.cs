@@ -1,10 +1,10 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Sources;
+using STask;
 using WaaS.ComponentModel.Runtime;
 using WaaS.Runtime;
+using ExecutionContext = WaaS.Runtime.ExecutionContext;
 
 namespace WaaS.ComponentModel.Binding
 {
@@ -17,12 +17,19 @@ namespace WaaS.ComponentModel.Binding
             return new FunctionBinder(Binder.Get(context, this));
         }
 
-        protected abstract ValueTask PullArgumentsAsync(ExecutionContext context, PushPullAdapter adapter,
-            ValueTask frameMove, ValueTask<ValuePusher> resultPusher);
+        protected abstract STaskVoid PullArgumentsAsync(ExecutionContext context, PushPullAdapter adapter,
+            STaskVoid frameMove, STask<ValuePusher> resultPusher);
 
-        private class Binder : IFunctionBinderCore, IValueTaskSource<ValuePusher>, IValueTaskSource, IStackFrame
+        private class Binder : IFunctionBinderCore, IStackFrame
         {
             private static readonly Stack<Binder> Pool = new();
+
+            private STaskVoid executeTask;
+
+            private bool frameMoveCompleted;
+            private STaskCompletionSource<byte> frameMoveSource;
+
+            private STaskCompletionSource<ValuePusher> resultPusherSource;
 
             public ushort Version { get; private set; }
 
@@ -42,8 +49,7 @@ namespace WaaS.ComponentModel.Binding
 
             public void TakeResults(ValuePusher resultValuePusher)
             {
-                resultPusher = resultValuePusher;
-                resultPusherContinuation?.Invoke(resultPusherState!);
+                resultPusherSource.SetResult(resultValuePusher);
             }
 
             public static Binder Get(ExecutionContext context, ExternalFunction function)
@@ -51,100 +57,45 @@ namespace WaaS.ComponentModel.Binding
                 if (!Pool.TryPop(out var pooled)) pooled = new Binder();
                 var pusher = PushPullAdapter.Get();
                 pooled.ArgumentPusher = new ValuePusher(pusher);
-                pooled.resultPusherContinuation = null;
-                pooled.resultPusherState = null;
 
-                pooled.frameMoveCompleted = default;
-                pooled.frameMoveContinuation = default;
-                pooled.frameMoveState = default;
+                pooled.resultPusherSource = STaskCompletionSource<ValuePusher>.Create();
+                pooled.frameMoveSource = STaskCompletionSource<byte>.Create();
+                pooled.frameMoveCompleted = false;
 
-                function.PullArgumentsAsync(
+                pooled.executeTask = function.PullArgumentsAsync(
                     context,
                     pusher,
-                    new ValueTask(pooled, unchecked((short)pooled.Version)),
-                    new ValueTask<ValuePusher>(pooled, unchecked((short)pooled.Version)));
+                    new STaskVoid(pooled.frameMoveSource),
+                    new STask<ValuePusher>(pooled.resultPusherSource));
 
                 return pooled;
             }
 
-            #region IValueTaskSource<ValuePusher> implementation
-
-            private ValuePusher? resultPusher;
-            private Action<object?>? resultPusherContinuation;
-            private object? resultPusherState;
-
-            ValuePusher IValueTaskSource<ValuePusher>.GetResult(short token)
-            {
-                if (token != unchecked((short)Version)) throw new InvalidOperationException();
-                return resultPusher!.Value;
-            }
-
-            ValueTaskSourceStatus IValueTaskSource<ValuePusher>.GetStatus(short token)
-            {
-                if (token != unchecked((short)Version)) throw new InvalidOperationException();
-                return resultPusher != null ? ValueTaskSourceStatus.Succeeded : ValueTaskSourceStatus.Pending;
-            }
-
-            void IValueTaskSource<ValuePusher>.OnCompleted(Action<object?> continuation, object? state, short token,
-                ValueTaskSourceOnCompletedFlags flags)
-            {
-                if (token != unchecked((short)Version)) throw new InvalidOperationException();
-                if (resultPusher.HasValue)
-                {
-                    continuation.Invoke(state);
-                    return;
-                }
-
-                if (continuation != null) throw new InvalidOperationException();
-                resultPusherContinuation = continuation;
-                resultPusherState = state;
-            }
-
-            #endregion
-
-
-            #region IValueTaskSource implementation
-
-            private bool frameMoveCompleted;
-            private Action<object?>? frameMoveContinuation;
-            private object? frameMoveState;
-
-            void IValueTaskSource.GetResult(short token)
-            {
-                if (token != unchecked((short)Version)) throw new InvalidOperationException();
-            }
-
-            ValueTaskSourceStatus IValueTaskSource.GetStatus(short token)
-            {
-                if (token != unchecked((short)Version)) throw new InvalidOperationException();
-                return frameMoveCompleted ? ValueTaskSourceStatus.Succeeded : ValueTaskSourceStatus.Pending;
-            }
-
-            void IValueTaskSource.OnCompleted(Action<object> continuation, object state, short token,
-                ValueTaskSourceOnCompletedFlags flags)
-            {
-                if (token != unchecked((short)Version)) throw new InvalidOperationException();
-                if (frameMoveCompleted)
-                {
-                    continuation.Invoke(state);
-                    return;
-                }
-
-                if (continuation != null) throw new InvalidOperationException();
-                frameMoveContinuation = continuation;
-                frameMoveState = state;
-            }
-
-            #endregion
-
-            #region ISyncFrame implementation
+            #region IStackFrame implementation
 
             int IStackFrame.ResultLength => 0;
 
             StackFrameState IStackFrame.MoveNext(Waker waker)
             {
-                frameMoveCompleted = true;
-                frameMoveContinuation?.Invoke(frameMoveState);
+                static async void WaitForCompletionAsync(Waker waker, STaskVoid task)
+                {
+                    await task;
+                    waker.Wake();
+                }
+
+                if (!frameMoveCompleted)
+                {
+                    // first
+                    frameMoveCompleted = true;
+                    frameMoveSource.SetResult(0);
+                }
+
+                if (!executeTask.source.IsCompleted)
+                {
+                    WaitForCompletionAsync(waker, executeTask);
+                    return StackFrameState.Pending;
+                }
+
                 return StackFrameState.Completed;
             }
 

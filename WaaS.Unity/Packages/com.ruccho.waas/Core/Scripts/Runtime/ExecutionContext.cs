@@ -41,9 +41,15 @@ namespace WaaS.Runtime
             {
                 try
                 {
+                    var isFirst = true;
                     Loop:
                     var current = Current;
+                    var depth = frames.Count - 1;
                     if (current is null) throw new InvalidOperationException();
+
+                    if (isFirst)
+                        // Logger.Log($"{new string(' ', depth * 4)}- {current}: resume");
+                        isFirst = false;
 
                     LoopCurrent:
 
@@ -68,11 +74,13 @@ namespace WaaS.Runtime
                         }
                         case StackFrameState.Pending:
                         {
+                            // Logger.Log($"{new string(' ', depth)}- {current}: pending");
                             pending = true;
                             return;
                         }
                         case StackFrameState.Completed:
                         {
+                            // Logger.Log($"{new string(' ', depth)}- {current}: completed");
                             if (frames.Pop() == initial)
                             {
                                 if (frames.Count == 0)
@@ -210,7 +218,7 @@ namespace WaaS.Runtime
 
                 currentPendingTaskSource = null;
 
-                await source.AsValueTask();
+                await source.AsValueTask().ConfigureAwait(false);
             }
         }
 

@@ -2,8 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Sources;
+using STask;
 using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
@@ -18,26 +17,26 @@ namespace WaaS.ComponentModel.Binding
         {
         }
 
-        public ValueTask<T> PullValueAsync<T>()
+        public STask<T> PullValueAsync<T>()
         {
             var formatter = FormatterProvider.GetFormatter<T>();
             return formatter.PullAsync(new Pullable(this));
         }
 
-        public ValueTask<T> PullPrimitiveValueAsync<T>()
+        public STask<T> PullPrimitiveValueAsync<T>()
         {
             if (nextAwaiter is Awaiter<T> preservedAwaiter)
             {
                 nextAwaiter = null;
-                return new ValueTask<T>(preservedAwaiter.GetResult(preservedAwaiter.Version));
+                return new STask<T>(preservedAwaiter.Core);
             }
 
             nextAwaiter?.Cancel();
             nextAwaiter = null;
 
-            var awaiter = Awaiter<T>.Get(out var token);
+            var awaiter = Awaiter<T>.Get();
             nextAwaiter = awaiter;
-            return new ValueTask<T>(awaiter, token);
+            return new STask<T>(awaiter.Core);
         }
 
         public ushort Version { get; private set; }
@@ -181,17 +180,10 @@ namespace WaaS.ComponentModel.Binding
 
         private void PushCore<T>(T value)
         {
-            if (nextAwaiter == null)
-            {
-                var preservedAwaiter = Awaiter<T>.Get(out _);
-                nextAwaiter = preservedAwaiter;
-                preservedAwaiter.Push(value);
-                return;
-            }
-
+            if (nextAwaiter == null) throw new InvalidOperationException();
             if (nextAwaiter is not IAwaiter<T> awaiter) throw new InvalidOperationException();
-            awaiter.Push(value);
             nextAwaiter = null;
+            awaiter.Push(value);
         }
 
         private interface IAwaiter
@@ -204,16 +196,22 @@ namespace WaaS.ComponentModel.Binding
             void Push(T value);
         }
 
-        private class Awaiter<T> : IAwaiter<T>, IValueTaskSource<T>
+        private class Awaiter<T> : IAwaiter<T>
         {
             [ThreadStatic] public static Stack<Awaiter<T>> pool;
 
-            private ManualResetValueTaskSourceCore<T> core;
-            public short Version => core.Version;
+            private STaskCompletionSource<T> core;
+
+            public STaskCompletionSource<T> Core => core;
 
             public void Push(T value)
             {
                 core.SetResult(value);
+
+                // succeeded
+                core = default;
+                pool ??= new Stack<Awaiter<T>>();
+                pool.Push(this);
             }
 
             public void Cancel()
@@ -221,36 +219,11 @@ namespace WaaS.ComponentModel.Binding
                 core.SetException(new OperationCanceledException());
             }
 
-            public T GetResult(short token)
-            {
-                try
-                {
-                    return core.GetResult(token);
-                }
-                finally
-                {
-                    core.Reset();
-                    pool ??= new Stack<Awaiter<T>>();
-                    pool.Push(this);
-                }
-            }
-
-            public ValueTaskSourceStatus GetStatus(short token)
-            {
-                return core.GetStatus(token);
-            }
-
-            public void OnCompleted(Action<object> continuation, object state, short token,
-                ValueTaskSourceOnCompletedFlags flags)
-            {
-                core.OnCompleted(continuation, state, token, flags);
-            }
-
-            public static Awaiter<T> Get(out short token)
+            public static Awaiter<T> Get()
             {
                 pool ??= new Stack<Awaiter<T>>();
                 if (!pool.TryPop(out var pooled)) pooled = new Awaiter<T>();
-                token = pooled.core.Version;
+                pooled.core = STaskCompletionSource<T>.Create();
                 return pooled;
             }
         }

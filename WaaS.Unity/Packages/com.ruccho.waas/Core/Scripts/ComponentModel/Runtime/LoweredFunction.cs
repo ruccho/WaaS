@@ -83,7 +83,8 @@ namespace WaaS.ComponentModel.Runtime
             }
 
             var binder = ComponentFunction.GetBinder(context);
-            ValueTransfer.TransferNext(lifter, binder.ArgumentPusher);
+            for (var i = 0; i < functionType.Parameters.Length; i++)
+                ValueTransfer.TransferNext(ref lifter, binder.ArgumentPusher);
             return new Frame(this, binder.CreateFrame(), binder); // TODO: pooling
         }
 
@@ -118,7 +119,7 @@ namespace WaaS.ComponentModel.Runtime
 
             public void TakeResults(Span<StackValueItem> dest)
             {
-                using var pusher = LoweringPusherBase.GetRoot(function, 1, out var items).Wrap();
+                using var pusher = LoweringPusherBase.GetRoot(function, false, 1, out var items).Wrap();
                 binder.TakeResults(pusher);
                 items.UnsafeItems.CopyTo(dest);
             }

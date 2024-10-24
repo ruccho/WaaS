@@ -65,14 +65,16 @@ namespace WaaS.Models
 
     public class Function
     {
-        public Function(FunctionType type, FunctionBody function, uint typeIndex)
+        public Function(FunctionType type, FunctionBody function, uint typeIndex, int functionIndex)
         {
             Type = type;
             Body = function;
             TypeIndex = typeIndex;
+            FunctionIndex = functionIndex;
         }
 
         private uint TypeIndex { get; }
+        public int FunctionIndex { get; }
         public FunctionType Type { get; }
         public FunctionBody Body { get; }
         public uint? MaxStackDepth { get; private set; }

@@ -1,7 +1,7 @@
 ﻿#nullable enable
 
 using System;
-using System.Threading.Tasks;
+using STask;
 
 namespace WaaS.ComponentModel.Binding
 {
@@ -19,12 +19,12 @@ namespace WaaS.ComponentModel.Binding
             }
         }
 
-        public ValueTask<T> PullValueAsync<T>()
+        public STask<T> PullValueAsync<T>()
         {
             return Core.PullValueAsync<T>();
         }
 
-        public ValueTask<T> PullPrimitiveValueAsync<T>()
+        public STask<T> PullPrimitiveValueAsync<T>()
         {
             return Core.PullPrimitiveValueAsync<T>();
         }
@@ -43,7 +43,7 @@ namespace WaaS.ComponentModel.Binding
 
     internal interface IPullableCore : IVersionedDisposable<ushort>
     {
-        ValueTask<T> PullValueAsync<T>();
-        ValueTask<T> PullPrimitiveValueAsync<T>();
+        STask<T> PullValueAsync<T>();
+        STask<T> PullPrimitiveValueAsync<T>();
     }
 }

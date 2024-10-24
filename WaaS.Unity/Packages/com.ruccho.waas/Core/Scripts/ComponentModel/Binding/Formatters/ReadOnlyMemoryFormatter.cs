@@ -1,7 +1,7 @@
 ﻿#nullable enable
 
 using System;
-using System.Threading.Tasks;
+using STask;
 using WaaS.ComponentModel.Models;
 using WaaS.ComponentModel.Runtime;
 
@@ -11,12 +11,12 @@ namespace WaaS.ComponentModel.Binding
     {
         public IValueType Type { get; } = new ResolvedListType(FormatterProvider.GetFormatter<T>().Type);
 
-        public async ValueTask<ReadOnlyMemory<T>> PullAsync(Pullable adapter)
+        public async STask<ReadOnlyMemory<T>> PullAsync(Pullable adapter)
         {
             var prelude = await adapter.PullPrimitiveValueAsync<ListPrelude>();
             var result = new T[prelude.Length];
             for (var i = 0; i < prelude.Length; i++) result[i] = await prelude.ElementPullable.PullValueAsync<T>();
-
+            // Logger.Log($"pulled: {Thread.CurrentThread.IsThreadPoolThread}");
             return result;
         }
 

@@ -13,7 +13,12 @@ namespace WaaS.Unity
 
         private void OnEnable()
         {
-            module = new(() => Module.Create(data), true);
+            module = new(() =>
+            {
+                var module = Module.Create(data);
+                module.SourceDescription = name;
+                return module;
+            }, true);
             
             if (deserializeOnLoad && data != null)
             {

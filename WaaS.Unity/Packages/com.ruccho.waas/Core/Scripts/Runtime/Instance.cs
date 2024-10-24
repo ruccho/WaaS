@@ -28,7 +28,7 @@ namespace WaaS.Runtime
 
             FunctionInstance = new FunctionInstance(this, importSection, importObject);
 
-            TableInstance = new TableInstance(GlobalInstance, importSection, tableSection,
+            TableInstance = new TableInstance(GlobalInstance, FunctionInstance, importSection, tableSection,
                 elementSection, importObject);
 
             ExportInstance =
