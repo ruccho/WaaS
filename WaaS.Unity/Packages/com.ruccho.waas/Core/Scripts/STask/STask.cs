@@ -3,11 +3,11 @@
 namespace STask
 {
     [AsyncMethodBuilder(typeof(STaskMethodBuilder))]
-    public struct STaskVoid
+    public readonly struct STaskVoid
     {
-        internal readonly STaskCompletionSource<byte> source;
+        internal readonly STaskSource<byte> source;
 
-        internal STaskVoid(STaskCompletionSource<byte> source)
+        internal STaskVoid(STaskSource<byte> source)
         {
             this.source = source;
         }
@@ -16,14 +16,24 @@ namespace STask
         {
             return new STaskAwaiter(source);
         }
+
+        public void Forget()
+        {
+            var awaiter = GetAwaiter();
+            if (awaiter.IsCompleted)
+                awaiter.GetResult();
+            else
+                awaiter.OnCompleted(InstantContinuation<STaskAwaiter>.Get(awaiter,
+                    static (in STaskAwaiter awaiter) => awaiter.GetResult()));
+        }
     }
 
     [AsyncMethodBuilder(typeof(STaskMethodBuilder<>))]
-    public struct STask<TResult>
+    public readonly struct STask<TResult>
     {
-        internal readonly STaskCompletionSource<TResult> source;
+        internal readonly STaskSource<TResult> source;
 
-        internal STask(STaskCompletionSource<TResult> source)
+        internal STask(STaskSource<TResult> source)
         {
             this.source = source;
         }
@@ -31,6 +41,16 @@ namespace STask
         public STaskAwaiter<TResult> GetAwaiter()
         {
             return new STaskAwaiter<TResult>(source);
+        }
+
+        public void Forget()
+        {
+            var awaiter = GetAwaiter();
+            if (awaiter.IsCompleted)
+                awaiter.GetResult();
+            else
+                awaiter.OnCompleted(InstantContinuation<STaskAwaiter<TResult>>.Get(awaiter,
+                    static (in STaskAwaiter<TResult> awaiter) => awaiter.GetResult()));
         }
     }
 }

@@ -84,6 +84,8 @@ namespace WaaS.ComponentModel.Runtime
 
     public enum PrimitiveValueTypeKind : byte
     {
+        // ReSharper disable once InconsistentNaming
+        _EnumStart = 0x73,
         String = 0x73,
         Char,
         F64,
@@ -96,7 +98,10 @@ namespace WaaS.ComponentModel.Runtime
         S16,
         U8,
         S8,
-        Bool
+        Bool,
+
+        // ReSharper disable once InconsistentNaming
+        _EnumEnd
     }
 
     public interface IRecordType : IDespecializedValueType

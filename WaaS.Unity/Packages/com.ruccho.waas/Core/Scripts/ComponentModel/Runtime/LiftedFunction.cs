@@ -42,7 +42,7 @@ namespace WaaS.ComponentModel.Runtime
         private class Binder : IFunctionBinderCore, ICanonContext
         {
             private static readonly Stack<Binder> Pool = new();
-            private IStackFrame? frame;
+            private StackFrame frame;
             private LiftedFunction function;
             private int invoked;
             private StackValueItems stackValueItems;
@@ -69,14 +69,14 @@ namespace WaaS.ComponentModel.Runtime
             {
                 if (version != Version) return;
                 ArgumentPusher.Dispose();
-                frame?.Dispose();
+                frame.Dispose();
                 if (++Version == ushort.MaxValue) return;
                 Pool.Push(this);
             }
 
             public ValuePusher ArgumentPusher { get; private set; }
 
-            public IStackFrame CreateFrame()
+            public StackFrame CreateFrame()
             {
                 if (Interlocked.CompareExchange(ref invoked, 1, 0) != 0) throw new InvalidOperationException();
                 return frame = function.CoreFunction.CreateFrame(Context, stackValueItems.UnsafeItems);
@@ -85,7 +85,7 @@ namespace WaaS.ComponentModel.Runtime
             public void TakeResults(ValuePusher resultValuePusher)
             {
                 var coreResultTypes = function.CoreFunction.Type.ResultTypes;
-                Span<StackValueItem> resultValues = stackalloc StackValueItem[frame!.ResultLength];
+                Span<StackValueItem> resultValues = stackalloc StackValueItem[frame.ResultLength];
                 frame.TakeResults(resultValues);
                 frame.Dispose();
                 frame = default;
@@ -119,7 +119,7 @@ namespace WaaS.ComponentModel.Runtime
                 Context = context;
                 this.function = function;
                 invoked = 0;
-                frame = null;
+                frame = default;
                 ArgumentPusher = LoweringPusherBase
                     .GetRoot(this, true, 16 /* MAX_FLAT_PARAMS */, out stackValueItems).Wrap();
             }

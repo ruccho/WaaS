@@ -1,41 +1,91 @@
 ﻿using System;
+using System.Buffers;
+using System.Collections.Generic;
 
 namespace WaaS.Runtime
 {
-    public class ExternalStackFrame : IStackFrame
+    public class ExternalStackFrame : IStackFrameCore
     {
-        private readonly ExternalFunction function;
-        private readonly StackValueItem[] inputValues;
-        private readonly StackValueItem[] outputValues;
+        [ThreadStatic] private static Stack<ExternalStackFrame> pool;
+
+        private ExternalFunction function;
+        private Memory<StackValueItem> inputValues;
+        private StackValueItem[] inputValuesArray;
         private bool invoked;
+        private Memory<StackValueItem> outputValues;
+        private StackValueItem[] outputValuesArray;
 
-        internal ExternalStackFrame(ExternalFunction function, ReadOnlySpan<StackValueItem> inputValues)
+        public void Dispose(ushort version)
         {
-            this.function = function;
-            var type = function.Type;
-            this.inputValues = new StackValueItem[type.ParameterTypes.Length];
-            outputValues = new StackValueItem[type.ResultTypes.Length];
+            if (version != Version) return;
+            if (inputValuesArray != default) ArrayPool<StackValueItem>.Shared.Return(inputValuesArray);
 
-            inputValues.CopyTo(this.inputValues);
+            if (outputValuesArray != default) ArrayPool<StackValueItem>.Shared.Return(outputValuesArray);
+
+            function = default;
+            inputValues = default;
+            outputValues = default;
+            inputValuesArray = default;
+            outputValuesArray = default;
+            invoked = default;
+
+            if (++Version != ushort.MaxValue)
+            {
+                pool ??= new Stack<ExternalStackFrame>();
+                pool.Push(this);
+            }
         }
 
-        public int ResultLength => function.Type.ResultTypes.Length;
+        public ushort Version { get; private set; }
 
-        public StackFrameState MoveNext(Waker waker)
+        public int GetResultLength(ushort version)
         {
+            ThrowIfOutdated(version);
+            return function.Type.ResultTypes.Length;
+        }
+
+        public StackFrameState MoveNext(ushort version, Waker waker)
+        {
+            ThrowIfOutdated(version);
             if (invoked) throw new InvalidOperationException();
             invoked = true;
-            function.Invoke(inputValues, outputValues);
+            function.Invoke(inputValues.Span, outputValues.Span);
             return StackFrameState.Completed;
         }
 
-        public void TakeResults(Span<StackValueItem> dest)
+        public void TakeResults(ushort version, Span<StackValueItem> dest)
         {
-            outputValues.CopyTo(dest);
+            ThrowIfOutdated(version);
+            outputValues.Span.CopyTo(dest);
         }
 
-        public void Dispose()
+        public static ExternalStackFrame Get(ExternalFunction function, ReadOnlySpan<StackValueItem> inputValues)
         {
+            pool ??= new Stack<ExternalStackFrame>();
+            if (!pool.TryPop(out var pooled)) pooled = new ExternalStackFrame();
+            pooled.Reset(function, inputValues);
+            return pooled;
+        }
+
+        private void Reset(ExternalFunction function, ReadOnlySpan<StackValueItem> inputValues)
+        {
+            this.function = function;
+            var type = function.Type;
+            inputValuesArray = ArrayPool<StackValueItem>.Shared.Rent(type.ParameterTypes.Length);
+            outputValuesArray = ArrayPool<StackValueItem>.Shared.Rent(type.ResultTypes.Length);
+            Array.Clear(inputValuesArray, 0, inputValuesArray.Length);
+            Array.Clear(outputValuesArray, 0, outputValuesArray.Length);
+
+            this.inputValues = inputValuesArray.AsMemory().Slice(0, type.ParameterTypes.Length);
+            outputValues = outputValuesArray.AsMemory().Slice(0, type.ResultTypes.Length);
+
+            inputValues.CopyTo(this.inputValues.Span);
+            invoked = false;
+        }
+
+        private void ThrowIfOutdated(ushort version)
+        {
+            if (version != Version) throw new InvalidOperationException();
         }
     }
 }

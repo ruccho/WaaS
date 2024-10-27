@@ -113,7 +113,7 @@ namespace WaaS.ComponentModel.Runtime
                 case IListType listType:
                 {
                     var listLifter = lifter.PullList(out var length);
-                    var listPusher = pusher.PushList(checked((int)length));
+                    using var listPusher = pusher.PushList(checked((int)length));
                     for (var i = 0; i < length; i++) TransferNext(ref listLifter, listPusher);
 
                     break;
@@ -121,7 +121,7 @@ namespace WaaS.ComponentModel.Runtime
                 case IRecordType recordType:
                 {
                     var recordLifter = lifter.PullRecord();
-                    var recordPusher = pusher.PushRecord();
+                    using var recordPusher = pusher.PushRecord();
                     for (var i = 0; i < recordType.Fields.Length; i++)
                         TransferNext(ref recordLifter, recordPusher);
 
@@ -130,7 +130,7 @@ namespace WaaS.ComponentModel.Runtime
                 case IVariantType variantType:
                 {
                     var recordLifter = lifter.PullVariant(out var caseIndex);
-                    var recordPusher = pusher.PushVariant(checked((int)caseIndex));
+                    using var recordPusher = pusher.PushVariant(checked((int)caseIndex));
                     TransferNext(ref recordLifter, recordPusher);
                     break;
                 }

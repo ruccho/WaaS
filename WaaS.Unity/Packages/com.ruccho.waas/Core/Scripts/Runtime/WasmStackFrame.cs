@@ -1,27 +1,126 @@
 ﻿using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using WaaS.Models;
 
 namespace WaaS.Runtime
 {
-    public class WasmStackFrame : IStackFrame
+    public class WasmStackFrame : IStackFrameCore
     {
-        private bool isDisposed;
+        [ThreadStatic] private static Stack<WasmStackFrame> pool;
 
         private bool isEnd;
         private bool isFramePushed;
         private int[] labelDepthStack;
         private int labelDepthStackPointer;
-
         private Memory<StackValueItem> locals;
-
         private uint programCounter;
         private Memory<StackValueItem> stack;
         private StackValueItem[] stackBuffer;
         private int stackPointer;
+        private ExecutionContext Context { get; set; }
+        public InstanceFunction Function { get; private set; }
 
-        internal WasmStackFrame(ExecutionContext context, InstanceFunction function,
+        public Instance Instance => Function.instance;
+
+        public ushort Version { get; private set; }
+
+        public int GetResultLength(ushort version)
+        {
+            ThrowIfOutdated(version);
+            return Function.function.Type.ResultTypes.Length;
+        }
+
+        public void Dispose(ushort version)
+        {
+            if (version != Version) return;
+
+            if (stackBuffer != null) ArrayPool<StackValueItem>.Shared.Return(stackBuffer);
+
+            if (labelDepthStack != null) ArrayPool<int>.Shared.Return(labelDepthStack);
+
+            isEnd = default;
+            isFramePushed = default;
+            labelDepthStack = default;
+            labelDepthStackPointer = default;
+            locals = default;
+            programCounter = default;
+            stack = default;
+            stackBuffer = default;
+            stackPointer = default;
+            Context = default;
+            Function = default;
+
+            if (++Version != ushort.MaxValue)
+            {
+                pool ??= new Stack<WasmStackFrame>();
+                pool.Push(this);
+            }
+        }
+
+        public StackFrameState MoveNext(ushort version, Waker waker)
+        {
+            ThrowIfOutdated(version);
+
+            if (isEnd) return StackFrameState.Completed;
+
+            var instrs = Function.function.Body.Instructions.Span;
+
+            while (true)
+            {
+                if (programCounter >= instrs.Length) return StackFrameState.Completed;
+
+                var instr = instrs[checked((int)programCounter)];
+
+                isFramePushed = false;
+                try
+                {
+                    instr.Execute(this);
+                }
+                catch (Exception ex) when (ex is not WasmException)
+                {
+                    throw new WasmException(Function, instr, innerException: ex);
+                }
+
+                programCounter++;
+
+                if (isEnd || instrs.Length <= programCounter) return StackFrameState.Completed;
+
+                if (isFramePushed) return StackFrameState.Ready;
+            }
+        }
+
+        public void TakeResults(ushort version, Span<StackValueItem> dest)
+        {
+            ThrowIfOutdated(version);
+            // validate
+            var resultTypes = Function.function.Type.ResultTypes;
+            var resultLength = resultTypes.Length;
+            if (resultLength > dest.Length) throw new ArgumentException();
+            if (resultLength > stackPointer)
+                throw new InvalidCodeException(
+                    $"Number of results of current frame is {resultLength} but actual is {stackPointer}.");
+
+            for (var i = resultLength - 1; i >= 0; i--)
+            {
+                var value = Pop();
+                var resultType = resultTypes.Span[i];
+                if (!value.IsType(resultType)) throw new InvalidCodeException();
+                dest[i] = value;
+            }
+        }
+
+        public static WasmStackFrame Get(ExecutionContext context, InstanceFunction function,
+            ReadOnlySpan<StackValueItem> inputValues)
+        {
+            pool ??= new Stack<WasmStackFrame>();
+            if (!pool.TryPop(out var pooled)) pooled = new WasmStackFrame();
+            pooled.Reset(context, function, inputValues);
+            return pooled;
+        }
+
+        private void Reset(ExecutionContext context, InstanceFunction function,
             ReadOnlySpan<StackValueItem> inputValues)
         {
             Context = context;
@@ -68,86 +167,9 @@ namespace WaaS.Runtime
             inputValues.CopyTo(localsSpan.Slice(0, numParams));
         }
 
-        private ExecutionContext Context { get; }
-        public InstanceFunction Function { get; }
-
-        public Instance Instance => Function.instance;
-
-        public int ResultLength => Function.function.Type.ResultTypes.Length;
-
-        public void Dispose()
+        private void ThrowIfOutdated(ushort version)
         {
-            DisposeCore();
-            GC.SuppressFinalize(this);
-        }
-
-        public StackFrameState MoveNext(Waker waker)
-        {
-            if (isEnd) return StackFrameState.Completed;
-
-            var instrs = Function.function.Body.Instructions.Span;
-
-            while (true)
-            {
-                if (programCounter >= instrs.Length) return StackFrameState.Completed;
-
-                var instr = instrs[checked((int)programCounter)];
-
-                isFramePushed = false;
-                try
-                {
-                    instr.Execute(this);
-                }
-                catch (Exception ex) when (ex is not WasmException)
-                {
-                    throw new WasmException(Function, instr, innerException: ex);
-                }
-
-                programCounter++;
-
-                if (isEnd || instrs.Length <= programCounter) return StackFrameState.Completed;
-
-                if (isFramePushed) return StackFrameState.Ready;
-            }
-        }
-
-        public void TakeResults(Span<StackValueItem> dest)
-        {
-            // validate
-            var resultTypes = Function.function.Type.ResultTypes;
-            var resultLength = resultTypes.Length;
-            if (resultLength > dest.Length) throw new ArgumentException();
-            if (resultLength > stackPointer)
-                throw new InvalidCodeException(
-                    $"Number of results of current frame is {resultLength} but actual is {stackPointer}.");
-
-            for (var i = resultLength - 1; i >= 0; i--)
-            {
-                var value = Pop();
-                var resultType = resultTypes.Span[i];
-                if (!value.IsType(resultType)) throw new InvalidCodeException();
-                dest[i] = value;
-            }
-        }
-
-        ~WasmStackFrame()
-        {
-            DisposeCore();
-        }
-
-        private void DisposeCore()
-        {
-            if (isDisposed) return;
-
-            if (stackBuffer != null) ArrayPool<StackValueItem>.Shared.Return(stackBuffer);
-            stackBuffer = default;
-            locals = default;
-            stack = default;
-
-            if (labelDepthStack != null) ArrayPool<int>.Shared.Return(labelDepthStack);
-            labelDepthStack = null;
-
-            isDisposed = true;
+            if (version != Version) throw new InvalidOperationException();
         }
 
         public ref StackValueItem GetLocal(int index)

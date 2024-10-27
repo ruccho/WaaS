@@ -250,6 +250,12 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                                           var __waas__resultPusher = await resultPusherTask;
                                           global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{member.returnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push(__waas__result, __waas__resultPusher);
                       """);
+            else
+                sourceBuilder.AppendLine(
+                    /* lang=c#  */
+                    $$"""
+                                          await resultPusherTask;
+                      """);
             sourceBuilder.AppendLine(
 /* lang=c#    */"""
                                 }

@@ -8,9 +8,9 @@ namespace WaaS.Runtime
     {
         public abstract FunctionType Type { get; }
 
-        public IStackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues)
+        public StackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues)
         {
-            return new AsyncExternalStackFrame(this, inputValues);
+            return new StackFrame(AsyncExternalStackFrame.Get(this, inputValues));
         }
 
         public abstract ValueTask InvokeAsync(ReadOnlySpan<StackValueItem> parameters, Memory<StackValueItem> results);

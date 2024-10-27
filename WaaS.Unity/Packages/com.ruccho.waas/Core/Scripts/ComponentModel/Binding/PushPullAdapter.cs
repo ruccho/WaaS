@@ -9,7 +9,7 @@ namespace WaaS.ComponentModel.Binding
 {
     public class PushPullAdapter : IValuePusherCore, IPullableCore
     {
-        private static readonly Stack<PushPullAdapter> Pool = new();
+        [ThreadStatic] private static Stack<PushPullAdapter>? pool;
 
         private IAwaiter? nextAwaiter;
 
@@ -28,7 +28,7 @@ namespace WaaS.ComponentModel.Binding
             if (nextAwaiter is Awaiter<T> preservedAwaiter)
             {
                 nextAwaiter = null;
-                return new STask<T>(preservedAwaiter.Core);
+                return new STask<T>(preservedAwaiter.Core.TaskSource);
             }
 
             nextAwaiter?.Cancel();
@@ -36,7 +36,7 @@ namespace WaaS.ComponentModel.Binding
 
             var awaiter = Awaiter<T>.Get();
             nextAwaiter = awaiter;
-            return new STask<T>(awaiter.Core);
+            return new STask<T>(awaiter.Core.TaskSource);
         }
 
         public ushort Version { get; private set; }
@@ -45,7 +45,7 @@ namespace WaaS.ComponentModel.Binding
         {
             if (Version != version) return;
             if (++Version == ushort.MaxValue) return;
-            Pool.Push(this);
+            (pool ??= new Stack<PushPullAdapter>()).Push(this);
         }
 
         public void Push(bool value)
@@ -167,7 +167,7 @@ namespace WaaS.ComponentModel.Binding
 
         internal static PushPullAdapter Get()
         {
-            if (!Pool.TryPop(out var pooled)) pooled = new PushPullAdapter();
+            if (!(pool ??= new Stack<PushPullAdapter>()).TryPop(out var pooled)) pooled = new PushPullAdapter();
             return pooled;
         }
 

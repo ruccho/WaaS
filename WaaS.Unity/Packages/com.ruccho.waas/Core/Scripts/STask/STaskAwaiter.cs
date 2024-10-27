@@ -5,9 +5,9 @@ namespace STask
 {
     public readonly struct STaskAwaiter : ICriticalNotifyCompletion
     {
-        private readonly STaskCompletionSource<byte> source;
+        internal readonly STaskSource<byte> source;
 
-        internal STaskAwaiter(STaskCompletionSource<byte> source)
+        internal STaskAwaiter(STaskSource<byte> source)
         {
             this.source = source;
         }
@@ -32,9 +32,9 @@ namespace STask
 
     public readonly struct STaskAwaiter<TResult> : ICriticalNotifyCompletion
     {
-        private readonly STaskCompletionSource<TResult> source;
+        internal readonly STaskSource<TResult> source;
 
-        internal STaskAwaiter(STaskCompletionSource<TResult> source)
+        internal STaskAwaiter(STaskSource<TResult> source)
         {
             this.source = source;
         }

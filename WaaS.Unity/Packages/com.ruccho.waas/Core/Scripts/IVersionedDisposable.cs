@@ -1,6 +1,6 @@
 ﻿#nullable enable
 
-namespace WaaS.ComponentModel
+namespace WaaS
 {
     public interface IVersionedDisposable<T>
     {

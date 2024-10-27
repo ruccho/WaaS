@@ -54,8 +54,10 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
                     static {{typeSymbol.Name}}()
                     {
                         global::{{FormatNamespace}}.Formatter<{{typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>.Default = new Formatter();
+                        StaticConstructor();
                     }
                     
+                    static partial void StaticConstructor();
                 
                     internal class Formatter : global::{{FormatNamespace}}.IFormatter<{{typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>
                     {

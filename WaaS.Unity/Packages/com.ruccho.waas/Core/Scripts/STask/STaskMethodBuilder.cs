@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace STask
 {
@@ -43,7 +41,8 @@ namespace STask
             where TAwaiter : INotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
-            awaiter.OnCompleted(StateMachineContinuation<TStateMachine>.Get(ref stateMachine));
+            awaiter.OnCompleted(InstantContinuation<TStateMachine>.Get(in stateMachine,
+                static (in TStateMachine stateMachine) => stateMachine.MoveNext()));
         }
 
         public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(
@@ -51,17 +50,18 @@ namespace STask
             where TAwaiter : ICriticalNotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
-            awaiter.UnsafeOnCompleted(StateMachineContinuation<TStateMachine>.Get(ref stateMachine));
+            awaiter.UnsafeOnCompleted(InstantContinuation<TStateMachine>.Get(in stateMachine,
+                static (in TStateMachine stateMachine) => stateMachine.MoveNext()));
         }
 
-        public STaskVoid Task => new(source);
+        public STaskVoid Task => new(source.TaskSource);
     }
 
     public struct STaskMethodBuilder<T>
     {
         public static STaskMethodBuilder<T> Create()
         {
-            return new STaskMethodBuilder<T>()
+            return new STaskMethodBuilder<T>
             {
                 source = STaskCompletionSource<T>.Create()
             };
@@ -95,7 +95,8 @@ namespace STask
             where TAwaiter : INotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
-            awaiter.OnCompleted(StateMachineContinuation<TStateMachine>.Get(ref stateMachine));
+            awaiter.OnCompleted(InstantContinuation<TStateMachine>.Get(in stateMachine,
+                static (in TStateMachine stateMachine) => stateMachine.MoveNext()));
         }
 
         public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(
@@ -103,60 +104,10 @@ namespace STask
             where TAwaiter : ICriticalNotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
-            awaiter.UnsafeOnCompleted(StateMachineContinuation<TStateMachine>.Get(ref stateMachine));
+            awaiter.UnsafeOnCompleted(InstantContinuation<TStateMachine>.Get(in stateMachine,
+                static (in TStateMachine stateMachine) => stateMachine.MoveNext()));
         }
 
-        public STask<T> Task => new(source);
-    }
-
-    internal class StateMachineContinuation<TStateMachine> where TStateMachine : IAsyncStateMachine
-    {
-        [ThreadStatic] private static Stack<StateMachineContinuation<TStateMachine>> pool;
-        private readonly Action continuation;
-
-        private TStateMachine stateMachine;
-#if DEBUG
-        private Thread thread;
-#endif
-
-        private StateMachineContinuation()
-        {
-            continuation = Continue;
-        }
-
-        public static Action Get(ref TStateMachine stateMachine)
-        {
-            pool ??= new Stack<StateMachineContinuation<TStateMachine>>();
-            if (!pool.TryPop(out var pooled)) pooled = new StateMachineContinuation<TStateMachine>();
-
-            pooled.stateMachine = stateMachine;
-#if DEBUG
-            pooled.thread = Thread.CurrentThread;
-#endif
-            return pooled.continuation;
-        }
-
-        private void Continue()
-        {
-            try
-            {
-#if DEBUG
-                if (Thread.CurrentThread != thread)
-                {
-                    // TODO: warn
-                }
-#endif
-                stateMachine.MoveNext();
-            }
-            finally
-            {
-                stateMachine = default;
-#if DEBUG
-                thread = default;
-#endif
-                pool ??= new Stack<StateMachineContinuation<TStateMachine>>();
-                pool.Push(this);
-            }
-        }
+        public STask<T> Task => new(source.TaskSource);
     }
 }

@@ -1,6 +1,7 @@
 ﻿#nullable enable
 
 using System;
+using System.Collections.Generic;
 using WaaS.ComponentModel.Models;
 using WaaS.Runtime;
 using FunctionType = WaaS.Models.FunctionType;
@@ -56,7 +57,7 @@ namespace WaaS.ComponentModel.Runtime
         public IInvocableFunction CoreExternal => this;
         public FunctionType Type { get; }
 
-        public IStackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues)
+        public StackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues)
         {
             var functionType = ComponentFunction.Type;
 
@@ -85,43 +86,73 @@ namespace WaaS.ComponentModel.Runtime
             var binder = ComponentFunction.GetBinder(context);
             for (var i = 0; i < functionType.Parameters.Length; i++)
                 ValueTransfer.TransferNext(ref lifter, binder.ArgumentPusher);
-            return new Frame(this, binder.CreateFrame(), binder); // TODO: pooling
+            return new StackFrame(Frame.Get(this, binder.CreateFrame(), binder));
         }
 
-        private class Frame : IStackFrame
+        private class Frame : IStackFrameCore
         {
-            private readonly LoweredFunction function;
+            [ThreadStatic] private static Stack<Frame>? pool;
             private FunctionBinder binder;
-            private IStackFrame internalFrame;
 
-            public Frame(LoweredFunction function, IStackFrame internalFrame, FunctionBinder binder)
+            private LoweredFunction function;
+            private StackFrame internalFrame;
+
+            public ushort Version { get; }
+
+            public int GetResultLength(ushort version)
+            {
+                ThrowIfOutdated(version);
+                return function.ComponentFunction.Type.Result != null ? 1 : 0;
+            }
+
+            public void Dispose(ushort version)
+            {
+                if (version != Version) return;
+                internalFrame.Dispose();
+                internalFrame = default;
+
+                binder.Dispose();
+                binder = default;
+
+                if (++version != ushort.MaxValue)
+                {
+                    pool ??= new Stack<Frame>();
+                    pool.Push(this);
+                }
+            }
+
+            public StackFrameState MoveNext(ushort version, Waker waker)
+            {
+                ThrowIfOutdated(version);
+                return internalFrame.MoveNext(waker);
+            }
+
+            public void TakeResults(ushort version, Span<StackValueItem> dest)
+            {
+                ThrowIfOutdated(version);
+                using var pusher = LoweringPusherBase.GetRoot(function, false, 1, out var items).Wrap();
+                binder.TakeResults(pusher);
+                items.UnsafeItems.CopyTo(dest);
+            }
+
+            private void Reset(LoweredFunction function, StackFrame internalFrame, FunctionBinder binder)
             {
                 this.function = function;
                 this.internalFrame = internalFrame;
                 this.binder = binder;
             }
 
-            public int ResultLength => function.ComponentFunction.Type.Result != null ? 1 : 0;
-
-            public void Dispose()
+            public static Frame Get(LoweredFunction function, StackFrame internalFrame, FunctionBinder binder)
             {
-                internalFrame.Dispose();
-                internalFrame = default;
-
-                binder.Dispose();
-                binder = default;
+                pool ??= new Stack<Frame>();
+                if (!pool.TryPop(out var pooled)) pooled = new Frame();
+                pooled.Reset(function, internalFrame, binder);
+                return pooled;
             }
 
-            public StackFrameState MoveNext(Waker waker)
+            private void ThrowIfOutdated(ushort version)
             {
-                return internalFrame.MoveNext(waker);
-            }
-
-            public void TakeResults(Span<StackValueItem> dest)
-            {
-                using var pusher = LoweringPusherBase.GetRoot(function, false, 1, out var items).Wrap();
-                binder.TakeResults(pusher);
-                items.UnsafeItems.CopyTo(dest);
+                if (version != Version) throw new InvalidOperationException();
             }
         }
     }

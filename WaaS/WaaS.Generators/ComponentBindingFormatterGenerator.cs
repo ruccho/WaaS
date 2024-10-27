@@ -195,7 +195,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
             var containingSymbol = symbol.ContainingSymbol;
             if (containingSymbol is INamedTypeSymbol namedSymbol)
             {
-                PrintNestedTypeOpeners(sourceBuilder, namedSymbol);
+                PrintNestedTypeClosers(sourceBuilder, namedSymbol);
             }
         }
 

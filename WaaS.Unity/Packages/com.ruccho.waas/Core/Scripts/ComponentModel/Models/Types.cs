@@ -37,16 +37,37 @@ namespace WaaS.ComponentModel.Models
     public readonly partial struct PrimitiveValueType : IPrimitiveValueType, IValueTypeDefinition,
         IEquatable<PrimitiveValueType>
     {
+        private static IPrimitiveValueType[] boxedTypes;
+
+        static partial void StaticConstructor()
+        {
+            boxedTypes =
+                new IPrimitiveValueType[(int)PrimitiveValueTypeKind._EnumEnd - (int)PrimitiveValueTypeKind._EnumStart];
+            for (var i = 0; i < boxedTypes.Length; i++)
+                boxedTypes[i] =
+                    new PrimitiveValueType((PrimitiveValueTypeKind)(i + (int)PrimitiveValueTypeKind._EnumStart));
+        }
+
+        private static IPrimitiveValueType GetBoxed(PrimitiveValueTypeKind kind)
+        {
+            return boxedTypes[(int)kind - (int)PrimitiveValueTypeKind._EnumStart];
+        }
+
+        private IPrimitiveValueType GetBoxed()
+        {
+            return GetBoxed(Kind);
+        }
+
         public PrimitiveValueTypeKind Kind { get; init; }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
         {
-            return this;
+            return GetBoxed();
         }
 
         IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
         {
-            return this;
+            return GetBoxed();
         }
 
         public bool Equals(PrimitiveValueType other)
@@ -66,7 +87,7 @@ namespace WaaS.ComponentModel.Models
 
         public IDespecializedValueType Despecialize()
         {
-            return this;
+            return GetBoxed();
         }
 
         public static bool operator ==(PrimitiveValueType left, PrimitiveValueType right)

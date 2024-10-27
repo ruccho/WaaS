@@ -4,20 +4,17 @@ using System.Threading;
 
 namespace STask
 {
-    internal readonly struct STaskCompletionSource<TResult>
+    internal interface ISTaskSource<out TResult>
     {
-        private readonly Core core;
+        bool IsCompleted { get; }
+        void OnCompleted(ushort version, Action<object> continuation, object context);
+        TResult GetResult(ushort version);
+    }
+
+    internal readonly struct STaskSource<TResult>
+    {
+        internal readonly ISTaskSource<TResult> core;
         private readonly ushort version;
-
-        public void SetResult(TResult result)
-        {
-            core.SetResult(version, result);
-        }
-
-        public void SetException(Exception ex)
-        {
-            core.SetException(version, ex);
-        }
 
         public void OnCompleted(Action<object> continuation, object context)
         {
@@ -31,9 +28,34 @@ namespace STask
 
         public bool IsCompleted => core.IsCompleted;
 
+
+        public STaskSource(ISTaskSource<TResult> core, ushort version)
+        {
+            this.core = core;
+            this.version = version;
+        }
+    }
+
+    internal readonly struct STaskCompletionSource<TResult>
+    {
+        private readonly Core core;
+        private readonly ushort version;
+
+        public STaskSource<TResult> TaskSource => new(core, version);
+
+        public void SetResult(TResult result)
+        {
+            core.SetResult(version, result);
+        }
+
+        public void SetException(Exception ex)
+        {
+            core.SetException(version, ex);
+        }
+
         public static STaskCompletionSource<TResult> Create()
         {
-            return new STaskCompletionSource<TResult>(new Core().Get());
+            return new STaskCompletionSource<TResult>(Core.Get());
         }
 
         private STaskCompletionSource(Core core)
@@ -42,9 +64,10 @@ namespace STask
             version = core.Version;
         }
 
-        private class Core
+        private class Core : ISTaskSource<TResult>
         {
             [ThreadStatic] private static Stack<Core> pool;
+
             private Action<object> continuation;
             private object continuationContext;
             private Exception exception;
@@ -58,7 +81,56 @@ namespace STask
             public ushort Version => version;
             public bool IsCompleted => isCompleted;
 
-            public Core Get()
+            public void OnCompleted(ushort version, Action<object> continuation, object context)
+            {
+                ThrowIfDifferentThread();
+                ThrowIfOutdated(version);
+
+                if (this.continuation != null) throw new InvalidOperationException("");
+
+                if (isCompleted)
+                {
+                    continuation?.Invoke(context);
+                }
+                else
+                {
+                    this.continuation = continuation;
+                    continuationContext = context;
+                }
+            }
+
+            public TResult GetResult(ushort version)
+            {
+                ThrowIfDifferentThread();
+                ThrowIfOutdated(version);
+
+                if (!isCompleted) throw new InvalidOperationException();
+
+                try
+                {
+                    if (exception != null)
+                        throw exception;
+
+                    return result;
+                }
+                finally
+                {
+                    thread = default;
+                    isCompleted = default;
+                    result = default;
+                    exception = default;
+                    continuation = default;
+                    continuationContext = default;
+
+                    if (++this.version != ushort.MaxValue)
+                    {
+                        pool ??= new Stack<Core>();
+                        pool.Push(this);
+                    }
+                }
+            }
+
+            public static Core Get()
             {
                 pool ??= new Stack<Core>();
                 if (!pool.TryPop(out var pooled)) pooled = new Core();
@@ -107,55 +179,6 @@ namespace STask
                     var c = continuation;
                     continuation = default;
                     c?.Invoke(continuationContext);
-                }
-            }
-
-            public void OnCompleted(ushort version, Action<object> continuation, object context)
-            {
-                ThrowIfDifferentThread();
-                ThrowIfOutdated(version);
-
-                if (this.continuation != null) throw new InvalidOperationException("");
-
-                if (isCompleted)
-                {
-                    continuation?.Invoke(context);
-                }
-                else
-                {
-                    this.continuation = continuation;
-                    continuationContext = context;
-                }
-            }
-
-            public TResult GetResult(ushort version)
-            {
-                ThrowIfDifferentThread();
-                ThrowIfOutdated(version);
-
-                if (!isCompleted) throw new InvalidOperationException();
-
-                try
-                {
-                    if (exception != null)
-                        throw exception;
-
-                    return result;
-                }
-                finally
-                {
-                    thread = default;
-                    isCompleted = default;
-                    result = default;
-                    exception = default;
-                    continuation = default;
-                    continuationContext = default;
-
-                    if (++this.version != ushort.MaxValue)
-                    {
-                        pool ??= new Stack<Core>();
-                        pool.Push(this);
-                    }
                 }
             }
         }

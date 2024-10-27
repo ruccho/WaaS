@@ -9,7 +9,7 @@ namespace WaaS.ComponentModel.Runtime
     public interface IFunctionBinderCore : IVersionedDisposable<ushort>
     {
         ValuePusher ArgumentPusher { get; }
-        IStackFrame CreateFrame();
+        StackFrame CreateFrame();
         void TakeResults(ValuePusher resultValuePusher);
     }
 
@@ -43,7 +43,7 @@ namespace WaaS.ComponentModel.Runtime
             }
         }
 
-        internal IStackFrame CreateFrame()
+        internal StackFrame CreateFrame()
         {
             ThrowIfDisposed();
             return core.CreateFrame();

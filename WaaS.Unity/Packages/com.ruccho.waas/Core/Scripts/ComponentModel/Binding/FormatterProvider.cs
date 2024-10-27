@@ -19,29 +19,29 @@ namespace WaaS.ComponentModel.Binding
             };
 
             Register(new PrimitiveValueFormatter<bool>(new PrimitiveValueType
-                { Kind = PrimitiveValueTypeKind.Bool }));
+                { Kind = PrimitiveValueTypeKind.Bool }, static (value, pusher) => pusher.Push(value)));
             Register(new PrimitiveValueFormatter<byte>(new PrimitiveValueType
-                { Kind = PrimitiveValueTypeKind.U8 }));
+                { Kind = PrimitiveValueTypeKind.U8 }, static (value, pusher) => pusher.Push(value)));
             Register(new PrimitiveValueFormatter<sbyte>(new PrimitiveValueType
-                { Kind = PrimitiveValueTypeKind.S8 }));
+                { Kind = PrimitiveValueTypeKind.S8 }, static (value, pusher) => pusher.Push(value)));
             Register(new PrimitiveValueFormatter<ushort>(new PrimitiveValueType
-                { Kind = PrimitiveValueTypeKind.U16 }));
+                { Kind = PrimitiveValueTypeKind.U16 }, static (value, pusher) => pusher.Push(value)));
             Register(new PrimitiveValueFormatter<short>(new PrimitiveValueType
-                { Kind = PrimitiveValueTypeKind.S16 }));
+                { Kind = PrimitiveValueTypeKind.S16 }, static (value, pusher) => pusher.Push(value)));
             Register(new PrimitiveValueFormatter<uint>(new PrimitiveValueType
-                { Kind = PrimitiveValueTypeKind.U32 }));
+                { Kind = PrimitiveValueTypeKind.U32 }, static (value, pusher) => pusher.Push(value)));
             Register(new PrimitiveValueFormatter<int>(new PrimitiveValueType
-                { Kind = PrimitiveValueTypeKind.S32 }));
+                { Kind = PrimitiveValueTypeKind.S32 }, static (value, pusher) => pusher.Push(value)));
             Register(new PrimitiveValueFormatter<ulong>(new PrimitiveValueType
-                { Kind = PrimitiveValueTypeKind.U64 }));
+                { Kind = PrimitiveValueTypeKind.U64 }, static (value, pusher) => pusher.Push(value)));
             Register(new PrimitiveValueFormatter<long>(new PrimitiveValueType
-                { Kind = PrimitiveValueTypeKind.S64 }));
+                { Kind = PrimitiveValueTypeKind.S64 }, static (value, pusher) => pusher.Push(value)));
             Register(new PrimitiveValueFormatter<float>(new PrimitiveValueType
-                { Kind = PrimitiveValueTypeKind.F32 }));
+                { Kind = PrimitiveValueTypeKind.F32 }, static (value, pusher) => pusher.Push(value)));
             Register(new PrimitiveValueFormatter<double>(new PrimitiveValueType
-                { Kind = PrimitiveValueTypeKind.F64 }));
+                { Kind = PrimitiveValueTypeKind.F64 }, static (value, pusher) => pusher.Push(value)));
             Register(new PrimitiveValueFormatter<string>(new PrimitiveValueType
-                { Kind = PrimitiveValueTypeKind.String }));
+                { Kind = PrimitiveValueTypeKind.String }, static (value, pusher) => pusher.Push(value)));
             Register(new CharFormatter());
         }
 

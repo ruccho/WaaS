@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using STask;
 using WaaS.ComponentModel.Runtime;
 using WaaS.Runtime;
@@ -20,16 +21,19 @@ namespace WaaS.ComponentModel.Binding
         protected abstract STaskVoid PullArgumentsAsync(ExecutionContext context, PushPullAdapter adapter,
             STaskVoid frameMove, STask<ValuePusher> resultPusher);
 
-        private class Binder : IFunctionBinderCore, IStackFrame
+        private class Binder : IFunctionBinderCore, IStackFrameCore, ISTaskSource<ValuePusher>
         {
             private static readonly Stack<Binder> Pool = new();
-
-            private STaskVoid executeTask;
+            private object? context;
+            private Action<object>? continuation;
 
             private bool frameMoveCompleted;
             private STaskCompletionSource<byte> frameMoveSource;
+            private ValuePusher? resultPusher;
+            private int resultPusherRequestedState;
+            private Waker? waker;
 
-            private STaskCompletionSource<ValuePusher> resultPusherSource;
+            // private STaskCompletionSource<ValuePusher> resultPusherSource;
 
             public ushort Version { get; private set; }
 
@@ -39,17 +43,19 @@ namespace WaaS.ComponentModel.Binding
             {
                 if (Version != version) return;
                 if (++Version == ushort.MaxValue) return;
+                ArgumentPusher.Dispose();
                 Pool.Push(this);
             }
 
-            public IStackFrame CreateFrame()
+            public StackFrame CreateFrame()
             {
-                return this;
+                return new StackFrame(this);
             }
 
             public void TakeResults(ValuePusher resultValuePusher)
             {
-                resultPusherSource.SetResult(resultValuePusher);
+                resultPusher = resultValuePusher;
+                continuation?.Invoke(context!);
             }
 
             public static Binder Get(ExecutionContext context, ExternalFunction function)
@@ -58,54 +64,96 @@ namespace WaaS.ComponentModel.Binding
                 var pusher = PushPullAdapter.Get();
                 pooled.ArgumentPusher = new ValuePusher(pusher);
 
-                pooled.resultPusherSource = STaskCompletionSource<ValuePusher>.Create();
                 pooled.frameMoveSource = STaskCompletionSource<byte>.Create();
                 pooled.frameMoveCompleted = false;
+                pooled.continuation = null;
+                pooled.context = null;
+                pooled.resultPusher = default;
+                pooled.waker = default;
+                pooled.resultPusherRequestedState = 0;
 
-                pooled.executeTask = function.PullArgumentsAsync(
+                function.PullArgumentsAsync(
                     context,
                     pusher,
-                    new STaskVoid(pooled.frameMoveSource),
-                    new STask<ValuePusher>(pooled.resultPusherSource));
+                    new STaskVoid(pooled.frameMoveSource.TaskSource),
+                    new STask<ValuePusher>(new STaskSource<ValuePusher>(pooled, pooled.Version))).Forget();
 
                 return pooled;
             }
 
+            private void ThrowIfOutdated(ushort version)
+            {
+                if (version != Version) throw new InvalidOperationException();
+            }
+
             #region IStackFrame implementation
 
-            int IStackFrame.ResultLength => 0;
-
-            StackFrameState IStackFrame.MoveNext(Waker waker)
+            int IStackFrameCore.GetResultLength(ushort version)
             {
-                static async void WaitForCompletionAsync(Waker waker, STaskVoid task)
-                {
-                    await task;
-                    waker.Wake();
-                }
+                return 0;
+            }
 
+            StackFrameState IStackFrameCore.MoveNext(ushort version, Waker waker)
+            {
+                ThrowIfOutdated(version);
                 if (!frameMoveCompleted)
                 {
                     // first
                     frameMoveCompleted = true;
                     frameMoveSource.SetResult(0);
-                }
 
-                if (!executeTask.source.IsCompleted)
-                {
-                    WaitForCompletionAsync(waker, executeTask);
-                    return StackFrameState.Pending;
+                    this.waker = waker;
+
+                    if (Interlocked.CompareExchange(ref resultPusherRequestedState, 2, 0) == 0)
+                        return StackFrameState.Pending;
                 }
 
                 return StackFrameState.Completed;
             }
 
-            void IStackFrame.TakeResults(Span<StackValueItem> dest)
+            void IStackFrameCore.TakeResults(ushort version, Span<StackValueItem> dest)
             {
             }
 
-            void IDisposable.Dispose()
+            #endregion
+
+            #region ISTaskSource<ValuePusher> implementation
+
+            public void OnCompleted(ushort version, Action<object> continuation, object context)
             {
+                // on await
+                ThrowIfOutdated(version);
+
+                if (Interlocked.CompareExchange(ref this.continuation, continuation, null) != null)
+                    throw new InvalidOperationException();
+                this.context = context;
+
+                switch (Interlocked.CompareExchange(ref resultPusherRequestedState, 1, 0))
+                {
+                    case 0:
+                    {
+                        // 0 -> 1
+                        // this is earlier than pending check
+                        break;
+                    }
+                    case 2:
+                    {
+                        // pending is returned already
+                        waker?.Wake();
+                        break;
+                    }
+                    default:
+                        throw new InvalidOperationException();
+                }
             }
+
+            public ValuePusher GetResult(ushort version)
+            {
+                ThrowIfOutdated(version);
+                return resultPusher!.Value;
+            }
+
+            public bool IsCompleted => resultPusher.HasValue;
 
             #endregion
         }
