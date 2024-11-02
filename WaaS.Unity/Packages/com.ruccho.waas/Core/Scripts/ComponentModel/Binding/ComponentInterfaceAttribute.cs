@@ -2,6 +2,7 @@
 
 namespace WaaS.ComponentModel.Binding
 {
+    [AttributeUsage(AttributeTargets.Interface)]
     public class ComponentInterfaceAttribute : Attribute
     {
         public ComponentInterfaceAttribute(string name)

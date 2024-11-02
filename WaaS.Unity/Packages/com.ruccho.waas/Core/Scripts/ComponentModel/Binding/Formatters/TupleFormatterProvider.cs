@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace WaaS.ComponentModel.Binding
 {
-    public class TupleFormatterProvider : IProceduralFormatterProvider
+    internal class TupleFormatterProvider : IProceduralFormatterProvider
     {
         public bool TryCreateFormatter<T>([NotNullWhen(true)] out IFormatter<T>? formatter)
         {

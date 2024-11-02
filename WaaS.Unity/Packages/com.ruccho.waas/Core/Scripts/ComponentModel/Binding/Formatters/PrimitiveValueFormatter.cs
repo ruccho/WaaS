@@ -17,7 +17,7 @@ namespace WaaS.ComponentModel.Binding
             Type = type;
         }
 
-        public IValueType Type { get; }
+        public IValueType? Type { get; }
 
         public STask<T> PullAsync(Pullable adapter)
         {

@@ -619,6 +619,11 @@ namespace WaaS.ComponentModel.Models
         {
             return this;
         }
+
+        internal static EnumType Create(ReadOnlyMemory<string> labels)
+        {
+            return new EnumType(labels);
+        }
     }
 
     [GenerateFormatter]

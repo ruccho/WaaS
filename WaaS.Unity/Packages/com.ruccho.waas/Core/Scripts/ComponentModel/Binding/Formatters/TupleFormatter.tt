@@ -33,7 +33,7 @@ namespace WaaS.ComponentModel.Binding
     {
 #>
 
-    public class TupleFormatter<<#= GetTypeParams(i) #>> : IFormatter<Tuple<<#= GetTypeParams(i) #>>>
+    internal class TupleFormatter<<#= GetTypeParams(i) #>> : IFormatter<Tuple<<#= GetTypeParams(i) #>>>
 <#
         if (i == 8)
         {
@@ -43,7 +43,7 @@ namespace WaaS.ComponentModel.Binding
         }
 #>
     {
-        public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { <#=
+        public IValueType? Type { get; } = new ResolverTupleType(new IValueType[] { <#=
             string.Join(", ",
                 Enumerable.Range(1, i).Select(x => $"FormatterProvider.GetFormatter<{GetTypeParam(x)}>().Type")) #> });
 
@@ -69,7 +69,7 @@ namespace WaaS.ComponentModel.Binding
         }
     }
 
-    public class ValueTupleFormatter<<#= GetTypeParams(i) #>> : IFormatter<ValueTuple<<#= GetTypeParams(i) #>>>
+    internal class ValueTupleFormatter<<#= GetTypeParams(i) #>> : IFormatter<ValueTuple<<#= GetTypeParams(i) #>>>
 <#
         if (i == 8)
         {
@@ -79,7 +79,7 @@ namespace WaaS.ComponentModel.Binding
         }
 #>
     {
-        public IValueType Type { get; } = new ResolverTupleType(new IValueType[] { <#=
+        public IValueType? Type { get; } = new ResolverTupleType(new IValueType[] { <#=
             string.Join(", ",
                 Enumerable.Range(1, i).Select(x => $"FormatterProvider.GetFormatter<{GetTypeParam(x)}>().Type")) #> });
 

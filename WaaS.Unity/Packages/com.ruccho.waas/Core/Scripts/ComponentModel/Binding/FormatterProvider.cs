@@ -15,7 +15,10 @@ namespace WaaS.ComponentModel.Binding
             proceduralProviders = new IProceduralFormatterProvider[]
             {
                 new TupleFormatterProvider(),
-                new ReadOnlyMemoryFormatterProvider()
+                new ReadOnlyMemoryFormatterProvider(),
+                new NullableFormatterProvider(),
+                new FlagsFormatterProvider(),
+                new EnumFormatterProvider()
             };
 
             Register(new PrimitiveValueFormatter<bool>(new PrimitiveValueType

@@ -33,8 +33,6 @@ namespace WaaS.ComponentModel.Binding
             private int resultPusherRequestedState;
             private Waker? waker;
 
-            // private STaskCompletionSource<ValuePusher> resultPusherSource;
-
             public ushort Version { get; private set; }
 
             public ValuePusher ArgumentPusher { get; private set; }

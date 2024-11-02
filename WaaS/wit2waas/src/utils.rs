@@ -84,7 +84,7 @@ impl ToWaas for TypeDef {
 
         match &self.kind {
             TypeDefKind::Record(_) => to_waas_from_name(self, resolve, ""),
-            TypeDefKind::Resource => Ok(format!("{}Resource", to_waas_from_name(self, resolve, "I")?)),
+            TypeDefKind::Resource => Ok(format!("{}ResourceType", to_waas_from_name(self, resolve, "I")?)),
             TypeDefKind::Handle(element) => {
                 match element {
                     Handle::Own(element) => Ok(format!("global::WaaS.ComponentModel.Runtime.Owned<{}>", resolve.types.get(*element).unwrap().to_waas(resolve)?)),

@@ -7,10 +7,10 @@ using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
-    public class FlagsFormatter<TEnum> : IFormatter<TEnum> where TEnum : unmanaged, Enum
+    internal class FlagsFormatter<TEnum> : IFormatter<TEnum> where TEnum : unmanaged, Enum
     {
         private static readonly IValueType type = new FlagsType();
-        public IValueType Type => type;
+        public IValueType? Type => type;
 
         public async STask<TEnum> PullAsync(Pullable adapter)
         {

@@ -6,9 +6,9 @@ using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
-    public class CharFormatter : IFormatter<ComponentChar>
+    internal class CharFormatter : IFormatter<ComponentChar>
     {
-        public IValueType Type { get; } = new PrimitiveValueType { Kind = PrimitiveValueTypeKind.Char };
+        public IValueType? Type { get; } = new PrimitiveValueType { Kind = PrimitiveValueTypeKind.Char };
 
         public async STask<ComponentChar> PullAsync(Pullable adapter)
         {

@@ -24,8 +24,6 @@ namespace WaaS.Runtime
         public Limits PageLimits { get; }
         public Span<byte> Span => buffer.AsSpan()[..Length];
 
-        public string Memo { get; set; }
-
         public int Length { get; private set; }
         public int NumPages { get; private set; }
 

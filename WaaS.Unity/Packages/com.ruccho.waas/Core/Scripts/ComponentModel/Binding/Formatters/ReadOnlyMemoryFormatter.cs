@@ -7,9 +7,9 @@ using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
-    public class ReadOnlyMemoryFormatter<T> : IFormatter<ReadOnlyMemory<T>>
+    internal class ReadOnlyMemoryFormatter<T> : IFormatter<ReadOnlyMemory<T>>
     {
-        public IValueType Type { get; } = new ResolvedListType(FormatterProvider.GetFormatter<T>().Type);
+        public IValueType? Type { get; } = new ResolvedListType(FormatterProvider.GetFormatter<T>().Type);
 
         public async STask<ReadOnlyMemory<T>> PullAsync(Pullable adapter)
         {
@@ -28,7 +28,7 @@ namespace WaaS.ComponentModel.Binding
         }
     }
 
-    public class ReadOnlyMemoryFormatterProvider : IProceduralFormatterProvider
+    internal class ReadOnlyMemoryFormatterProvider : IProceduralFormatterProvider
     {
         public bool TryCreateFormatter<T>(out IFormatter<T> formatter)
         {

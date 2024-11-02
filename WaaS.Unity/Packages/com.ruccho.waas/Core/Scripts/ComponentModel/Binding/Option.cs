@@ -1,6 +1,6 @@
 ﻿#nullable enable
 
-using System.Diagnostics.CodeAnalysis;
+using System;
 
 namespace WaaS.ComponentModel.Binding
 {
@@ -9,27 +9,43 @@ namespace WaaS.ComponentModel.Binding
     ///     For value types, use Nullable&lt;T&gt; instead.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public readonly struct Option<T>
+    [ComponentVariant]
+    public readonly partial struct Option<T>
     {
-        public readonly bool isSome;
-        public readonly T value;
+        [ComponentCase] public None? None { get; private init; }
 
-        public bool TryGetValue([NotNullWhen(true)] out T value)
-        {
-            if (isSome)
-            {
-                value = this.value;
-                return true;
-            }
-
-            value = default;
-            return false;
-        }
+        [ComponentCase] public T? Some { get; private init; }
 
         public Option(T value)
         {
-            isSome = true;
-            this.value = value;
+            Some = value;
+            None = null;
+            Case = VariantCase.Some;
+        }
+
+        public static readonly Option<T> NoneValue = new()
+        {
+            Some = default,
+            None = new None(),
+            Case = VariantCase.None
+        };
+    }
+
+    public static class OptionExtensions
+    {
+        public static T? ToNullable<T>(this in Option<T> option) where T : struct
+        {
+            return option.Case switch
+            {
+                Option<T>.VariantCase.None => null,
+                Option<T>.VariantCase.Some => option.Some,
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        public static Option<T> ToOption<T>(this in T? nullable) where T : struct
+        {
+            return nullable.HasValue ? new Option<T>(nullable.Value) : Option<T>.NoneValue;
         }
     }
 }

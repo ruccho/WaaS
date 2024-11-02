@@ -266,11 +266,7 @@ fn process_dir(resolve: &Resolve, package_id: PackageId, out_dir: &str) -> Resul
                                     source.push_docs(&case.docs);
                                     source.push_line("[global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]");
                                     let ty = if let Some(ty) = &case.ty {
-                                        if ty.is_value_type(resolve)? {
-                                            format!("{}?", ty.to_waas(resolve)?)
-                                        } else {
-                                            format!("global::WaaS.ComponentModel.Binding.Option<{}>", ty.to_waas(resolve)?)
-                                        }
+                                        format!("{}?", ty.to_waas(resolve)?)
                                     } else {
                                         "global::WaaS.ComponentModel.Binding.None?".to_string()
                                     };

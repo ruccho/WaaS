@@ -1,12 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 
 namespace WaaS.Generators;
 
@@ -14,7 +9,6 @@ namespace WaaS.Generators;
 public class ComponentFormatterGenerator : IIncrementalGenerator
 {
     private const string FormatNamespace = "WaaS.ComponentModel.Models";
-    private const string InterfaceNamespace = "WaaS.ComponentModel.Runtime";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -65,7 +59,7 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
                         {
                 """);
 
-        bool generateConstructor = false;
+        var generateConstructor = false;
         var properties = typeSymbol
             .GetMembers()
             .OfType<IPropertySymbol>()
@@ -80,11 +74,11 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
             if (variantSelectors.Any())
             {
                 sourceBuilder.AppendLine(
-/* lang=c#  */$$"""
-                            var tag = reader.Clone().ReadUnaligned<byte>();
-                            switch (tag)
-                            {
-                """);
+/* lang=c#  */"""
+                          var tag = reader.Clone().ReadUnaligned<byte>();
+                          switch (tag)
+                          {
+              """);
 
                 foreach (var variantSelector in variantSelectors)
                 {
@@ -103,34 +97,31 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
                 }
 
                 sourceBuilder.AppendLine(
-/* lang=c#  */$$"""
-                            }
-                """);
+/* lang=c#  */"""            }""");
             }
 
             if (variantFallbackSelectors.Any())
-            {
                 for (var i = 0; i < variantFallbackSelectors.Length; i++)
                 {
                     var variantFallbackSelector = variantFallbackSelectors[i];
                     var type = variantFallbackSelector.ConstructorArguments[0].Value;
                     if (type is not ITypeSymbol variantType) continue;
                     sourceBuilder.AppendLine(
-/* lang=c#  */$$"""
-                            if(global::{{FormatNamespace}}.Formatter<{{variantType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>.TryRead(ref reader, indexSpace, out var f{{i}}))
-                            {
-                                result = f{{i}};
-                                return true;
-                            }
-                """);
+                        /* lang=c#  */
+                        $$"""
+                                      if(global::{{FormatNamespace}}.Formatter<{{variantType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>.TryRead(ref reader, indexSpace, out var f{{i}}))
+                                      {
+                                          result = f{{i}};
+                                          return true;
+                                      }
+                          """);
                 }
-            }
 
             sourceBuilder.AppendLine(
-/* lang=c#  */$$"""         
-                            result = default;
-                            return false;
-                """);
+/* lang=c#  */"""
+                          result = default;
+                          return false;
+              """);
         }
         else
         {
@@ -139,22 +130,18 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
                             result = new {{typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}(
                 """);
 
-            bool isFirst = true;
+            var isFirst = true;
             foreach (var propertySymbol in properties)
             {
                 generateConstructor = true;
                 if (isFirst)
-                {
                     isFirst = false;
-                }
                 else
-                {
                     sourceBuilder.AppendLine(", ");
-                }
 
                 sourceBuilder.Append("                ");
 
-                bool dontAddToSort = propertySymbol.GetAttributes()
+                var dontAddToSort = propertySymbol.GetAttributes()
                     .Any(attr => attr.AttributeClass.Matches($"{FormatNamespace}.DontAddToSortAttribute"));
                 AppendValueReader(propertySymbol.Type, dontAddToSort, sourceBuilder);
             }
@@ -162,16 +149,14 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
             sourceBuilder.AppendLine("\n            );");
 
             sourceBuilder.AppendLine(
-/* lang=c#  */$$"""
-                            return true;
-                """);
+/* lang=c#  */"""            return true;""");
         }
 
         sourceBuilder.AppendLine(
-/* lang=c#  */$$"""
-                        }
-                    }
-                """);
+/* lang=c#  */"""
+                      }
+                  }
+              """);
 
         if (generateConstructor)
         {
@@ -182,12 +167,9 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
                 """);
 
             if (typeSymbol.TypeKind is TypeKind.Struct)
-            {
                 sourceBuilder.AppendLine(
-/* lang=c#  */$$"""
-                        this = default;
-                """);
-            }
+                    /* lang=c#  */
+                    """        this = default;""");
 
             sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
@@ -197,9 +179,7 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
         }
 
         sourceBuilder.AppendLine(
-/* lang=c#  */$$"""
-                }
-                """);
+/* lang=c#  */"""}""");
 
         if (!ns.IsGlobalNamespace) sourceBuilder.AppendLine($"}} // namespace {ns}");
 
@@ -213,31 +193,32 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
 
 
     private static void AppendValueReader(ITypeSymbol type, bool dontAddToSort, StringBuilder sourceBuilder)
-    {   
+    {
         if (type.NullableAnnotation == NullableAnnotation.Annotated)
         {
             sourceBuilder.Append(
-                $"reader.ReadOptional(static (ref global::WaaS.Models.ModuleReader reader, IIndexSpace indexSpace) => ");
-            AppendValueReader(type.WithNullableAnnotation(NullableAnnotation.NotAnnotated), dontAddToSort, sourceBuilder);
-            sourceBuilder.Append($", indexSpace)");
+                "reader.ReadOptional(static (ref global::WaaS.Models.ModuleReader reader, IIndexSpace indexSpace) => ");
+            AppendValueReader(type.WithNullableAnnotation(NullableAnnotation.NotAnnotated), dontAddToSort,
+                sourceBuilder);
+            sourceBuilder.Append(", indexSpace)");
             return;
         }
 
         if (type.SpecialType is SpecialType.System_Byte)
         {
-            sourceBuilder.Append($"reader.ReadUnaligned<byte>()");
+            sourceBuilder.Append("reader.ReadUnaligned<byte>()");
             return;
         }
 
         if (type.SpecialType is SpecialType.System_UInt32)
         {
-            sourceBuilder.Append($"reader.ReadUnalignedLeb128U32()");
+            sourceBuilder.Append("reader.ReadUnalignedLeb128U32()");
             return;
         }
 
         if (type.SpecialType == SpecialType.System_String)
         {
-            sourceBuilder.Append($"reader.ReadUtf8String()");
+            sourceBuilder.Append("reader.ReadUtf8String()");
             return;
         }
 
@@ -253,9 +234,9 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
             if (type.Matches("System.ReadOnlyMemory`1"))
             {
                 sourceBuilder.Append(
-                    $"reader.ReadVector(static (ref global::WaaS.Models.ModuleReader reader, IIndexSpace indexSpace) => ");
+                    "reader.ReadVector(static (ref global::WaaS.Models.ModuleReader reader, IIndexSpace indexSpace) => ");
                 AppendValueReader(namedType.TypeArguments[0], dontAddToSort, sourceBuilder);
-                sourceBuilder.Append($", indexSpace)");
+                sourceBuilder.Append(", indexSpace)");
                 return;
             }
 

@@ -548,9 +548,19 @@ namespace WaaS.ComponentModel.Runtime
             try
             {
                 if (Flattened)
-                    return checked((byte)NextFlattenedI32());
+                    return NextFlattenedI32();
                 else
-                    return checked((byte)LoadSerialized<uint>());
+                    switch (flagsType.ElementSize)
+                    {
+                        case 1:
+                            return LoadSerialized<byte>();
+                        case 2:
+                            return LoadSerialized<ushort>();
+                        case 4:
+                            return LoadSerialized<uint>();
+                        default:
+                            throw new InvalidOperationException();
+                    }
             }
             finally
             {

@@ -85,7 +85,7 @@ namespace WaaS.ComponentModel.Runtime
 
         private class Formatter : IFormatter<Owned<T>>
         {
-            public IValueType Type { get; }
+            public IValueType? Type { get; }
 
             public async STask<Owned<T>> PullAsync(Pullable adapter)
             {
@@ -179,7 +179,7 @@ namespace WaaS.ComponentModel.Runtime
 
         private class Formatter : IFormatter<Borrowed<T>>
         {
-            public IValueType Type { get; }
+            public IValueType? Type { get; }
 
             public async STask<Borrowed<T>> PullAsync(Pullable adapter)
             {

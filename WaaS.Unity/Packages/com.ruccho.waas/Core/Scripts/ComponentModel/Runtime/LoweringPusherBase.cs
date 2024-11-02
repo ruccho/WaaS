@@ -146,13 +146,15 @@ namespace WaaS.ComponentModel.Runtime
 
         public void PushOwned<T>(Owned<T> handle) where T : class, IResourceType
         {
-            if (GetNextType() is not IOwnedType { Type: T }) throw new InvalidOperationException();
+            if (GetNextType() is not IOwnedType { Type: T } owned) throw new InvalidOperationException();
+            // if (owned.Type != handle.Type) throw new InvalidOperationException();
             PushU32Core(handle.MoveOut());
         }
 
         public void PushBorrowed<T>(Borrowed<T> handle) where T : class, IResourceType
         {
-            if (GetNextType() is not IBorrowedType { Type: T }) throw new InvalidOperationException();
+            if (GetNextType() is not IBorrowedType { Type: T } borrowed) throw new InvalidOperationException();
+            // if (borrowed.Type != handle.Type) throw new InvalidOperationException();
             PushU32Core(handle.MoveOut());
         }
 

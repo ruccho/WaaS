@@ -46,7 +46,7 @@ namespace WaaS.Models
             }
         }
 
-        public Limits(uint min, uint max)
+        public Limits(uint min, uint? max = null)
         {
             Min = min;
             Max = max;

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -9,14 +8,7 @@ namespace WaaS.Generators;
 [Generator(LanguageNames.CSharp)]
 public class ComponentBindingFormatterGenerator : IIncrementalGenerator
 {
-    private enum FormatterKind
-    {
-        Record,
-        Variant,
-        Alias
-    }
-
-    private static SymbolDisplayFormat ForTypeDeclaration = new(
+    private static readonly SymbolDisplayFormat ForTypeDeclaration = new(
         SymbolDisplayGlobalNamespaceStyle.Omitted,
         SymbolDisplayTypeQualificationStyle.NameOnly,
         SymbolDisplayFormat.FullyQualifiedFormat.GenericsOptions,
@@ -35,7 +27,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
     {
         {
             var source = context.SyntaxProvider.ForAttributeWithMetadataName(
-                $"WaaS.ComponentModel.Binding.ComponentRecordAttribute",
+                "WaaS.ComponentModel.Binding.ComponentRecordAttribute",
                 static (node, ct) => true,
                 (context, ct) => context);
 
@@ -44,7 +36,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
         }
         {
             var source = context.SyntaxProvider.ForAttributeWithMetadataName(
-                $"WaaS.ComponentModel.Binding.ComponentVariantAttribute",
+                "WaaS.ComponentModel.Binding.ComponentVariantAttribute",
                 static (node, ct) => true,
                 (context, ct) => context);
 
@@ -53,7 +45,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
         }
         {
             var source = context.SyntaxProvider.ForAttributeWithMetadataName(
-                $"WaaS.ComponentModel.Binding.ComponentAliasAttribute",
+                "WaaS.ComponentModel.Binding.ComponentAliasAttribute",
                 static (node, ct) => true,
                 (context, ct) => context);
 
@@ -98,10 +90,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
         static void PrintNestedTypeOpeners(StringBuilder sourceBuilder, INamedTypeSymbol symbol)
         {
             var containingSymbol = symbol.ContainingSymbol;
-            if (containingSymbol is INamedTypeSymbol namedSymbol)
-            {
-                PrintNestedTypeOpeners(sourceBuilder, namedSymbol);
-            }
+            if (containingSymbol is INamedTypeSymbol namedSymbol) PrintNestedTypeOpeners(sourceBuilder, namedSymbol);
 
             var kind = symbol.TypeKind switch
             {
@@ -144,13 +133,14 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
                         {
                 """);
 
+        StringBuilder? memberBuilder = null;
         switch (kind)
         {
             case FormatterKind.Record:
                 EmitRecordFormatterBody(namedSymbol, sourceBuilder);
                 break;
             case FormatterKind.Variant:
-                EmitVariantFormatterBody(namedSymbol, sourceBuilder);
+                EmitVariantFormatterBody(namedSymbol, sourceBuilder, memberBuilder ??= new StringBuilder());
                 break;
             case FormatterKind.Alias:
                 EmitAliasFormatterBody(namedSymbol, sourceBuilder);
@@ -165,13 +155,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
                         }
                 """);
 
-        if (kind == FormatterKind.Variant)
-        {
-            sourceBuilder.AppendLine(
-/* lang=c#    */"""
-                        public int CaseIndex { get; init; }
-                """);
-        }
+        if (memberBuilder != null) sourceBuilder.Append(memberBuilder);
 
         sourceBuilder.AppendLine(
 /* lang=c#    */"""
@@ -193,10 +177,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
                   } // partial {{kind}} {{symbol.ToDisplayString(ForTypeDeclaration)}}
                   """);
             var containingSymbol = symbol.ContainingSymbol;
-            if (containingSymbol is INamedTypeSymbol namedSymbol)
-            {
-                PrintNestedTypeClosers(sourceBuilder, namedSymbol);
-            }
+            if (containingSymbol is INamedTypeSymbol namedSymbol) PrintNestedTypeClosers(sourceBuilder, namedSymbol);
         }
 
         if (namedSymbol.ContainingSymbol is INamedTypeSymbol containingSymbol1)
@@ -218,7 +199,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
         return member switch
         {
             IFieldSymbol field => field.Type,
-            IPropertySymbol property => property.Type,
+            IPropertySymbol property => property.Type
         };
     }
 
@@ -244,46 +225,83 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
                        !member.IsStatic &&
                        member.GetAttributes().Select(attr => attr.AttributeClass).WhereNotNull().Any(attr =>
                            attr.Matches("WaaS.ComponentModel.Binding.ComponentFieldAttribute"));
-            });
+            }).ToArray();
 
         sourceBuilder.AppendLine(
-/* lang=c#  */$$"""
-                            public global::WaaS.ComponentModel.Runtime.IValueType Type { get; } = new global::WaaS.ComponentModel.Models.ResolvedRecordType(
-                                new global::WaaS.ComponentModel.Models.ResolvedRecordField[]
-                                {
-                """);
+/* lang=c#  */"""
+                          public global::WaaS.ComponentModel.Runtime.IValueType Type { get; } = new global::WaaS.ComponentModel.Models.ResolvedRecordType(
+                              new global::WaaS.ComponentModel.Models.ResolvedRecordField[]
+                              {
+              """);
         foreach (var member in members)
         {
+            var memberType = GetMemberType(member);
+            bool isNullable;
+            if (TryGetNullableElement(memberType, out var elementType))
+            {
+                memberType = elementType!;
+                isNullable = true;
+            }
+            else
+            {
+                isNullable = memberType.NullableAnnotation is NullableAnnotation.Annotated;
+            }
+
+            var memberTypeExpression = isNullable
+                ? $"global::WaaS.ComponentModel.Binding.Option<{memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>"
+                : memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
             sourceBuilder.AppendLine(
                 /* lang=c#  */
                 $$"""
-                                      new global::WaaS.ComponentModel.Models.ResolvedRecordField(@"{{Utils.ToComponentApiName(member)}}", global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Type),
+                                      new global::WaaS.ComponentModel.Models.ResolvedRecordField(@"{{Utils.ToComponentApiName(member)}}", global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{memberTypeExpression}}>().Type ?? throw new global::System.InvalidOperationException()),
                   """);
         }
 
         sourceBuilder.AppendLine(
-/* lang=c#  */$$"""
-                                });
-                """);
+/* lang=c#  */"""                });""");
 
         sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
-                            public async global::System.Threading.Tasks.ValueTask<{{name}}> PullAsync(global::WaaS.ComponentModel.Binding.Pullable pullable)
+                            public async global::STask.STask<{{name}}> PullAsync(global::WaaS.ComponentModel.Binding.Pullable pullable)
                             {
-                                var prelude = await pullable.PullPrimitiveValueAsync<global::WaaS.ComponentModel.Binding.RecordPrelude>().ConfigureAwait(false);
+                                var prelude = await pullable.PullPrimitiveValueAsync<global::WaaS.ComponentModel.Binding.RecordPrelude>();
                                 pullable = prelude.BodyPullable;
                                 
                                 return new {{name}}()
                                 {
                 """);
 
-        // TODO: pull directly for primitive types 
         foreach (var member in members)
-            sourceBuilder.AppendLine(
+        {
+            var memberType = GetMemberType(member);
+            bool isNullable;
+            if (TryGetNullableElement(memberType, out var elementType))
+            {
+                memberType = elementType!;
+                isNullable = true;
+            }
+            else
+            {
+                isNullable = memberType.NullableAnnotation is NullableAnnotation.Annotated;
+            }
+
+            var memberTypeExpression = isNullable
+                ? $"global::WaaS.ComponentModel.Binding.Option<{memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>"
+                : memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+            sourceBuilder.Append(
                 /* lang=c#  */
                 $$"""
-                                      {{member.Name}} = await pullable.PullValueAsync<{{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().ConfigureAwait(false),
+                                      {{member.Name}} = 
                   """);
+            if (isNullable) sourceBuilder.Append("global::WaaS.ComponentModel.Binding.OptionExtensions.ToNullable(");
+
+            sourceBuilder.Append($"await pullable.PullValueAsync<{memberTypeExpression}>()");
+            if (isNullable) sourceBuilder.Append(")");
+
+            sourceBuilder.AppendLine(",");
+        }
 
         sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
@@ -296,10 +314,35 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
                 """);
 
         foreach (var member in members)
-            sourceBuilder.AppendLine(
+        {
+            var memberType = GetMemberType(member);
+            bool isNullable;
+            if (TryGetNullableElement(memberType, out var elementType))
+            {
+                memberType = elementType!;
+                isNullable = true;
+            }
+            else
+            {
+                isNullable = memberType.NullableAnnotation is NullableAnnotation.Annotated;
+            }
+
+            var memberTypeExpression = isNullable
+                ? $"global::WaaS.ComponentModel.Binding.Option<{memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>"
+                : memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            sourceBuilder.Append(
 /* lang=c#  */$$"""
-                                global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push(value.{{member.Name}}, pusher);
+                                global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{memberTypeExpression}}>().Push(
                 """);
+
+            if (isNullable) sourceBuilder.Append("global::WaaS.ComponentModel.Binding.OptionExtensions.ToOption(");
+
+            sourceBuilder.Append($"value.{member.Name}");
+
+            if (isNullable) sourceBuilder.Append(")");
+
+            sourceBuilder.AppendLine(", pusher);");
+        }
 
         sourceBuilder.AppendLine(
 /* lang=c#  */"""
@@ -307,7 +350,8 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
               """);
     }
 
-    private static void EmitVariantFormatterBody(INamedTypeSymbol namedSymbol, StringBuilder sourceBuilder)
+    private static void EmitVariantFormatterBody(INamedTypeSymbol namedSymbol, StringBuilder bodyBuilder,
+        StringBuilder memberBuilder)
     {
         var name = namedSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
@@ -320,61 +364,58 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
                            attr.Matches("WaaS.ComponentModel.Binding.ComponentCaseAttribute"));
             }).ToArray();
 
-        sourceBuilder.AppendLine(
-/* lang=c#  */$$"""
-                            public global::WaaS.ComponentModel.Runtime.IValueType Type { get; } = new global::WaaS.ComponentModel.Models.ResolvedVariantType(
-                                new global::WaaS.ComponentModel.Models.ResolvedVariantCase[]
-                                {
-                """);
+        bodyBuilder.AppendLine(
+/* lang=c#  */"""
+                          public global::WaaS.ComponentModel.Runtime.IValueType Type { get; } = new global::WaaS.ComponentModel.Models.ResolvedVariantType(
+                              new global::WaaS.ComponentModel.Models.ResolvedVariantCase[]
+                              {
+              """);
         foreach (var member in members)
         {
             var memberType = GetMemberType(member);
-            var isNone = TryGetNullableElement(memberType, out var elementType) &&
-                         elementType!.Matches("WaaS.ComponentModel.Binding.None");
+            if (TryGetNullableElement(memberType, out var elementType)) memberType = elementType!;
+            var isNone = memberType.Matches("WaaS.ComponentModel.Binding.None");
             var typeExpression = isNone
                 ? "null"
                 : $"global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>().Type";
-            sourceBuilder.AppendLine(
+            bodyBuilder.AppendLine(
                 /* lang=c#  */
                 $$"""
                                       new global::WaaS.ComponentModel.Models.ResolvedVariantCase(@"{{Utils.ToComponentApiName(member)}}", {{typeExpression}}),
                   """);
         }
 
-        sourceBuilder.AppendLine(
-/* lang=c#  */$$"""
-                                });
-                """);
+        bodyBuilder.AppendLine(
+/* lang=c#  */"""                });""");
 
-        sourceBuilder.AppendLine(
+        bodyBuilder.AppendLine(
 /* lang=c#  */$$"""
-                            public async global::System.Threading.Tasks.ValueTask<{{name}}> PullAsync(global::WaaS.ComponentModel.Binding.Pullable pullable)
+                            public async global::STask.STask<{{name}}> PullAsync(global::WaaS.ComponentModel.Binding.Pullable pullable)
                             {
-                                var prelude = await pullable.PullPrimitiveValueAsync<global::WaaS.ComponentModel.Binding.VariantPrelude>().ConfigureAwait(false);
+                                var prelude = await pullable.PullPrimitiveValueAsync<global::WaaS.ComponentModel.Binding.VariantPrelude>();
                                 pullable = prelude.BodyPullable;
                                 
                                 return prelude.CaseIndex switch
                                 {
                 """);
 
-        // TODO: pull directly for primitive types 
         for (var i = 0; i < members.Length; i++)
         {
             var member = members[i];
             var memberType = GetMemberType(member);
-            var isNone = TryGetNullableElement(memberType, out var elementType) &&
-                         elementType!.Matches("WaaS.ComponentModel.Binding.None");
+            if (TryGetNullableElement(memberType, out var elementType)) memberType = elementType!;
+            var isNone = memberType.Matches("WaaS.ComponentModel.Binding.None");
             var valueExpression = isNone
                 ? "default(global::WaaS.ComponentModel.Binding.None)"
-                : $"await pullable.PullValueAsync<{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>().ConfigureAwait(false)";
+                : $"await pullable.PullValueAsync<{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>()";
 
-            sourceBuilder.AppendLine(
+            bodyBuilder.AppendLine(
 /* lang=c#  */$$"""
-                                    {{i}} => new {{name}}() { CaseIndex = {{i}}, {{member.Name}} = {{valueExpression}} },
+                                    {{i}} => new {{name}}() { Case = VariantCase.{{member.Name}}, {{member.Name}} = {{valueExpression}} },
                 """);
         }
 
-        sourceBuilder.AppendLine(
+        bodyBuilder.AppendLine(
 /* lang=c#  */$$"""
                                     _ => throw new global::System.IndexOutOfRangeException()
                                 };
@@ -382,38 +423,54 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
                                 
                             public void Push({{name}} value, global::WaaS.ComponentModel.Runtime.ValuePusher pusher)
                             {
-                                pusher = pusher.PushVariant(value.CaseIndex);
-                                switch (value.CaseIndex)
+                                pusher = pusher.PushVariant((int)value.Case);
+                                switch (value.Case)
                                 {
                 """);
 
-        for (var i = 0; i < members.Length; i++)
+        foreach (var member in members)
         {
-            var member = members[i];
             var memberType = GetMemberType(member);
             var isNone = TryGetNullableElement(memberType, out var elementType) &&
                          elementType!.Matches("WaaS.ComponentModel.Binding.None");
-            sourceBuilder.AppendLine(
+            bodyBuilder.AppendLine(
 /* lang=c#  */$$"""
-                                    case {{i}}:
+                                    case VariantCase.{{member.Name}}:
                 """);
             if (!isNone)
-                sourceBuilder.AppendLine(
+                bodyBuilder.AppendLine(
 /* lang=c#  */$$"""
                                         global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push(value.{{member.Name}}, pusher);
                 """);
-            sourceBuilder.AppendLine(
-/* lang=c#  */$$"""
-                                        break;
-                """);
+            bodyBuilder.AppendLine(
+/* lang=c#  */"""                        break;""");
         }
 
-        sourceBuilder.AppendLine(
+        bodyBuilder.AppendLine(
 /* lang=c#    */"""
                                     default:
                                         throw new global::System.IndexOutOfRangeException();
                                 }
                             }
+                """);
+
+        // emit members
+        memberBuilder.AppendLine(
+/* lang=c#    */"""
+                        public VariantCase Case { get; private init; }
+                        public enum VariantCase
+                        {
+                """);
+        foreach (var member in members)
+            memberBuilder.AppendLine(
+                /* lang=c#  */
+                $$"""
+                              {{member.Name}},
+                  """);
+
+        memberBuilder.AppendLine(
+/* lang=c#    */"""
+                        }
                 """);
     }
 
@@ -428,9 +485,9 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
         sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
                             public global::WaaS.ComponentModel.Runtime.IValueType Type { get; } = global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Type;
-                            public async global::System.Threading.Tasks.ValueTask<{{name}}> PullAsync(global::WaaS.ComponentModel.Binding.Pullable pullable)
+                            public async global::STask.STask<{{name}}> PullAsync(global::WaaS.ComponentModel.Binding.Pullable pullable)
                             {
-                                return await pullable.PullValueAsync<{{targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().ConfigureAwait(false);
+                                return await pullable.PullValueAsync<{{targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>();
                             }
                                 
                             public void Push({{name}} value, global::WaaS.ComponentModel.Runtime.ValuePusher pusher)
@@ -438,5 +495,12 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
                                 global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push(value, pusher);
                             }
                 """);
+    }
+
+    private enum FormatterKind
+    {
+        Record,
+        Variant,
+        Alias
     }
 }

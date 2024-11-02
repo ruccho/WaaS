@@ -74,9 +74,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                         { MethodKind: MethodKind.PropertyGet or MethodKind.PropertySet })))
                 .Select(member => new ComponentApi(member));
             if (includeBases)
-            {
-                members = members.Concat(symbol.AllInterfaces.SelectMany(@interface => ExtractApis(@interface, false)));
-            }
+                members = members.Concat(symbol.AllInterfaces.SelectMany(@interface => ExtractApis(@interface)));
 
             return members;
         }
@@ -99,9 +97,10 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
         var directMembers = ExtractApis(namedSymbol).ToArray();
 
         var resourceProperties = ExtractResourceProperties(namedSymbol);
+        var resourceTypes = resourceProperties.Select(p => p.Type as INamedTypeSymbol);
 
         var allMembers =
-            directMembers.Concat(resourceProperties.Select(p => (p.Type as INamedTypeSymbol)!).SelectMany(t => ExtractApis(t)));
+            directMembers.Concat(resourceTypes.SelectMany(t => ExtractApis(t)));
 
         // TODO: generics
         sourceBuilder.AppendLine(
@@ -121,13 +120,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                 
                             public bool TryGetExport<T>(string name, [global::System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out T? result) where T : global::WaaS.ComponentModel.Runtime.ISortedExportable
                             {
-                                if (!typeof(global::WaaS.ComponentModel.Runtime.IFunction).IsAssignableFrom(typeof(T)))
-                                {
-                                    result = default;
-                                    return false;
-                                }
-                
-                                global::WaaS.ComponentModel.Runtime.IFunction? function = name switch
+                                global::WaaS.ComponentModel.Runtime.ISortedExportable? exportable = name switch
                                 {
                 """);
 
@@ -138,21 +131,30 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                 $$"""
                                       @"{{Utils.ToComponentApiName(member.memberSymbol)}}" => __{{member.ExternalFunctionName}} ??= new {{member.ExternalFunctionName}}(__waas__target),
                   """);
+
         foreach (var prop in resourceProperties)
-        foreach (var member in ExtractApis((prop.Type as INamedTypeSymbol)!))
+        {
             sourceBuilder.AppendLine(
                 /* lang=c#  */
                 $$"""
-                                      @"{{Utils.ToComponentApiName(member.memberSymbol)}}" => __{{member.ExternalFunctionName}} ??= new {{member.ExternalFunctionName}}(__waas__target.{{prop.Name}}),
+                                      @"{{Utils.ToComponentResourceName(prop)}}" => __waas__target.{{prop.Name}},
                   """);
+
+            foreach (var member in ExtractApis((prop.Type as INamedTypeSymbol)!))
+                sourceBuilder.AppendLine(
+                    /* lang=c#  */
+                    $$"""
+                                          @"{{Utils.ToComponentApiName(member.memberSymbol)}}" => __{{member.ExternalFunctionName}} ??= new {{member.ExternalFunctionName}}(__waas__target.{{prop.Name}}),
+                      """);
+        }
 
         sourceBuilder.AppendLine(
 /* lang=c#  */"""
                                   _ => null
                               };
               
-                              result = (T)function!;
-                              return function != null;
+                              result = (T)exportable!;
+                              return result != null;
                           }
               """);
 
@@ -211,21 +213,21 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
 /* lang=c#    */"""
                             
                                 protected override async global::STask.STaskVoid PullArgumentsAsync(
-                                    global::WaaS.Runtime.ExecutionContext context,
-                                    global::WaaS.ComponentModel.Binding.PushPullAdapter adapter,
-                                    global::STask.STaskVoid frameMove,
-                                    global::STask.STask<global::WaaS.ComponentModel.Runtime.ValuePusher> resultPusherTask)
+                                    global::WaaS.Runtime.ExecutionContext __context,
+                                    global::WaaS.ComponentModel.Binding.PushPullAdapter __adapter,
+                                    global::STask.STaskVoid __frameMove,
+                                    global::STask.STask<global::WaaS.ComponentModel.Runtime.ValuePusher> __resultPusherTask)
                                 {
                 """);
             foreach (var parameterSymbol in member.parameters)
                 sourceBuilder.AppendLine(
                     /* lang=c#  */
                     $$"""
-                                          var @{{parameterSymbol.Name}} = await adapter.PullValueAsync<{{parameterSymbol.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>();
+                                          var @{{parameterSymbol.Name}} = await __adapter.PullValueAsync<{{parameterSymbol.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>();
                       """);
 
             sourceBuilder.AppendLine(
-/* lang=c#  */"""                    await frameMove;""");
+/* lang=c#  */"""                    await __frameMove;""");
 
             sourceBuilder.Append(
 /* lang=c#  */"""                    """);
@@ -247,15 +249,13 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                 sourceBuilder.AppendLine(
                     /* lang=c#  */
                     $$"""
-                                          var __waas__resultPusher = await resultPusherTask;
+                                          var __waas__resultPusher = await __resultPusherTask;
                                           global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{member.returnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push(__waas__result, __waas__resultPusher);
                       """);
             else
                 sourceBuilder.AppendLine(
                     /* lang=c#  */
-                    $$"""
-                                          await resultPusherTask;
-                      """);
+                    """                    await __resultPusherTask;""");
             sourceBuilder.AppendLine(
 /* lang=c#    */"""
                                 }
@@ -291,12 +291,12 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
 /* lang=c#  */$$"""
                             public {{(member.isAwaitable ? "async " : "")}}{{member.unawaitedReturnType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "void"}} {{member.memberSymbol.Name}}({{string.Join(", ", member.parameters.Select(param => $"{param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} @{param.Name}"))}})
                             {
-                                if (!instance.TryGetExport(@"{{Utils.ToComponentApiName(member.memberSymbol)}}", out global::WaaS.ComponentModel.Runtime.IFunction? function))
+                                if (!this.instance.TryGetExport(@"{{Utils.ToComponentApiName(member.memberSymbol)}}", out global::WaaS.ComponentModel.Runtime.IFunction? function))
                                 {
                                     throw new global::System.InvalidOperationException(@"A function ""{{Utils.ToComponentApiName(member.memberSymbol)}}"" is not found.");
                                 }
                 
-                                using var binder = function.GetBinder(context);
+                                using var binder = function.GetBinder(this.context);
                                 using var pusher = binder.ArgumentPusher;
                 """);
 
@@ -310,9 +310,9 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
 /* lang=c#  */"""                """);
 
                 if (member.isAwaitable)
-                    sourceBuilder.AppendLine("await binder.InvokeAsync(context);");
+                    sourceBuilder.AppendLine("await binder.InvokeAsync(this.context);");
                 else
-                    sourceBuilder.AppendLine("binder.Invoke(context);");
+                    sourceBuilder.AppendLine("binder.Invoke(this.context);");
 
                 if (member.returnType != null)
                     sourceBuilder.AppendLine(
@@ -334,7 +334,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
 
         var directImplMembers = ExtractApis(namedSymbol, true).ToArray();
         AppendWrapperBody(sourceBuilder, directImplMembers, "Wrapper");
-        
+
         var resourcePropertiesImpl = ExtractResourceProperties(namedSymbol, true);
 
         foreach (var prop in resourcePropertiesImpl)
