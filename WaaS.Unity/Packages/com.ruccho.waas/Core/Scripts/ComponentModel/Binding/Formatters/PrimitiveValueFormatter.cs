@@ -14,10 +14,7 @@ namespace WaaS.ComponentModel.Binding
         public PrimitiveValueFormatter(IValueType type, Action<T, ValuePusher> push)
         {
             this.push = push;
-            Type = type;
         }
-
-        public IValueType? Type { get; }
 
         public STask<T> PullAsync(Pullable adapter)
         {

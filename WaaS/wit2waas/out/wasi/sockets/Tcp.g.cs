@@ -3,6 +3,7 @@
 
 namespace Wasi.Sockets
 {
+    // interface tcp
     [global::WaaS.ComponentModel.Binding.ComponentInterface(@"tcp")]
     public partial interface ITcp
     {
@@ -45,8 +46,8 @@ namespace Wasi.Sockets
         ///     `network::error-code` type, TCP socket methods may always return
         ///     `error(invalid-state)` when in the `closed` state.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface ITcpSocketResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("tcp-socket")]
+        public partial interface ITcpSocketResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Bind the socket to a specific network on the provided IP address and port.
@@ -89,10 +90,10 @@ namespace Wasi.Sockets
             ///     - <https://man.freebsd.org/cgi/man.cgi?query=bind&sektion=2&format=html>
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.start-bind")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> StartBind(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self, global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.INetwork.INetworkResource> @network, Wasi.Sockets.INetwork.IpSocketAddress @localAddress);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> StartBind(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self, global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.INetwork.INetworkResourceImpl> @network, Wasi.Sockets.INetwork.IpSocketAddress @localAddress);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.finish-bind")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> FinishBind(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> FinishBind(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             /// <summary>
             ///     Connect to a remote endpoint.
@@ -139,10 +140,10 @@ namespace Wasi.Sockets
             ///     - <https://man.freebsd.org/cgi/man.cgi?connect>
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.start-connect")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> StartConnect(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self, global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.INetwork.INetworkResource> @network, Wasi.Sockets.INetwork.IpSocketAddress @remoteAddress);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> StartConnect(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self, global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.INetwork.INetworkResourceImpl> @network, Wasi.Sockets.INetwork.IpSocketAddress @remoteAddress);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.finish-connect")]
-            global::WaaS.ComponentModel.Binding.Result<(global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IStreams.IInputStreamResource>, global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IStreams.IOutputStreamResource>), Wasi.Sockets.INetwork.ErrorCode> FinishConnect(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<(global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IStreams.IInputStreamResourceImpl>, global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IStreams.IOutputStreamResourceImpl>), Wasi.Sockets.INetwork.ErrorCode>> FinishConnect(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             /// <summary>
             ///     Start listening for new connections.
@@ -172,10 +173,10 @@ namespace Wasi.Sockets
             ///     - <https://man.freebsd.org/cgi/man.cgi?query=listen&sektion=2>
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.start-listen")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> StartListen(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> StartListen(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.finish-listen")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> FinishListen(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> FinishListen(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             /// <summary>
             ///     Accept a new client socket.
@@ -206,7 +207,7 @@ namespace Wasi.Sockets
             ///     - <https://man.freebsd.org/cgi/man.cgi?query=accept&sektion=2>
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.accept")]
-            global::WaaS.ComponentModel.Binding.Result<(global::WaaS.ComponentModel.Runtime.Owned<Wasi.Sockets.ITcp.ITcpSocketResource>, global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IStreams.IInputStreamResource>, global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IStreams.IOutputStreamResource>), Wasi.Sockets.INetwork.ErrorCode> Accept(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<(global::WaaS.ComponentModel.Binding.Owned<Wasi.Sockets.ITcp.ITcpSocketResourceImpl>, global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IStreams.IInputStreamResourceImpl>, global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IStreams.IOutputStreamResourceImpl>), Wasi.Sockets.INetwork.ErrorCode>> Accept(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             /// <summary>
             ///     Get the bound local address.
@@ -227,7 +228,7 @@ namespace Wasi.Sockets
             ///     - <https://man.freebsd.org/cgi/man.cgi?getsockname>
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.local-address")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Sockets.INetwork.IpSocketAddress, Wasi.Sockets.INetwork.ErrorCode> LocalAddress(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Sockets.INetwork.IpSocketAddress, Wasi.Sockets.INetwork.ErrorCode>> LocalAddress(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             /// <summary>
             ///     Get the remote address.
@@ -242,7 +243,7 @@ namespace Wasi.Sockets
             ///     - <https://man.freebsd.org/cgi/man.cgi?query=getpeername&sektion=2&n=1>
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.remote-address")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Sockets.INetwork.IpSocketAddress, Wasi.Sockets.INetwork.ErrorCode> RemoteAddress(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Sockets.INetwork.IpSocketAddress, Wasi.Sockets.INetwork.ErrorCode>> RemoteAddress(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             /// <summary>
             ///     Whether the socket is in the `listening` state.
@@ -250,7 +251,7 @@ namespace Wasi.Sockets
             ///     Equivalent to the SO_ACCEPTCONN socket option.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.is-listening")]
-            bool IsListening(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<bool> IsListening(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             /// <summary>
             ///     Whether this is a IPv4 or IPv6 socket.
@@ -258,7 +259,7 @@ namespace Wasi.Sockets
             ///     Equivalent to the SO_DOMAIN socket option.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.address-family")]
-            Wasi.Sockets.INetwork.IpAddressFamily AddressFamily(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<Wasi.Sockets.INetwork.IpAddressFamily> AddressFamily(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             /// <summary>
             ///     Hints the desired listen queue size. Implementations are free to ignore this.
@@ -272,7 +273,7 @@ namespace Wasi.Sockets
             ///     - `invalid-state`:        (set) The socket is in the `connect-in-progress` or `connected` state.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.set-listen-backlog-size")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> SetListenBacklogSize(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self, ulong @value);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> SetListenBacklogSize(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self, ulong @value);
 
             /// <summary>
             ///     Enables or disables keepalive.
@@ -286,10 +287,10 @@ namespace Wasi.Sockets
             ///     Equivalent to the SO_KEEPALIVE socket option.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.keep-alive-enabled")]
-            global::WaaS.ComponentModel.Binding.Result<bool, Wasi.Sockets.INetwork.ErrorCode> KeepAliveEnabled(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<bool, Wasi.Sockets.INetwork.ErrorCode>> KeepAliveEnabled(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.set-keep-alive-enabled")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> SetKeepAliveEnabled(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self, bool @value);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> SetKeepAliveEnabled(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self, bool @value);
 
             /// <summary>
             ///     Amount of time the connection has to be idle before TCP starts sending keepalive packets.
@@ -304,10 +305,10 @@ namespace Wasi.Sockets
             ///     - `invalid-argument`:     (set) The provided value was 0.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.keep-alive-idle-time")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Clocks.IMonotonicClock.Duration, Wasi.Sockets.INetwork.ErrorCode> KeepAliveIdleTime(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Clocks.IMonotonicClock.Duration, Wasi.Sockets.INetwork.ErrorCode>> KeepAliveIdleTime(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.set-keep-alive-idle-time")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> SetKeepAliveIdleTime(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self, Wasi.Clocks.IMonotonicClock.Duration @value);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> SetKeepAliveIdleTime(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self, Wasi.Clocks.IMonotonicClock.Duration @value);
 
             /// <summary>
             ///     The time between keepalive packets.
@@ -322,10 +323,10 @@ namespace Wasi.Sockets
             ///     - `invalid-argument`:     (set) The provided value was 0.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.keep-alive-interval")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Clocks.IMonotonicClock.Duration, Wasi.Sockets.INetwork.ErrorCode> KeepAliveInterval(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Clocks.IMonotonicClock.Duration, Wasi.Sockets.INetwork.ErrorCode>> KeepAliveInterval(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.set-keep-alive-interval")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> SetKeepAliveInterval(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self, Wasi.Clocks.IMonotonicClock.Duration @value);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> SetKeepAliveInterval(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self, Wasi.Clocks.IMonotonicClock.Duration @value);
 
             /// <summary>
             ///     The maximum amount of keepalive packets TCP should send before aborting the connection.
@@ -340,10 +341,10 @@ namespace Wasi.Sockets
             ///     - `invalid-argument`:     (set) The provided value was 0.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.keep-alive-count")]
-            global::WaaS.ComponentModel.Binding.Result<uint, Wasi.Sockets.INetwork.ErrorCode> KeepAliveCount(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<uint, Wasi.Sockets.INetwork.ErrorCode>> KeepAliveCount(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.set-keep-alive-count")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> SetKeepAliveCount(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self, uint @value);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> SetKeepAliveCount(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self, uint @value);
 
             /// <summary>
             ///     Equivalent to the IP_TTL & IPV6_UNICAST_HOPS socket options.
@@ -354,10 +355,10 @@ namespace Wasi.Sockets
             ///     - `invalid-argument`:     (set) The TTL value must be 1 or higher.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.hop-limit")]
-            global::WaaS.ComponentModel.Binding.Result<byte, Wasi.Sockets.INetwork.ErrorCode> HopLimit(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<byte, Wasi.Sockets.INetwork.ErrorCode>> HopLimit(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.set-hop-limit")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> SetHopLimit(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self, byte @value);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> SetHopLimit(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self, byte @value);
 
             /// <summary>
             ///     The kernel buffer space reserved for sends/receives on this socket.
@@ -372,16 +373,16 @@ namespace Wasi.Sockets
             ///     - `invalid-argument`:     (set) The provided value was 0.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.receive-buffer-size")]
-            global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Sockets.INetwork.ErrorCode> ReceiveBufferSize(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Sockets.INetwork.ErrorCode>> ReceiveBufferSize(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.set-receive-buffer-size")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> SetReceiveBufferSize(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self, ulong @value);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> SetReceiveBufferSize(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self, ulong @value);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.send-buffer-size")]
-            global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Sockets.INetwork.ErrorCode> SendBufferSize(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Sockets.INetwork.ErrorCode>> SendBufferSize(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.set-send-buffer-size")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> SetSendBufferSize(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self, ulong @value);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> SetSendBufferSize(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self, ulong @value);
 
             /// <summary>
             ///     Create a `pollable` which can be used to poll for, or block on,
@@ -403,7 +404,7 @@ namespace Wasi.Sockets
             ///     It's planned to be removed when `future` is natively supported in Preview3.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.subscribe")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IPoll.IPollableResource> Subscribe(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IPoll.IPollableResourceImpl>> Subscribe(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self);
 
             /// <summary>
             ///     Initiate a graceful shutdown.
@@ -431,7 +432,7 @@ namespace Wasi.Sockets
             ///     - <https://man.freebsd.org/cgi/man.cgi?query=shutdown&sektion=2>
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]tcp-socket.shutdown")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> Shutdown(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResource> @self, Wasi.Sockets.ITcp.ShutdownType @shutdownType);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> Shutdown(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.ITcp.ITcpSocketResourceImpl> @self, Wasi.Sockets.ITcp.ShutdownType @shutdownType);
 
         }
 

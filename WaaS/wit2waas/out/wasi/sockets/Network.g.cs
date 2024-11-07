@@ -3,6 +3,7 @@
 
 namespace Wasi.Sockets
 {
+    // interface network
     [global::WaaS.ComponentModel.Binding.ComponentInterface(@"network")]
     public partial interface INetwork
     {
@@ -11,8 +12,8 @@ namespace Wasi.Sockets
         ///     This enables context-based security for networking.
         ///     There is no need for this to map 1:1 to a physical network interface.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface INetworkResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("network")]
+        public partial interface INetworkResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
         }
 
@@ -165,7 +166,7 @@ namespace Wasi.Sockets
             public static implicit operator (ushort, ushort, ushort, ushort, ushort, ushort, ushort, ushort)(Ipv6Address value) => value.value;
         }
 
-        [global::WaaS.ComponentModel.Binding.ComponentVariant]
+        [global::WaaS.ComponentModel.Binding.ComponentVariant, global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Auto)]
         public readonly partial struct IpAddress
         {
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
@@ -214,7 +215,7 @@ namespace Wasi.Sockets
             public uint ScopeId { get; init; }
         }
 
-        [global::WaaS.ComponentModel.Binding.ComponentVariant]
+        [global::WaaS.ComponentModel.Binding.ComponentVariant, global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Auto)]
         public readonly partial struct IpSocketAddress
         {
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]

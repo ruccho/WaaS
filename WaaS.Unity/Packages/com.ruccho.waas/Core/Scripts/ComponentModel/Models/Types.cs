@@ -2,8 +2,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using WaaS.ComponentModel.Runtime;
 using WaaS.Models;
+using WaaS.Runtime;
 
 namespace WaaS.ComponentModel.Models
 {
@@ -48,7 +50,7 @@ namespace WaaS.ComponentModel.Models
                     new PrimitiveValueType((PrimitiveValueTypeKind)(i + (int)PrimitiveValueTypeKind._EnumStart));
         }
 
-        private static IPrimitiveValueType GetBoxed(PrimitiveValueTypeKind kind)
+        public static IPrimitiveValueType GetBoxed(PrimitiveValueTypeKind kind)
         {
             return boxedTypes[(int)kind - (int)PrimitiveValueTypeKind._EnumStart];
         }
@@ -470,7 +472,7 @@ namespace WaaS.ComponentModel.Models
         }
     }
 
-    internal class ResolvedListType : IListType
+    public class ResolvedListType : IListType
     {
         public ResolvedListType(IValueType elementType)
         {
@@ -510,13 +512,13 @@ namespace WaaS.ComponentModel.Models
             var resolvedTypes = new IValueType[Type.Length];
             for (var i = 0; i < Type.Span.Length; i++) resolvedTypes[i] = context.Resolve(Type.Span[i]);
 
-            return new ResolverTupleType(resolvedTypes);
+            return new ResolvedTupleType(resolvedTypes);
         }
     }
 
-    internal class ResolverTupleType : ITupleType
+    public class ResolvedTupleType : ITupleType
     {
-        public ResolverTupleType(ReadOnlyMemory<IValueType> cases)
+        public ResolvedTupleType(ReadOnlyMemory<IValueType> cases)
         {
             Cases = cases;
         }
@@ -585,6 +587,11 @@ namespace WaaS.ComponentModel.Models
         {
             return this;
         }
+
+        public static FlagsType Create(ReadOnlyMemory<string> labels)
+        {
+            return new FlagsType(labels);
+        }
     }
 
     [GenerateFormatter]
@@ -620,7 +627,7 @@ namespace WaaS.ComponentModel.Models
             return this;
         }
 
-        internal static EnumType Create(ReadOnlyMemory<string> labels)
+        public static EnumType Create(ReadOnlyMemory<string> labels)
         {
             return new EnumType(labels);
         }
@@ -642,7 +649,7 @@ namespace WaaS.ComponentModel.Models
         }
     }
 
-    internal class ResolvedOptionType : IOptionType
+    public class ResolvedOptionType : IOptionType
     {
         public ResolvedOptionType(IValueType type)
         {
@@ -684,33 +691,33 @@ namespace WaaS.ComponentModel.Models
         {
             return new ResolvedResultType(context.Resolve(Type), context.Resolve(ErrorType));
         }
+    }
 
-        private class ResolvedResultType : IResultType
+    public class ResolvedResultType : IResultType
+    {
+        public ResolvedResultType(IValueType type, IValueType errorType)
         {
-            public ResolvedResultType(IValueType type, IValueType errorType)
+            Type = type;
+            ErrorType = errorType;
+        }
+
+        private IDespecializedValueType? Despecialized { get; set; }
+
+        public IValueType Type { get; }
+        public IValueType ErrorType { get; }
+
+        public IDespecializedValueType Despecialize()
+        {
+            if (Despecialized == null)
             {
-                Type = type;
-                ErrorType = errorType;
+                var cases = new IVariantCase[2];
+                cases[0] = new ResolvedVariantCase("ok", Type);
+                cases[1] = new ResolvedVariantCase("error", ErrorType);
+
+                Despecialized = new ResolvedVariantType(cases);
             }
 
-            private IDespecializedValueType? Despecialized { get; set; }
-
-            public IValueType Type { get; }
-            public IValueType ErrorType { get; }
-
-            public IDespecializedValueType Despecialize()
-            {
-                if (Despecialized == null)
-                {
-                    var cases = new IVariantCase[2];
-                    cases[0] = new ResolvedVariantCase("ok", Type);
-                    cases[1] = new ResolvedVariantCase("error", ErrorType);
-
-                    Despecialized = new ResolvedVariantType(cases);
-                }
-
-                return Despecialized;
-            }
+            return Despecialized;
         }
     }
 
@@ -728,29 +735,29 @@ namespace WaaS.ComponentModel.Models
         {
             return new ResolvedOwnedType(context.Resolve(Type) as IResourceType ?? throw new LinkException());
         }
+    }
 
-        private class ResolvedOwnedType : IOwnedType
+    public class ResolvedOwnedType : IOwnedType
+    {
+        public ResolvedOwnedType(IResourceType type)
         {
-            public ResolvedOwnedType(IResourceType type)
-            {
-                Type = type;
-            }
+            Type = type;
+        }
 
-            public IResourceType Type { get; }
+        public IResourceType Type { get; }
 
-            public IDespecializedValueType Despecialize()
-            {
-                return this;
-            }
+        public IDespecializedValueType Despecialize()
+        {
+            return this;
+        }
 
-            public byte AlignmentRank => 2;
-            public ushort ElementSize => 4;
-            public uint FlattenedCount => 1;
+        public byte AlignmentRank => 2;
+        public ushort ElementSize => 4;
+        public uint FlattenedCount => 1;
 
-            public void Flatten(Span<ValueType> dest)
-            {
-                dest[0] = ValueType.I32;
-            }
+        public void Flatten(Span<ValueType> dest)
+        {
+            dest[0] = ValueType.I32;
         }
     }
 
@@ -768,29 +775,29 @@ namespace WaaS.ComponentModel.Models
         {
             return new ResolvedBorrowedType(context.Resolve(Type) as IResourceType ?? throw new LinkException());
         }
+    }
 
-        private class ResolvedBorrowedType : IBorrowedType
+    public class ResolvedBorrowedType : IBorrowedType
+    {
+        public ResolvedBorrowedType(IResourceType type)
         {
-            public ResolvedBorrowedType(IResourceType type)
-            {
-                Type = type;
-            }
+            Type = type;
+        }
 
-            public IResourceType Type { get; }
+        public IResourceType Type { get; }
 
-            public IDespecializedValueType Despecialize()
-            {
-                return this;
-            }
+        public IDespecializedValueType Despecialize()
+        {
+            return this;
+        }
 
-            public byte AlignmentRank => 2;
-            public ushort ElementSize => 4;
-            public uint FlattenedCount => 1;
+        public byte AlignmentRank => 2;
+        public ushort ElementSize => 4;
+        public uint FlattenedCount => 1;
 
-            public void Flatten(Span<ValueType> dest)
-            {
-                dest[0] = ValueType.I32;
-            }
+        public void Flatten(Span<ValueType> dest)
+        {
+            dest[0] = ValueType.I32;
         }
     }
 
@@ -847,12 +854,15 @@ namespace WaaS.ComponentModel.Models
     [GenerateFormatter]
     public partial class ResourceType : IResourceTypeDefinition
     {
-        private byte Unknown0 { get; init; }
-        public IUnresolved<IFunction>? Destructor { get; init; }
+        private byte Representation { get; }
+        private IUnresolved<ICoreSortedExportable<IInvocableFunction>>? Destructor { get; }
 
         public IResourceType ResolveFirstTime(IInstanceResolutionContext context)
         {
-            return new ResolvedResourceType(Destructor != null ? context.Resolve(Destructor) : null);
+            if (Representation != 0)
+                throw new NotSupportedException(
+                    $"This type of resource representation is not supported: {Representation}");
+            return new ResolvedResourceType(Destructor != null ? context.Resolve(Destructor).CoreExternal : null);
         }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
@@ -862,12 +872,30 @@ namespace WaaS.ComponentModel.Models
 
         private class ResolvedResourceType : IResourceType
         {
-            public ResolvedResourceType(IFunction? destructor)
+            private readonly IInvocableFunction? destructor;
+            private readonly ResourceTable<uint> table = new();
+
+            public ResolvedResourceType(IInvocableFunction? destructor)
             {
-                Destructor = destructor;
+                this.destructor = destructor;
             }
 
-            public IFunction? Destructor { get; }
+            public uint New(uint rep)
+            {
+                return unchecked((uint)table.Add(rep));
+            }
+
+            public void Drop(ExecutionContext context, uint index)
+            {
+                if (destructor != null)
+                {
+                    var indexValue = new StackValueItem(index);
+                    context.InterruptFrame(destructor, MemoryMarshal.CreateSpan(ref indexValue, 1),
+                        Span<StackValueItem>.Empty);
+                }
+
+                table.RemoveAt(unchecked((int)index));
+            }
         }
     }
 

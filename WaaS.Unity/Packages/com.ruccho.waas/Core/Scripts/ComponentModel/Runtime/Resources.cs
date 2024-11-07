@@ -2,31 +2,33 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using STask;
 using WaaS.ComponentModel.Binding;
+using ExecutionContext = WaaS.Runtime.ExecutionContext;
 
 namespace WaaS.ComponentModel.Runtime
 {
-    internal class OwnedCore
+    internal class Ownership
     {
-        [ThreadStatic] private static Stack<OwnedCore>? pool;
+        [ThreadStatic] private static Stack<Ownership>? pool;
         private int version;
 
         public int Version => version;
 
         public IResourceType? Type { get; private set; }
         private uint Value { get; set; }
+        private ExecutionContext Context { get; set; }
 
-        public static Owned<T> GetHandle<T>(T type, uint value) where T : class, IResourceType
+        public static Owned GetHandle(IResourceType type, uint value, ExecutionContext context)
         {
-            pool ??= new Stack<OwnedCore>();
-            if (!pool.TryPop(out var popped)) popped = new OwnedCore();
+            pool ??= new Stack<Ownership>();
+            if (!pool.TryPop(out var popped)) popped = new Ownership();
 
             popped.Type = type;
             popped.Value = value;
-            return new Owned<T>(popped);
+            popped.Context = context;
+            return new Owned(popped);
         }
 
         public void Drop(int version)
@@ -38,17 +40,25 @@ namespace WaaS.ComponentModel.Runtime
 
             if (version != -2)
             {
-                pool ??= new Stack<OwnedCore>();
+                pool ??= new Stack<Ownership>();
                 pool.Push(this);
             }
 
             CallDestructor();
         }
 
+        public uint GetValue(int version)
+        {
+            var value = Value;
+            if (this.version != version)
+                throw new InvalidOperationException("This resource handle is already dropped.");
+            return value;
+        }
+
         public uint MoveOut(int version)
         {
             if (Interlocked.CompareExchange(ref this.version, unchecked(version + 1), version) != version)
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("This resource handle is already dropped.");
             var value = Value;
 
             Type = null;
@@ -56,14 +66,36 @@ namespace WaaS.ComponentModel.Runtime
 
             if (version != -2)
             {
-                pool ??= new Stack<OwnedCore>();
+                pool ??= new Stack<Ownership>();
                 pool.Push(this);
             }
 
             return value;
         }
 
-        ~OwnedCore()
+        public bool TryMoveOut(int version, out uint value)
+        {
+            if (Interlocked.CompareExchange(ref this.version, unchecked(version + 1), version) != version)
+            {
+                value = default;
+                return false;
+            }
+
+            value = Value;
+
+            Type = null;
+            Value = 0;
+
+            if (version != -2)
+            {
+                pool ??= new Stack<Ownership>();
+                pool.Push(this);
+            }
+
+            return true;
+        }
+
+        ~Ownership()
         {
             if (Type == null) return;
             Interlocked.Increment(ref version);
@@ -72,152 +104,96 @@ namespace WaaS.ComponentModel.Runtime
 
         private void CallDestructor()
         {
-            // TODO: call destructor
+            Type!.Drop(Context, Value);
         }
     }
 
-    public readonly struct Owned<T> where T : class, IResourceType
+    public readonly struct Owned
     {
         static Owned()
         {
             FormatterProvider.Register(new Formatter());
         }
 
-        private class Formatter : IFormatter<Owned<T>>
+        private class Formatter : IFormatter<Owned>
         {
-            public IValueType? Type { get; }
-
-            public async STask<Owned<T>> PullAsync(Pullable adapter)
+            public async STask<Owned> PullAsync(Pullable adapter)
             {
-                var borrowed = await adapter.PullPrimitiveValueAsync<Owned<IResourceType>>();
-                if (borrowed.Type is not T) throw new InvalidOperationException("Invalid type");
-                var typed = Unsafe.As<Owned<IResourceType>, Owned<T>>(ref borrowed);
-                return typed;
+                return await adapter.PullPrimitiveValueAsync<Owned>();
             }
 
-            public void Push(Owned<T> value, ValuePusher pusher)
+            public void Push(Owned value, ValuePusher pusher)
             {
-                var typed = Unsafe.As<Owned<T>, Owned<IResourceType>>(ref value);
-                pusher.PushOwned(typed);
+                pusher.PushOwned(value);
             }
         }
 
-        private OwnedCore Core { get; }
+        private Ownership Ownership { get; }
         private int Version { get; }
 
-        public T Type
+        public IResourceType Type
         {
             get
             {
-                if (Version != Core.Version) throw new InvalidOperationException();
-                return (T?)Core.Type ?? throw new InvalidOperationException();
+                if (Version != Ownership.Version) throw new InvalidOperationException();
+                return Ownership.Type ?? throw new InvalidOperationException();
             }
         }
 
-        public uint MoveOut()
+        public uint GetValue(bool moveOut = true)
         {
-            return Core.MoveOut(Version);
+            return moveOut ? Ownership.MoveOut(Version) : Ownership.GetValue(Version);
         }
 
-        internal Owned(OwnedCore core) : this()
+        internal Owned(Ownership core) : this()
         {
-            Core = core;
+            Ownership = core;
             Version = core.Version;
         }
 
         public void Dispose()
         {
-            Core.Drop(Version);
+            Ownership.Drop(Version);
         }
 
-        public void Borrow()
+        public Borrowed Borrow()
         {
+            return new Borrowed(this);
         }
     }
 
-    internal class BorrowedCore
-    {
-        [ThreadStatic] private static Stack<BorrowedCore>? pool;
-        private int version;
-
-        public int Version => version;
-
-        public IResourceType Type { get; private set; }
-        private uint Value { get; set; }
-
-        public static Borrowed<T> GetHandle<T>(IResourceType type, uint value) where T : class, IResourceType
-        {
-            pool ??= new Stack<BorrowedCore>();
-            if (!pool.TryPop(out var popped)) popped = new BorrowedCore();
-
-            popped.Type = type;
-            popped.Value = value;
-            return new Borrowed<T>(popped);
-        }
-
-        public uint MoveOut(int version)
-        {
-            if (Interlocked.CompareExchange(ref this.version, unchecked(version + 1), version) != version)
-                throw new InvalidOperationException();
-
-            if (version != -2)
-            {
-                pool ??= new Stack<BorrowedCore>();
-                pool.Push(this);
-            }
-
-            return Value;
-        }
-    }
-
-    public readonly struct Borrowed<T> where T : class, IResourceType
+    public readonly struct Borrowed
     {
         static Borrowed()
         {
             FormatterProvider.Register(new Formatter());
         }
 
-        private class Formatter : IFormatter<Borrowed<T>>
+        private class Formatter : IFormatter<Borrowed>
         {
-            public IValueType? Type { get; }
-
-            public async STask<Borrowed<T>> PullAsync(Pullable adapter)
+            public async STask<Borrowed> PullAsync(Pullable adapter)
             {
-                var borrowed = await adapter.PullPrimitiveValueAsync<Borrowed<IResourceType>>();
-                if (borrowed.Type is not T) throw new InvalidOperationException("Invalid type");
-                var typed = Unsafe.As<Borrowed<IResourceType>, Borrowed<T>>(ref borrowed);
-                return typed;
+                return await adapter.PullPrimitiveValueAsync<Borrowed>();
             }
 
-            public void Push(Borrowed<T> value, ValuePusher pusher)
+            public void Push(Borrowed value, ValuePusher pusher)
             {
-                var typed = Unsafe.As<Borrowed<T>, Borrowed<IResourceType>>(ref value);
-                pusher.PushBorrowed(typed);
+                pusher.PushBorrowed(value);
             }
         }
 
-        private readonly Owned<T>? owned;
-        private BorrowedCore Core { get; }
-        private int Version { get; }
+        private readonly Owned owned;
 
-        public T Type
+        public IResourceType Type => owned.Type;
+
+        public uint GetValue()
         {
-            get
-            {
-                if (Version != Core.Version) throw new InvalidOperationException();
-                return (T?)Core.Type ?? throw new InvalidOperationException();
-            }
+            return owned.GetValue(false);
         }
 
-        public uint MoveOut()
+        internal Borrowed(Owned source)
         {
-            return Core.MoveOut(Version);
-        }
-
-        internal Borrowed(BorrowedCore core) : this()
-        {
-            Core = core;
-            Version = core.Version;
+            owned = source;
         }
     }
 }

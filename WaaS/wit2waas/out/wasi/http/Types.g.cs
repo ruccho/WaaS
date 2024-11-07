@@ -3,6 +3,7 @@
 
 namespace Wasi.Http
 {
+    // interface types
     /// <summary>
     ///     This interface defines all of the types and methods for implementing
     ///     HTTP Requests and Responses, both incoming and outgoing, as well as
@@ -25,12 +26,12 @@ namespace Wasi.Http
         ///     http-related errors.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"http-error-code")]
-        Wasi.Http.ITypes.ErrorCode? HttpErrorCode(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IError.IErrorResource> @err);
+        global::System.Threading.Tasks.ValueTask<Wasi.Http.ITypes.ErrorCode?> HttpErrorCode(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IError.IErrorResourceImpl> @err);
 
         /// <summary>
         ///     This type corresponds to HTTP standard Methods.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentVariant]
+        [global::WaaS.ComponentModel.Binding.ComponentVariant, global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Auto)]
         public readonly partial struct Method
         {
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
@@ -52,13 +53,13 @@ namespace Wasi.Http
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? Patch { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
-            public global::WaaS.ComponentModel.Binding.Option<string> Other { get; init; }
+            public string? Other { get; init; }
         }
 
         /// <summary>
         ///     This type corresponds to HTTP standard Related Schemes.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentVariant]
+        [global::WaaS.ComponentModel.Binding.ComponentVariant, global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Auto)]
         public readonly partial struct Scheme
         {
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
@@ -66,7 +67,7 @@ namespace Wasi.Http
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPS { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
-            public global::WaaS.ComponentModel.Binding.Option<string> Other { get; init; }
+            public string? Other { get; init; }
         }
 
         /// <summary>
@@ -109,7 +110,7 @@ namespace Wasi.Http
         ///     These cases are inspired by the IANA HTTP Proxy Error Types:
         ///     https://www.iana.org/assignments/http-proxy-status/http-proxy-status.xhtml#table-http-proxy-error-types
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentVariant]
+        [global::WaaS.ComponentModel.Binding.ComponentVariant, global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Auto)]
         public readonly partial struct ErrorCode
         {
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
@@ -147,7 +148,7 @@ namespace Wasi.Http
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPRequestLengthRequired { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
-            public global::WaaS.ComponentModel.Binding.Option<ulong?> HTTPRequestBodySize { get; init; }
+            public global::WaaS.ComponentModel.Binding.Option<ulong>? HTTPRequestBodySize { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPRequestMethodInvalid { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
@@ -155,23 +156,23 @@ namespace Wasi.Http
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPRequestURITooLong { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
-            public global::WaaS.ComponentModel.Binding.Option<uint?> HTTPRequestHeaderSectionSize { get; init; }
+            public global::WaaS.ComponentModel.Binding.Option<uint>? HTTPRequestHeaderSectionSize { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
-            public global::WaaS.ComponentModel.Binding.Option<Wasi.Http.ITypes.FieldSizePayload?> HTTPRequestHeaderSize { get; init; }
+            public global::WaaS.ComponentModel.Binding.Option<Wasi.Http.ITypes.FieldSizePayload>? HTTPRequestHeaderSize { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
-            public global::WaaS.ComponentModel.Binding.Option<uint?> HTTPRequestTrailerSectionSize { get; init; }
+            public global::WaaS.ComponentModel.Binding.Option<uint>? HTTPRequestTrailerSectionSize { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public Wasi.Http.ITypes.FieldSizePayload? HTTPRequestTrailerSize { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public global::WaaS.ComponentModel.Binding.None? HTTPResponseIncomplete { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
-            public global::WaaS.ComponentModel.Binding.Option<uint?> HTTPResponseHeaderSectionSize { get; init; }
+            public global::WaaS.ComponentModel.Binding.Option<uint>? HTTPResponseHeaderSectionSize { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public Wasi.Http.ITypes.FieldSizePayload? HTTPResponseHeaderSize { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
-            public global::WaaS.ComponentModel.Binding.Option<ulong?> HTTPResponseBodySize { get; init; }
+            public global::WaaS.ComponentModel.Binding.Option<ulong>? HTTPResponseBodySize { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
-            public global::WaaS.ComponentModel.Binding.Option<uint?> HTTPResponseTrailerSectionSize { get; init; }
+            public global::WaaS.ComponentModel.Binding.Option<uint>? HTTPResponseTrailerSectionSize { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
             public Wasi.Http.ITypes.FieldSizePayload? HTTPResponseTrailerSize { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
@@ -203,7 +204,7 @@ namespace Wasi.Http
         ///     This type enumerates the different kinds of errors that may occur when
         ///     setting or appending to a `fields` resource.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentVariant]
+        [global::WaaS.ComponentModel.Binding.ComponentVariant, global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Auto)]
         public readonly partial struct HeaderError
         {
             /// <summary>
@@ -280,8 +281,8 @@ namespace Wasi.Http
         ///     immutable. In an immutable fields, the `set`, `append`, and `delete`
         ///     operations will fail with `header-error.immutable`.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IFieldsResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("fields")]
+        public partial interface IFieldsResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Construct an empty HTTP Fields.
@@ -289,7 +290,7 @@ namespace Wasi.Http
             ///     The resulting `fields` is mutable.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[constructor]fields")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IFieldsResource> Fields();
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IFieldsResourceImpl>> Fields();
 
             /// <summary>
             ///     Construct an HTTP Fields.
@@ -307,7 +308,7 @@ namespace Wasi.Http
             ///     syntactically invalid, or if a field is forbidden.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[static]fields.from-list")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IFieldsResource>, Wasi.Http.ITypes.HeaderError> FromList(global::System.ReadOnlyMemory<(Wasi.Http.ITypes.FieldName, global::System.ReadOnlyMemory<byte>)> @entries);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IFieldsResourceImpl>, Wasi.Http.ITypes.HeaderError>> FromList(global::System.ReadOnlyMemory<(Wasi.Http.ITypes.FieldName, global::System.ReadOnlyMemory<byte>)> @entries);
 
             /// <summary>
             ///     Get all of the values corresponding to a name. If the name is not present
@@ -316,14 +317,14 @@ namespace Wasi.Http
             ///     with one or more empty field-values present.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]fields.get")]
-            global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<byte>> Get(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IFieldsResource> @self, Wasi.Http.ITypes.FieldName @name);
+            global::System.Threading.Tasks.ValueTask<global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<byte>>> Get(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IFieldsResourceImpl> @self, Wasi.Http.ITypes.FieldName @name);
 
             /// <summary>
             ///     Returns `true` when the name is present in this `fields`. If the name is
             ///     syntactically invalid, `false` is returned.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]fields.has")]
-            bool Has(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IFieldsResource> @self, Wasi.Http.ITypes.FieldName @name);
+            global::System.Threading.Tasks.ValueTask<bool> Has(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IFieldsResourceImpl> @self, Wasi.Http.ITypes.FieldName @name);
 
             /// <summary>
             ///     Set all of the values for a name. Clears any existing values for that
@@ -335,7 +336,7 @@ namespace Wasi.Http
             ///     the `field-value`s are syntactically invalid.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]fields.set")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Http.ITypes.HeaderError> Set(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IFieldsResource> @self, Wasi.Http.ITypes.FieldName @name, global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<byte>> @value);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Http.ITypes.HeaderError>> Set(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IFieldsResourceImpl> @self, Wasi.Http.ITypes.FieldName @name, global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<byte>> @value);
 
             /// <summary>
             ///     Delete all values for a name. Does nothing if no values for the name
@@ -347,7 +348,7 @@ namespace Wasi.Http
             ///     syntactically invalid.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]fields.delete")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Http.ITypes.HeaderError> Delete(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IFieldsResource> @self, Wasi.Http.ITypes.FieldName @name);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Http.ITypes.HeaderError>> Delete(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IFieldsResourceImpl> @self, Wasi.Http.ITypes.FieldName @name);
 
             /// <summary>
             ///     Append a value for a name. Does not change or delete any existing
@@ -359,7 +360,7 @@ namespace Wasi.Http
             ///     `field-value` are syntactically invalid.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]fields.append")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Http.ITypes.HeaderError> Append(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IFieldsResource> @self, Wasi.Http.ITypes.FieldName @name, global::System.ReadOnlyMemory<byte> @value);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Http.ITypes.HeaderError>> Append(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IFieldsResourceImpl> @self, Wasi.Http.ITypes.FieldName @name, global::System.ReadOnlyMemory<byte> @value);
 
             /// <summary>
             ///     Retrieve the full set of names and values in the Fields. Like the
@@ -373,7 +374,7 @@ namespace Wasi.Http
             ///     the order in which they will be serialized for transport.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]fields.entries")]
-            global::System.ReadOnlyMemory<(Wasi.Http.ITypes.FieldName, global::System.ReadOnlyMemory<byte>)> Entries(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IFieldsResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::System.ReadOnlyMemory<(Wasi.Http.ITypes.FieldName, global::System.ReadOnlyMemory<byte>)>> Entries(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IFieldsResourceImpl> @self);
 
             /// <summary>
             ///     Make a deep copy of the Fields. Equivalent in behavior to calling the
@@ -381,7 +382,7 @@ namespace Wasi.Http
             ///     `fields` is mutable.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]fields.clone")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IFieldsResource> Clone(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IFieldsResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IFieldsResourceImpl>> Clone(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IFieldsResourceImpl> @self);
 
         }
 
@@ -394,32 +395,32 @@ namespace Wasi.Http
         /// <summary>
         ///     Represents an incoming HTTP Request.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IIncomingRequestResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("incoming-request")]
+        public partial interface IIncomingRequestResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Returns the method of the incoming request.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]incoming-request.method")]
-            Wasi.Http.ITypes.Method Method(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IIncomingRequestResource> @self);
+            global::System.Threading.Tasks.ValueTask<Wasi.Http.ITypes.Method> Method(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IIncomingRequestResourceImpl> @self);
 
             /// <summary>
             ///     Returns the path with query parameters from the request, as a string.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]incoming-request.path-with-query")]
-            global::WaaS.ComponentModel.Binding.Option<string> PathWithQuery(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IIncomingRequestResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Option<string>> PathWithQuery(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IIncomingRequestResourceImpl> @self);
 
             /// <summary>
             ///     Returns the protocol scheme from the request.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]incoming-request.scheme")]
-            Wasi.Http.ITypes.Scheme? Scheme(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IIncomingRequestResource> @self);
+            global::System.Threading.Tasks.ValueTask<Wasi.Http.ITypes.Scheme?> Scheme(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IIncomingRequestResourceImpl> @self);
 
             /// <summary>
             ///     Returns the authority of the Request's target URI, if present.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]incoming-request.authority")]
-            global::WaaS.ComponentModel.Binding.Option<string> Authority(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IIncomingRequestResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Option<string>> Authority(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IIncomingRequestResourceImpl> @self);
 
             /// <summary>
             ///     Get the `headers` associated with the request.
@@ -432,22 +433,22 @@ namespace Wasi.Http
             ///     `incoming-request` before all children are dropped will trap.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]incoming-request.headers")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IFieldsResource> Headers(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IIncomingRequestResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IFieldsResourceImpl>> Headers(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IIncomingRequestResourceImpl> @self);
 
             /// <summary>
             ///     Gives the `incoming-body` associated with this request. Will only
             ///     return success at most once, and subsequent calls will return error.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]incoming-request.consume")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IIncomingBodyResource>, global::WaaS.ComponentModel.Binding.None> Consume(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IIncomingRequestResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IIncomingBodyResourceImpl>, global::WaaS.ComponentModel.Binding.None>> Consume(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IIncomingRequestResourceImpl> @self);
 
         }
 
         /// <summary>
         ///     Represents an outgoing HTTP Request.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IOutgoingRequestResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("outgoing-request")]
+        public partial interface IOutgoingRequestResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Construct a new `outgoing-request` with a default `method` of `GET`, and
@@ -462,7 +463,7 @@ namespace Wasi.Http
             ///     to reject invalid constructions of `outgoing-request`.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[constructor]outgoing-request")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IOutgoingRequestResource> OutgoingRequest(global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IFieldsResource> @headers);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IOutgoingRequestResourceImpl>> OutgoingRequest(global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IFieldsResourceImpl> @headers);
 
             /// <summary>
             ///     Returns the resource corresponding to the outgoing Body for this
@@ -473,27 +474,27 @@ namespace Wasi.Http
             ///     calls will return error.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-request.body")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IOutgoingBodyResource>, global::WaaS.ComponentModel.Binding.None> Body(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IOutgoingBodyResourceImpl>, global::WaaS.ComponentModel.Binding.None>> Body(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResourceImpl> @self);
 
             /// <summary>
             ///     Get the Method for the Request.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-request.method")]
-            Wasi.Http.ITypes.Method Method(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResource> @self);
+            global::System.Threading.Tasks.ValueTask<Wasi.Http.ITypes.Method> Method(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResourceImpl> @self);
 
             /// <summary>
             ///     Set the Method for the Request. Fails if the string present in a
             ///     `method.other` argument is not a syntactically valid method.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-request.set-method")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None> SetMethod(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResource> @self, Wasi.Http.ITypes.Method @method);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None>> SetMethod(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResourceImpl> @self, Wasi.Http.ITypes.Method @method);
 
             /// <summary>
             ///     Get the combination of the HTTP Path and Query for the Request.
             ///     When `none`, this represents an empty Path and empty Query.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-request.path-with-query")]
-            global::WaaS.ComponentModel.Binding.Option<string> PathWithQuery(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Option<string>> PathWithQuery(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResourceImpl> @self);
 
             /// <summary>
             ///     Set the combination of the HTTP Path and Query for the Request.
@@ -501,14 +502,14 @@ namespace Wasi.Http
             ///     string given is not a syntactically valid path and query uri component.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-request.set-path-with-query")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None> SetPathWithQuery(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResource> @self, global::WaaS.ComponentModel.Binding.Option<string> @pathWithQuery);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None>> SetPathWithQuery(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResourceImpl> @self, global::WaaS.ComponentModel.Binding.Option<string> @pathWithQuery);
 
             /// <summary>
             ///     Get the HTTP Related Scheme for the Request. When `none`, the
             ///     implementation may choose an appropriate default scheme.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-request.scheme")]
-            Wasi.Http.ITypes.Scheme? Scheme(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResource> @self);
+            global::System.Threading.Tasks.ValueTask<Wasi.Http.ITypes.Scheme?> Scheme(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResourceImpl> @self);
 
             /// <summary>
             ///     Set the HTTP Related Scheme for the Request. When `none`, the
@@ -516,7 +517,7 @@ namespace Wasi.Http
             ///     string given is not a syntactically valid uri scheme.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-request.set-scheme")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None> SetScheme(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResource> @self, Wasi.Http.ITypes.Scheme? @scheme);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None>> SetScheme(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResourceImpl> @self, Wasi.Http.ITypes.Scheme? @scheme);
 
             /// <summary>
             ///     Get the authority of the Request's target URI. A value of `none` may be used
@@ -524,7 +525,7 @@ namespace Wasi.Http
             ///     HTTPS schemes always require an authority.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-request.authority")]
-            global::WaaS.ComponentModel.Binding.Option<string> Authority(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Option<string>> Authority(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResourceImpl> @self);
 
             /// <summary>
             ///     Set the authority of the Request's target URI. A value of `none` may be used
@@ -533,7 +534,7 @@ namespace Wasi.Http
             ///     not a syntactically valid URI authority.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-request.set-authority")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None> SetAuthority(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResource> @self, global::WaaS.ComponentModel.Binding.Option<string> @authority);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None>> SetAuthority(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResourceImpl> @self, global::WaaS.ComponentModel.Binding.Option<string> @authority);
 
             /// <summary>
             ///     Get the headers associated with the Request.
@@ -546,7 +547,7 @@ namespace Wasi.Http
             ///     another component by e.g. `outgoing-handler.handle`.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-request.headers")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IFieldsResource> Headers(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IFieldsResourceImpl>> Headers(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingRequestResourceImpl> @self);
 
         }
 
@@ -558,47 +559,47 @@ namespace Wasi.Http
         ///     These timeouts are separate from any the user may use to bound a
         ///     blocking call to `wasi:io/poll.poll`.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IRequestOptionsResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("request-options")]
+        public partial interface IRequestOptionsResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Construct a default `request-options` value.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[constructor]request-options")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IRequestOptionsResource> RequestOptions();
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IRequestOptionsResourceImpl>> RequestOptions();
 
             /// <summary>
             ///     The timeout for the initial connect to the HTTP Server.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]request-options.connect-timeout")]
-            Wasi.Clocks.IMonotonicClock.Duration? ConnectTimeout(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IRequestOptionsResource> @self);
+            global::System.Threading.Tasks.ValueTask<Wasi.Clocks.IMonotonicClock.Duration?> ConnectTimeout(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IRequestOptionsResourceImpl> @self);
 
             /// <summary>
             ///     Set the timeout for the initial connect to the HTTP Server. An error
             ///     return value indicates that this timeout is not supported.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]request-options.set-connect-timeout")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None> SetConnectTimeout(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IRequestOptionsResource> @self, Wasi.Clocks.IMonotonicClock.Duration? @duration);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None>> SetConnectTimeout(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IRequestOptionsResourceImpl> @self, Wasi.Clocks.IMonotonicClock.Duration? @duration);
 
             /// <summary>
             ///     The timeout for receiving the first byte of the Response body.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]request-options.first-byte-timeout")]
-            Wasi.Clocks.IMonotonicClock.Duration? FirstByteTimeout(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IRequestOptionsResource> @self);
+            global::System.Threading.Tasks.ValueTask<Wasi.Clocks.IMonotonicClock.Duration?> FirstByteTimeout(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IRequestOptionsResourceImpl> @self);
 
             /// <summary>
             ///     Set the timeout for receiving the first byte of the Response body. An
             ///     error return value indicates that this timeout is not supported.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]request-options.set-first-byte-timeout")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None> SetFirstByteTimeout(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IRequestOptionsResource> @self, Wasi.Clocks.IMonotonicClock.Duration? @duration);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None>> SetFirstByteTimeout(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IRequestOptionsResourceImpl> @self, Wasi.Clocks.IMonotonicClock.Duration? @duration);
 
             /// <summary>
             ///     The timeout for receiving subsequent chunks of bytes in the Response
             ///     body stream.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]request-options.between-bytes-timeout")]
-            Wasi.Clocks.IMonotonicClock.Duration? BetweenBytesTimeout(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IRequestOptionsResource> @self);
+            global::System.Threading.Tasks.ValueTask<Wasi.Clocks.IMonotonicClock.Duration?> BetweenBytesTimeout(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IRequestOptionsResourceImpl> @self);
 
             /// <summary>
             ///     Set the timeout for receiving subsequent chunks of bytes in the Response
@@ -606,7 +607,7 @@ namespace Wasi.Http
             ///     supported.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]request-options.set-between-bytes-timeout")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None> SetBetweenBytesTimeout(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IRequestOptionsResource> @self, Wasi.Clocks.IMonotonicClock.Duration? @duration);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None>> SetBetweenBytesTimeout(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IRequestOptionsResourceImpl> @self, Wasi.Clocks.IMonotonicClock.Duration? @duration);
 
         }
 
@@ -617,8 +618,8 @@ namespace Wasi.Http
         ///     allow a Response to be sent corresponding to the Request provided as the
         ///     other argument to `incoming-handler.handle`.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IResponseOutparamResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("response-outparam")]
+        public partial interface IResponseOutparamResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Set the value of the `response-outparam` to either send a response,
@@ -632,7 +633,7 @@ namespace Wasi.Http
             ///     implementation determine how to respond with an HTTP error response.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[static]response-outparam.set")]
-            void Set(global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IResponseOutparamResource> @param, global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IOutgoingResponseResource>, Wasi.Http.ITypes.ErrorCode> @response);
+            global::System.Threading.Tasks.ValueTask Set(global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IResponseOutparamResourceImpl> @param, global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IOutgoingResponseResourceImpl>, Wasi.Http.ITypes.ErrorCode> @response);
 
         }
 
@@ -651,14 +652,14 @@ namespace Wasi.Http
         /// <summary>
         ///     Represents an incoming HTTP Response.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IIncomingResponseResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("incoming-response")]
+        public partial interface IIncomingResponseResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Returns the status code from the incoming response.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]incoming-response.status")]
-            Wasi.Http.ITypes.StatusCode Status(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IIncomingResponseResource> @self);
+            global::System.Threading.Tasks.ValueTask<Wasi.Http.ITypes.StatusCode> Status(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IIncomingResponseResourceImpl> @self);
 
             /// <summary>
             ///     Returns the headers from the incoming response.
@@ -670,14 +671,14 @@ namespace Wasi.Http
             ///     `incoming-response` is dropped.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]incoming-response.headers")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IFieldsResource> Headers(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IIncomingResponseResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IFieldsResourceImpl>> Headers(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IIncomingResponseResourceImpl> @self);
 
             /// <summary>
             ///     Returns the incoming body. May be called at most once. Returns error
             ///     if called additional times.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]incoming-response.consume")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IIncomingBodyResource>, global::WaaS.ComponentModel.Binding.None> Consume(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IIncomingResponseResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IIncomingBodyResourceImpl>, global::WaaS.ComponentModel.Binding.None>> Consume(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IIncomingResponseResourceImpl> @self);
 
         }
 
@@ -691,8 +692,8 @@ namespace Wasi.Http
         ///     and ensures that the user of this interface may only be consuming either
         ///     the body contents or waiting on trailers at any given time.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IIncomingBodyResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("incoming-body")]
+        public partial interface IIncomingBodyResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Returns the contents of the body, as a stream of bytes.
@@ -712,14 +713,14 @@ namespace Wasi.Http
             ///     the user does not read the entire body.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]incoming-body.stream")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IStreams.IInputStreamResource>, global::WaaS.ComponentModel.Binding.None> Stream(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IIncomingBodyResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IStreams.IInputStreamResourceImpl>, global::WaaS.ComponentModel.Binding.None>> Stream(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IIncomingBodyResourceImpl> @self);
 
             /// <summary>
             ///     Takes ownership of `incoming-body`, and returns a `future-trailers`.
             ///     This function will trap if the `input-stream` child is still alive.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[static]incoming-body.finish")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IFutureTrailersResource> Finish(global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IIncomingBodyResource> @this);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IFutureTrailersResourceImpl>> Finish(global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IIncomingBodyResourceImpl> @this);
 
         }
 
@@ -730,8 +731,8 @@ namespace Wasi.Http
         ///     trailers, this future will resolve to the empty set of trailers once the
         ///     complete Request or Response body has been received.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IFutureTrailersResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("future-trailers")]
+        public partial interface IFutureTrailersResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Returns a pollable which becomes ready when either the trailers have
@@ -739,7 +740,7 @@ namespace Wasi.Http
             ///     the `get` method will return `some`.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]future-trailers.subscribe")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IPoll.IPollableResource> Subscribe(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IFutureTrailersResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IPoll.IPollableResourceImpl>> Subscribe(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IFutureTrailersResourceImpl> @self);
 
             /// <summary>
             ///     Returns the contents of the trailers, or an error which occurred,
@@ -763,15 +764,15 @@ namespace Wasi.Http
             ///     dropped before the parent `future-trailers` is dropped.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]future-trailers.get")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IFieldsResource>?, Wasi.Http.ITypes.ErrorCode>, global::WaaS.ComponentModel.Binding.None>? Get(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IFutureTrailersResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IFieldsResourceImpl>?, Wasi.Http.ITypes.ErrorCode>, global::WaaS.ComponentModel.Binding.None>?> Get(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IFutureTrailersResourceImpl> @self);
 
         }
 
         /// <summary>
         ///     Represents an outgoing HTTP Response.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IOutgoingResponseResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("outgoing-response")]
+        public partial interface IOutgoingResponseResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Construct an `outgoing-response`, with a default `status-code` of `200`.
@@ -781,20 +782,20 @@ namespace Wasi.Http
             ///     * `headers` is the HTTP Headers for the Response.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[constructor]outgoing-response")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IOutgoingResponseResource> OutgoingResponse(global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IFieldsResource> @headers);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IOutgoingResponseResourceImpl>> OutgoingResponse(global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IFieldsResourceImpl> @headers);
 
             /// <summary>
             ///     Get the HTTP Status Code for the Response.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-response.status-code")]
-            Wasi.Http.ITypes.StatusCode StatusCode(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingResponseResource> @self);
+            global::System.Threading.Tasks.ValueTask<Wasi.Http.ITypes.StatusCode> StatusCode(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingResponseResourceImpl> @self);
 
             /// <summary>
             ///     Set the HTTP Status Code for the Response. Fails if the status-code
             ///     given is not a valid http status code.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-response.set-status-code")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None> SetStatusCode(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingResponseResource> @self, Wasi.Http.ITypes.StatusCode @statusCode);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, global::WaaS.ComponentModel.Binding.None>> SetStatusCode(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingResponseResourceImpl> @self, Wasi.Http.ITypes.StatusCode @statusCode);
 
             /// <summary>
             ///     Get the headers associated with the Request.
@@ -807,7 +808,7 @@ namespace Wasi.Http
             ///     another component by e.g. `outgoing-handler.handle`.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-response.headers")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IFieldsResource> Headers(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingResponseResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IFieldsResourceImpl>> Headers(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingResponseResourceImpl> @self);
 
             /// <summary>
             ///     Returns the resource corresponding to the outgoing Body for this Response.
@@ -817,7 +818,7 @@ namespace Wasi.Http
             ///     calls will return error.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-response.body")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IOutgoingBodyResource>, global::WaaS.ComponentModel.Binding.None> Body(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingResponseResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IOutgoingBodyResourceImpl>, global::WaaS.ComponentModel.Binding.None>> Body(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingResponseResourceImpl> @self);
 
         }
 
@@ -839,8 +840,8 @@ namespace Wasi.Http
         ///     including: corrupting the body on the wire, aborting the associated
         ///     Request, or sending a late status code for the Response.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IOutgoingBodyResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("outgoing-body")]
+        public partial interface IOutgoingBodyResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Returns a stream for writing the body contents.
@@ -854,7 +855,7 @@ namespace Wasi.Http
             ///     will return error.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-body.write")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IStreams.IOutputStreamResource>, global::WaaS.ComponentModel.Binding.None> Write(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IOutgoingBodyResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IStreams.IOutputStreamResourceImpl>, global::WaaS.ComponentModel.Binding.None>> Write(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IOutgoingBodyResourceImpl> @self);
 
             /// <summary>
             ///     Finalize an outgoing body, optionally providing trailers. This must be
@@ -868,7 +869,7 @@ namespace Wasi.Http
             ///     Content-Length.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[static]outgoing-body.finish")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Http.ITypes.ErrorCode> Finish(global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IOutgoingBodyResource> @this, global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IFieldsResource>? @trailers);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Http.ITypes.ErrorCode>> Finish(global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IOutgoingBodyResourceImpl> @this, global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IFieldsResourceImpl>? @trailers);
 
         }
 
@@ -879,8 +880,8 @@ namespace Wasi.Http
         ///     This resource is returned by the `wasi:http/outgoing-handler` interface to
         ///     provide the HTTP Response corresponding to the sent Request.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IFutureIncomingResponseResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("future-incoming-response")]
+        public partial interface IFutureIncomingResponseResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Returns a pollable which becomes ready when either the Response has
@@ -888,7 +889,7 @@ namespace Wasi.Http
             ///     the `get` method will return `some`.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]future-incoming-response.subscribe")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IPoll.IPollableResource> Subscribe(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IFutureIncomingResponseResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IPoll.IPollableResourceImpl>> Subscribe(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IFutureIncomingResponseResourceImpl> @self);
 
             /// <summary>
             ///     Returns the incoming HTTP Response, or an error, once one is ready.
@@ -907,7 +908,7 @@ namespace Wasi.Http
             ///     `output-stream` child.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]future-incoming-response.get")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IIncomingResponseResource>, Wasi.Http.ITypes.ErrorCode>, global::WaaS.ComponentModel.Binding.None>? Get(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Http.ITypes.IFutureIncomingResponseResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IIncomingResponseResourceImpl>, Wasi.Http.ITypes.ErrorCode>, global::WaaS.ComponentModel.Binding.None>?> Get(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Http.ITypes.IFutureIncomingResponseResourceImpl> @self);
 
         }
 

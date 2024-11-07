@@ -1,6 +1,7 @@
 ﻿#nullable enable
 
 using System;
+using System.Runtime.InteropServices;
 
 namespace WaaS.ComponentModel.Binding
 {
@@ -10,6 +11,7 @@ namespace WaaS.ComponentModel.Binding
     /// </summary>
     /// <typeparam name="T"></typeparam>
     [ComponentVariant]
+    [StructLayout(LayoutKind.Auto)]
     public readonly partial struct Option<T>
     {
         [ComponentCase] public None? None { get; private init; }

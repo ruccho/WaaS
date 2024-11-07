@@ -149,14 +149,14 @@ namespace WaaS.ComponentModel.Runtime
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void PushOwned(Owned<IResourceType> handle)
+        public void PushOwned(Owned handle)
         {
             ThrowIfDisposed();
             core!.PushOwned(handle);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void PushBorrowed(Borrowed<IResourceType> handle)
+        public void PushBorrowed(Borrowed handle)
         {
             ThrowIfDisposed();
             core!.PushBorrowed(handle);

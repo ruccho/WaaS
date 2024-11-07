@@ -10,6 +10,7 @@ namespace WaaS.ComponentModel.Models
     [GenerateFormatter]
     [Variant(0x00, typeof(CanonLift))]
     [Variant(0x01, typeof(CanonLower))]
+    [Variant(0x02, typeof(CanonResourceNew))]
     [Variant(0x03, typeof(CanonResourceDrop))]
     // TODO: other canons
     public partial interface ICanon
@@ -111,13 +112,62 @@ namespace WaaS.ComponentModel.Models
     }
 
     [GenerateFormatter]
-    public partial class CanonResourceDrop : ICanon, IUnresolved<ICoreSortedExportable<IInvocableFunction>>
+    public partial class CanonResourceNew : ICanon, IUnresolved<ICoreSortedExportable<IInvocableFunction>>
     {
-        public IUnresolved<IType> CoreFunction { get; }
+        public IUnresolved<IType> ResourceType { get; }
 
         public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstanceResolutionContext context)
         {
-            throw new NotImplementedException();
+            var resourceType = context.Resolve(ResourceType) as IResourceType ?? throw new InvalidModuleException();
+            return new NewFunction(resourceType);
+        }
+
+        private class NewFunction : ExternalFunctionDelegate, ICoreSortedExportable<IInvocableFunction>
+        {
+            public NewFunction(IResourceType type) : base(static (state, parameters, results) =>
+            {
+                var rep = parameters[0].ExpectValueI32();
+                var type = state as IResourceType ?? throw new InvalidOperationException();
+                results[0] = new StackValueItem(type.New(rep));
+            }, type, new WaaS.Models.FunctionType(new[] { ValueType.I32 }, new[] { ValueType.I32 }))
+            {
+            }
+
+            public IInvocableFunction CoreExternal => this;
+        }
+    }
+
+    [GenerateFormatter]
+    public partial class CanonResourceDrop : ICanon, IUnresolved<ICoreSortedExportable<IInvocableFunction>>
+    {
+        public IUnresolved<IType> ResourceType { get; }
+
+        public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            var resourceType = context.Resolve(ResourceType) as IResourceType ?? throw new InvalidModuleException();
+            return new DropFunction(resourceType);
+        }
+
+        private class DropFunction : ExternalFunction, ICoreSortedExportable<IInvocableFunction>
+        {
+            private static readonly WaaS.Models.FunctionType DropFunctionType =
+                new(new[] { ValueType.I32 }, Array.Empty<ValueType>());
+
+            private readonly IResourceType type;
+
+            public DropFunction(IResourceType type)
+            {
+                this.type = type;
+            }
+
+            public override WaaS.Models.FunctionType Type => DropFunctionType;
+            public IInvocableFunction CoreExternal => this;
+
+            public override void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
+                Span<StackValueItem> results)
+            {
+                type.Drop(context, parameters[0].ExpectValueI32());
+            }
         }
     }
 

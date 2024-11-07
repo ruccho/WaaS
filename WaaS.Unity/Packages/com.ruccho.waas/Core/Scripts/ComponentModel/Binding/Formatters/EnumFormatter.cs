@@ -3,7 +3,6 @@
 using System;
 using System.Runtime.CompilerServices;
 using STask;
-using WaaS.ComponentModel.Models;
 using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
@@ -15,14 +14,10 @@ namespace WaaS.ComponentModel.Binding
         public EnumFormatter()
         {
             // TODO: implement without reflection
-            var names = Enum.GetNames(typeof(TEnum));
             var values = Enum.GetValues(typeof(TEnum));
             this.values = new uint[values.Length];
             for (var i = 0; i < values.Length; i++) this.values[i] = Convert((TEnum)values.GetValue(i)!);
-            Type = EnumType.Create(names);
         }
-
-        public IValueType? Type { get; }
 
         public async STask<TEnum> PullAsync(Pullable adapter)
         {

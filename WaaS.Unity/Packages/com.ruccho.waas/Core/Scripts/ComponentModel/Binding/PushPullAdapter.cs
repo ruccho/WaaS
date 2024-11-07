@@ -1,7 +1,6 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using STask;
 using WaaS.ComponentModel.Runtime;
 
@@ -150,19 +149,14 @@ namespace WaaS.ComponentModel.Binding
             PushCore(flagValue);
         }
 
-        public void PushOwned<T1>(Owned<T1> handle) where T1 : class, IResourceType
+        public void PushOwned(Owned handle)
         {
-            // despecialize (need T1 to be a class)
-            ref var handleTyped = ref Unsafe.As<Owned<T1>, Owned<IResourceType>>(ref handle);
-            PushCore(handleTyped);
+            PushCore(handle);
         }
 
-        public void PushBorrowed<T1>(Borrowed<T1> handle)
-            where T1 : class, IResourceType
+        public void PushBorrowed(Borrowed handle)
         {
-            // despecialize (need T1 to be a class)
-            ref var handleTyped = ref Unsafe.As<Borrowed<T1>, Borrowed<IResourceType>>(ref handle);
-            PushCore(handleTyped);
+            PushCore(handle);
         }
 
         internal static PushPullAdapter Get()

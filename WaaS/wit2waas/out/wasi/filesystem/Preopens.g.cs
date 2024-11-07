@@ -3,6 +3,7 @@
 
 namespace Wasi.Filesystem
 {
+    // interface preopens
     [global::WaaS.ComponentModel.Binding.ComponentInterface(@"preopens")]
     public partial interface IPreopens
     {
@@ -10,7 +11,7 @@ namespace Wasi.Filesystem
         ///     Return the set of preopened directories, and their path.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"get-directories")]
-        global::System.ReadOnlyMemory<(global::WaaS.ComponentModel.Runtime.Owned<Wasi.Filesystem.ITypes.IDescriptorResource>, string)> GetDirectories();
+        global::System.Threading.Tasks.ValueTask<global::System.ReadOnlyMemory<(global::WaaS.ComponentModel.Binding.Owned<Wasi.Filesystem.ITypes.IDescriptorResourceImpl>, string)>> GetDirectories();
 
     }
 }

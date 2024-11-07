@@ -3,6 +3,7 @@
 
 namespace Wasi.Sockets
 {
+    // interface udp-create-socket
     [global::WaaS.ComponentModel.Binding.ComponentInterface(@"udp-create-socket")]
     public partial interface IUdpCreateSocket
     {
@@ -29,7 +30,7 @@ namespace Wasi.Sockets
         ///     - <https://man.freebsd.org/cgi/man.cgi?query=socket&sektion=2>
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"create-udp-socket")]
-        global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Sockets.IUdp.IUdpSocketResource>, Wasi.Sockets.INetwork.ErrorCode> CreateUdpSocket(Wasi.Sockets.INetwork.IpAddressFamily @addressFamily);
+        global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Sockets.IUdp.IUdpSocketResourceImpl>, Wasi.Sockets.INetwork.ErrorCode>> CreateUdpSocket(Wasi.Sockets.INetwork.IpAddressFamily @addressFamily);
 
     }
 }

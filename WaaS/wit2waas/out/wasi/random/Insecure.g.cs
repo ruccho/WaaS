@@ -3,6 +3,7 @@
 
 namespace Wasi.Random
 {
+    // interface insecure
     /// <summary>
     ///     The insecure interface for insecure pseudo-random numbers.
     ///     
@@ -23,7 +24,7 @@ namespace Wasi.Random
         ///     a long period.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"get-insecure-random-bytes")]
-        global::System.ReadOnlyMemory<byte> GetInsecureRandomBytes(ulong @len);
+        global::System.Threading.Tasks.ValueTask<global::System.ReadOnlyMemory<byte>> GetInsecureRandomBytes(ulong @len);
 
         /// <summary>
         ///     Return an insecure pseudo-random `u64` value.
@@ -32,7 +33,7 @@ namespace Wasi.Random
         ///     `get-insecure-random-bytes`, represented as a `u64`.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"get-insecure-random-u64")]
-        ulong GetInsecureRandomU64();
+        global::System.Threading.Tasks.ValueTask<ulong> GetInsecureRandomU64();
 
     }
 }

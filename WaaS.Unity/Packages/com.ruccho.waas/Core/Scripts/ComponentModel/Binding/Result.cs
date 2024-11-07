@@ -1,13 +1,15 @@
 ﻿#nullable enable
 
+using System.Runtime.InteropServices;
 using STask;
 using WaaS.ComponentModel.Runtime;
 
-#pragma warning disable CS1998 // 非同期メソッドは、'await' 演算子がないため、同期的に実行されます
+#pragma warning disable CS1998
 
 namespace WaaS.ComponentModel.Binding
 {
     [ComponentVariant]
+    [StructLayout(LayoutKind.Auto)]
     public readonly partial struct Result<TOk, TError>
     {
         [ComponentCase] public TOk? Ok { get; private init; }
@@ -23,8 +25,6 @@ namespace WaaS.ComponentModel.Binding
 
         private class Formatter : IFormatter<None>
         {
-            public IValueType? Type => null;
-
             public async STask<None> PullAsync(Pullable adapter)
             {
                 return default;

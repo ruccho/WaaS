@@ -1,15 +1,12 @@
 ﻿#nullable enable
 
 using STask;
-using WaaS.ComponentModel.Models;
 using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
     internal class CharFormatter : IFormatter<ComponentChar>
     {
-        public IValueType? Type { get; } = new PrimitiveValueType { Kind = PrimitiveValueTypeKind.Char };
-
         public async STask<ComponentChar> PullAsync(Pullable adapter)
         {
             return await adapter.PullPrimitiveValueAsync<uint>();

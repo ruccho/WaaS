@@ -3,6 +3,7 @@
 
 namespace Wasi.Io
 {
+    // interface poll
     /// <summary>
     ///     A poll API intended to let users wait for I/O events on multiple handles
     ///     at once.
@@ -32,13 +33,13 @@ namespace Wasi.Io
         ///     being ready for I/O.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"poll")]
-        global::System.ReadOnlyMemory<uint> Poll(global::System.ReadOnlyMemory<global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IPoll.IPollableResource>> @in);
+        global::System.Threading.Tasks.ValueTask<global::System.ReadOnlyMemory<uint>> Poll(global::System.ReadOnlyMemory<global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IPoll.IPollableResourceImpl>> @in);
 
         /// <summary>
         ///     `pollable` represents a single I/O event which may be ready, or not.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IPollableResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("pollable")]
+        public partial interface IPollableResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Return the readiness of a pollable. This function never blocks.
@@ -46,7 +47,7 @@ namespace Wasi.Io
             ///     Returns `true` when the pollable is ready, and `false` otherwise.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]pollable.ready")]
-            bool Ready(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IPoll.IPollableResource> @self);
+            global::System.Threading.Tasks.ValueTask<bool> Ready(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IPoll.IPollableResourceImpl> @self);
 
             /// <summary>
             ///     `block` returns immediately if the pollable is ready, and otherwise
@@ -56,7 +57,7 @@ namespace Wasi.Io
             ///     containing only this pollable.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]pollable.block")]
-            void Block(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IPoll.IPollableResource> @self);
+            global::System.Threading.Tasks.ValueTask Block(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IPoll.IPollableResourceImpl> @self);
 
         }
 

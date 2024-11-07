@@ -3,6 +3,7 @@
 
 namespace Wasi.Cli
 {
+    // interface terminal-output
     /// <summary>
     ///     Terminal output.
     ///     
@@ -16,8 +17,8 @@ namespace Wasi.Cli
         /// <summary>
         ///     The output side of a terminal.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface ITerminalOutputResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("terminal-output")]
+        public partial interface ITerminalOutputResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
         }
 

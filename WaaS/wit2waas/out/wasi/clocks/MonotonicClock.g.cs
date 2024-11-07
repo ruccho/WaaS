@@ -3,6 +3,7 @@
 
 namespace Wasi.Clocks
 {
+    // interface monotonic-clock
     /// <summary>
     ///     WASI Monotonic Clock is a clock API intended to let users measure elapsed
     ///     time.
@@ -23,28 +24,28 @@ namespace Wasi.Clocks
         ///     produce a sequence of non-decreasing values.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"now")]
-        Wasi.Clocks.IMonotonicClock.Instant Now();
+        global::System.Threading.Tasks.ValueTask<Wasi.Clocks.IMonotonicClock.Instant> Now();
 
         /// <summary>
         ///     Query the resolution of the clock. Returns the duration of time
         ///     corresponding to a clock tick.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"resolution")]
-        Wasi.Clocks.IMonotonicClock.Duration Resolution();
+        global::System.Threading.Tasks.ValueTask<Wasi.Clocks.IMonotonicClock.Duration> Resolution();
 
         /// <summary>
         ///     Create a `pollable` which will resolve once the specified instant
         ///     has occurred.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"subscribe-instant")]
-        global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IPoll.IPollableResource> SubscribeInstant(Wasi.Clocks.IMonotonicClock.Instant @when);
+        global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IPoll.IPollableResourceImpl>> SubscribeInstant(Wasi.Clocks.IMonotonicClock.Instant @when);
 
         /// <summary>
         ///     Create a `pollable` that will resolve after the specified duration has
         ///     elapsed from the time this function is invoked.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"subscribe-duration")]
-        global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IPoll.IPollableResource> SubscribeDuration(Wasi.Clocks.IMonotonicClock.Duration @when);
+        global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IPoll.IPollableResourceImpl>> SubscribeDuration(Wasi.Clocks.IMonotonicClock.Duration @when);
 
         /// <summary>
         ///     An instant in time, in nanoseconds. An instant is relative to an

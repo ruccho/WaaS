@@ -3,6 +3,7 @@
 
 namespace Wasi.Random
 {
+    // interface random
     /// <summary>
     ///     WASI Random is a random data API.
     ///     
@@ -27,7 +28,7 @@ namespace Wasi.Random
         ///     data.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"get-random-bytes")]
-        global::System.ReadOnlyMemory<byte> GetRandomBytes(ulong @len);
+        global::System.Threading.Tasks.ValueTask<global::System.ReadOnlyMemory<byte>> GetRandomBytes(ulong @len);
 
         /// <summary>
         ///     Return a cryptographically-secure random or pseudo-random `u64` value.
@@ -36,7 +37,7 @@ namespace Wasi.Random
         ///     represented as a `u64`.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"get-random-u64")]
-        ulong GetRandomU64();
+        global::System.Threading.Tasks.ValueTask<ulong> GetRandomU64();
 
     }
 }

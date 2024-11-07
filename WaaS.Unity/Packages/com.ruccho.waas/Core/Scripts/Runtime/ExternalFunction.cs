@@ -10,10 +10,11 @@ namespace WaaS.Runtime
 
         public StackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues)
         {
-            return new StackFrame(ExternalStackFrame.Get(this, inputValues));
+            return new StackFrame(ExternalStackFrame.Get(context, this, inputValues));
         }
 
-        public abstract void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results);
+        public abstract void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
+            Span<StackValueItem> results);
     }
 
     public unsafe class ExternalFunctionPointer : ExternalFunction
@@ -34,7 +35,8 @@ namespace WaaS.Runtime
 
         public override FunctionType Type { get; }
 
-        public override void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results)
+        public override void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
+            Span<StackValueItem> results)
         {
             invoke(state, parameters, results);
         }
@@ -60,7 +62,8 @@ namespace WaaS.Runtime
 
         public override FunctionType Type { get; }
 
-        public override void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results)
+        public override void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
+            Span<StackValueItem> results)
         {
             invoke?.Invoke(state, parameters, results);
         }
@@ -92,7 +95,8 @@ namespace WaaS.Runtime
 
         public override FunctionType Type { get; }
 
-        public override void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results)
+        public override void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
+            Span<StackValueItem> results)
         {
             var method = Delegate.Method;
 

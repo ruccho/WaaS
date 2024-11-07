@@ -3,6 +3,7 @@
 
 namespace Wasi.Io
 {
+    // interface streams
     /// <summary>
     ///     WASI I/O is an I/O abstraction API which is currently focused on providing
     ///     stream types.
@@ -16,7 +17,7 @@ namespace Wasi.Io
         /// <summary>
         ///     An error for input-stream and output-stream operations.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentVariant]
+        [global::WaaS.ComponentModel.Binding.ComponentVariant, global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Auto)]
         public readonly partial struct StreamError
         {
             /// <summary>
@@ -28,7 +29,7 @@ namespace Wasi.Io
             ///     `stream-error::closed`.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
-            public global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IError.IErrorResource>? LastOperationFailed { get; init; }
+            public global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IError.IErrorResourceImpl>? LastOperationFailed { get; init; }
             /// <summary>
             ///     The stream is closed: no more input will be accepted by the
             ///     stream. A closed output-stream will return this error on all
@@ -48,8 +49,8 @@ namespace Wasi.Io
         ///     use the `subscribe` function to obtain a `pollable` which can be polled
         ///     for using `wasi:io/poll`.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IInputStreamResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("input-stream")]
+        public partial interface IInputStreamResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Perform a non-blocking read from the stream.
@@ -80,14 +81,14 @@ namespace Wasi.Io
             ///     less than `len` in size while more bytes are available for reading.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]input-stream.read")]
-            global::WaaS.ComponentModel.Binding.Result<global::System.ReadOnlyMemory<byte>, Wasi.Io.IStreams.StreamError> Read(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IInputStreamResource> @self, ulong @len);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::System.ReadOnlyMemory<byte>, Wasi.Io.IStreams.StreamError>> Read(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IInputStreamResourceImpl> @self, ulong @len);
 
             /// <summary>
             ///     Read bytes from a stream, after blocking until at least one byte can
             ///     be read. Except for blocking, behavior is identical to `read`.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]input-stream.blocking-read")]
-            global::WaaS.ComponentModel.Binding.Result<global::System.ReadOnlyMemory<byte>, Wasi.Io.IStreams.StreamError> BlockingRead(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IInputStreamResource> @self, ulong @len);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::System.ReadOnlyMemory<byte>, Wasi.Io.IStreams.StreamError>> BlockingRead(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IInputStreamResourceImpl> @self, ulong @len);
 
             /// <summary>
             ///     Skip bytes from a stream. Returns number of bytes skipped.
@@ -96,14 +97,14 @@ namespace Wasi.Io
             ///     of bytes, returns the number of bytes consumed from the stream.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]input-stream.skip")]
-            global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Io.IStreams.StreamError> Skip(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IInputStreamResource> @self, ulong @len);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Io.IStreams.StreamError>> Skip(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IInputStreamResourceImpl> @self, ulong @len);
 
             /// <summary>
             ///     Skip bytes from a stream, after blocking until at least one byte
             ///     can be skipped. Except for blocking behavior, identical to `skip`.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]input-stream.blocking-skip")]
-            global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Io.IStreams.StreamError> BlockingSkip(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IInputStreamResource> @self, ulong @len);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Io.IStreams.StreamError>> BlockingSkip(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IInputStreamResourceImpl> @self, ulong @len);
 
             /// <summary>
             ///     Create a `pollable` which will resolve once either the specified stream
@@ -114,7 +115,7 @@ namespace Wasi.Io
             ///     all derived `pollable`s created with this function are dropped.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]input-stream.subscribe")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IPoll.IPollableResource> Subscribe(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IInputStreamResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IPoll.IPollableResourceImpl>> Subscribe(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IInputStreamResourceImpl> @self);
 
         }
 
@@ -132,8 +133,8 @@ namespace Wasi.Io
         ///     progress may result in the data being lost. Before dropping the stream,
         ///     be sure to fully flush your writes.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IOutputStreamResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("output-stream")]
+        public partial interface IOutputStreamResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Check readiness for writing. This function never blocks.
@@ -147,7 +148,7 @@ namespace Wasi.Io
             ///     error.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]output-stream.check-write")]
-            global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Io.IStreams.StreamError> CheckWrite(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IOutputStreamResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Io.IStreams.StreamError>> CheckWrite(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IOutputStreamResourceImpl> @self);
 
             /// <summary>
             ///     Perform a write. This function never blocks.
@@ -165,7 +166,7 @@ namespace Wasi.Io
             ///     the last call to check-write provided a permit.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]output-stream.write")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Io.IStreams.StreamError> Write(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IOutputStreamResource> @self, global::System.ReadOnlyMemory<byte> @contents);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Io.IStreams.StreamError>> Write(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IOutputStreamResourceImpl> @self, global::System.ReadOnlyMemory<byte> @contents);
 
             /// <summary>
             ///     Perform a write of up to 4096 bytes, and then flush the stream. Block
@@ -194,7 +195,7 @@ namespace Wasi.Io
             ///     ```
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]output-stream.blocking-write-and-flush")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Io.IStreams.StreamError> BlockingWriteAndFlush(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IOutputStreamResource> @self, global::System.ReadOnlyMemory<byte> @contents);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Io.IStreams.StreamError>> BlockingWriteAndFlush(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IOutputStreamResourceImpl> @self, global::System.ReadOnlyMemory<byte> @contents);
 
             /// <summary>
             ///     Request to flush buffered output. This function never blocks.
@@ -209,14 +210,14 @@ namespace Wasi.Io
             ///     flush has completed and the stream can accept more writes.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]output-stream.flush")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Io.IStreams.StreamError> Flush(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IOutputStreamResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Io.IStreams.StreamError>> Flush(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IOutputStreamResourceImpl> @self);
 
             /// <summary>
             ///     Request to flush buffered output, and block until flush completes
             ///     and stream is ready for writing again.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]output-stream.blocking-flush")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Io.IStreams.StreamError> BlockingFlush(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IOutputStreamResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Io.IStreams.StreamError>> BlockingFlush(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IOutputStreamResourceImpl> @self);
 
             /// <summary>
             ///     Create a `pollable` which will resolve once the output-stream
@@ -231,7 +232,7 @@ namespace Wasi.Io
             ///     all derived `pollable`s created with this function are dropped.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]output-stream.subscribe")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IPoll.IPollableResource> Subscribe(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IOutputStreamResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IPoll.IPollableResourceImpl>> Subscribe(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IOutputStreamResourceImpl> @self);
 
             /// <summary>
             ///     Write zeroes to a stream.
@@ -242,7 +243,7 @@ namespace Wasi.Io
             ///     that should be written.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]output-stream.write-zeroes")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Io.IStreams.StreamError> WriteZeroes(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IOutputStreamResource> @self, ulong @len);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Io.IStreams.StreamError>> WriteZeroes(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IOutputStreamResourceImpl> @self, ulong @len);
 
             /// <summary>
             ///     Perform a write of up to 4096 zeroes, and then flush the stream.
@@ -271,7 +272,7 @@ namespace Wasi.Io
             ///     ```
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]output-stream.blocking-write-zeroes-and-flush")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Io.IStreams.StreamError> BlockingWriteZeroesAndFlush(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IOutputStreamResource> @self, ulong @len);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Io.IStreams.StreamError>> BlockingWriteZeroesAndFlush(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IOutputStreamResourceImpl> @self, ulong @len);
 
             /// <summary>
             ///     Read from one stream and write to another.
@@ -289,7 +290,7 @@ namespace Wasi.Io
             ///     than `len`.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]output-stream.splice")]
-            global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Io.IStreams.StreamError> Splice(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IOutputStreamResource> @self, global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IInputStreamResource> @src, ulong @len);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Io.IStreams.StreamError>> Splice(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IOutputStreamResourceImpl> @self, global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IInputStreamResourceImpl> @src, ulong @len);
 
             /// <summary>
             ///     Read from one stream and write to another, with blocking.
@@ -299,7 +300,7 @@ namespace Wasi.Io
             ///     is ready for reading, before performing the `splice`.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]output-stream.blocking-splice")]
-            global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Io.IStreams.StreamError> BlockingSplice(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IOutputStreamResource> @self, global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IStreams.IInputStreamResource> @src, ulong @len);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Io.IStreams.StreamError>> BlockingSplice(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IOutputStreamResourceImpl> @self, global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IStreams.IInputStreamResourceImpl> @src, ulong @len);
 
         }
 

@@ -3,6 +3,7 @@
 
 namespace Wasi.Sockets
 {
+    // interface ip-name-lookup
     [global::WaaS.ComponentModel.Binding.ComponentInterface(@"ip-name-lookup")]
     public partial interface IIpNameLookup
     {
@@ -29,10 +30,10 @@ namespace Wasi.Sockets
         ///     - <https://man.freebsd.org/cgi/man.cgi?query=getaddrinfo&sektion=3>
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"resolve-addresses")]
-        global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Sockets.IIpNameLookup.IResolveAddressStreamResource>, Wasi.Sockets.INetwork.ErrorCode> ResolveAddresses(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.INetwork.INetworkResource> @network, string @name);
+        global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Sockets.IIpNameLookup.IResolveAddressStreamResourceImpl>, Wasi.Sockets.INetwork.ErrorCode>> ResolveAddresses(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.INetwork.INetworkResourceImpl> @network, string @name);
 
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IResolveAddressStreamResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("resolve-address-stream")]
+        public partial interface IResolveAddressStreamResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Returns the next address from the resolver.
@@ -50,7 +51,7 @@ namespace Wasi.Sockets
             ///     - `would-block`:                A result is not available yet. (EWOULDBLOCK, EAGAIN)
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]resolve-address-stream.resolve-next-address")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Sockets.INetwork.IpAddress?, Wasi.Sockets.INetwork.ErrorCode> ResolveNextAddress(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IIpNameLookup.IResolveAddressStreamResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Sockets.INetwork.IpAddress?, Wasi.Sockets.INetwork.ErrorCode>> ResolveNextAddress(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IIpNameLookup.IResolveAddressStreamResourceImpl> @self);
 
             /// <summary>
             ///     Create a `pollable` which will resolve once the stream is ready for I/O.
@@ -59,7 +60,7 @@ namespace Wasi.Sockets
             ///     It's planned to be removed when `future` is natively supported in Preview3.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]resolve-address-stream.subscribe")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IPoll.IPollableResource> Subscribe(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IIpNameLookup.IResolveAddressStreamResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IPoll.IPollableResourceImpl>> Subscribe(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IIpNameLookup.IResolveAddressStreamResourceImpl> @self);
 
         }
 

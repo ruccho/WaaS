@@ -68,7 +68,7 @@ public static class Utils
         return ToComponentName(member.Name);
     }
 
-    private static string ToComponentName(string name)
+    public static string ToComponentName(string name)
     {
         var isLower = false;
         var numHeads = 0;
@@ -93,6 +93,33 @@ public static class Utils
         }
 
         return apiName.ToString();
+    }
+
+    public static string ToCSharpName(string componentName)
+    {
+        Span<char> csharpName = stackalloc char[componentName.Length];
+        var cursor = 0;
+        var isDash = true;
+        for (var i = 0; i < componentName.Length; i++)
+        {
+            if (componentName[i] == '-')
+            {
+                isDash = true;
+                continue;
+            }
+
+            if (isDash)
+            {
+                csharpName[cursor++] = char.ToUpperInvariant(componentName[i]);
+                isDash = false;
+            }
+            else
+            {
+                csharpName[cursor++] = componentName[i];
+            }
+        }
+
+        return csharpName.Slice(0, cursor).ToString();
     }
 
     public static bool IsAwaitable(this ITypeSymbol symbol, out ITypeSymbol? resultType)
@@ -137,5 +164,40 @@ public static class Utils
             }
 
         return false;
+    }
+
+    public static IEnumerable<ISymbol> GetRecordMembers(this INamedTypeSymbol namedSymbol)
+    {
+        return namedSymbol.GetMembers()
+            .Where(member =>
+            {
+                return member.DeclaredAccessibility == Accessibility.Public &&
+                       !member.IsStatic &&
+                       member.GetAttributes().Select(attr => attr.AttributeClass).WhereNotNull().Any(attr =>
+                           attr.Matches("WaaS.ComponentModel.Binding.ComponentFieldAttribute"));
+            });
+    }
+
+    public static IEnumerable<ISymbol> GetVariantMembers(this INamedTypeSymbol namedSymbol)
+    {
+        return namedSymbol.GetMembers()
+            .Where(member =>
+            {
+                return member.DeclaredAccessibility == Accessibility.Public &&
+                       !member.IsStatic &&
+                       member.GetAttributes().Select(attr => attr.AttributeClass).WhereNotNull().Any(attr =>
+                           attr.Matches("WaaS.ComponentModel.Binding.ComponentCaseAttribute"));
+            });
+    }
+
+    public static bool TryGetNullableElement(this ITypeSymbol symbol, out ITypeSymbol? elementType)
+    {
+        elementType = default;
+        if (symbol is not INamedTypeSymbol { IsGenericType: true } namedTypeSymbol) return false;
+
+        if (!namedTypeSymbol.ConstructUnboundGenericType().Matches("System.Nullable`1")) return false;
+
+        elementType = namedTypeSymbol.TypeArguments[0];
+        return true;
     }
 }

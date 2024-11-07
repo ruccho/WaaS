@@ -3,6 +3,7 @@
 
 namespace Wasi.Clocks
 {
+    // interface wall-clock
     /// <summary>
     ///     WASI Wall Clock is a clock API intended to let users query the current
     ///     time. The name "wall" makes an analogy to a "clock on the wall", which
@@ -38,7 +39,7 @@ namespace Wasi.Clocks
         ///     [Unix Time]: https://en.wikipedia.org/wiki/Unix_time
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"now")]
-        Wasi.Clocks.IWallClock.Datetime Now();
+        global::System.Threading.Tasks.ValueTask<Wasi.Clocks.IWallClock.Datetime> Now();
 
         /// <summary>
         ///     Query the resolution of the clock.
@@ -46,7 +47,7 @@ namespace Wasi.Clocks
         ///     The nanoseconds field of the output is always less than 1000000000.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"resolution")]
-        Wasi.Clocks.IWallClock.Datetime Resolution();
+        global::System.Threading.Tasks.ValueTask<Wasi.Clocks.IWallClock.Datetime> Resolution();
 
         /// <summary>
         ///     A time and date in seconds plus nanoseconds.

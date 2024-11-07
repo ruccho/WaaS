@@ -3,6 +3,7 @@
 
 namespace Wasi.Http
 {
+    // interface incoming-handler
     /// <summary>
     ///     This interface defines a handler of incoming HTTP Requests. It should
     ///     be exported by components which can respond to HTTP Requests.
@@ -23,7 +24,7 @@ namespace Wasi.Http
         ///     with an error on its behalf.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"handle")]
-        void Handle(global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IIncomingRequestResource> @request, global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IResponseOutparamResource> @responseOut);
+        global::System.Threading.Tasks.ValueTask Handle(global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IIncomingRequestResourceImpl> @request, global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IResponseOutparamResourceImpl> @responseOut);
 
     }
 }

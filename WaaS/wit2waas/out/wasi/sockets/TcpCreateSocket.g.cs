@@ -3,6 +3,7 @@
 
 namespace Wasi.Sockets
 {
+    // interface tcp-create-socket
     [global::WaaS.ComponentModel.Binding.ComponentInterface(@"tcp-create-socket")]
     public partial interface ITcpCreateSocket
     {
@@ -29,7 +30,7 @@ namespace Wasi.Sockets
         ///     - <https://man.freebsd.org/cgi/man.cgi?query=socket&sektion=2>
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"create-tcp-socket")]
-        global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Sockets.ITcp.ITcpSocketResource>, Wasi.Sockets.INetwork.ErrorCode> CreateTcpSocket(Wasi.Sockets.INetwork.IpAddressFamily @addressFamily);
+        global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Sockets.ITcp.ITcpSocketResourceImpl>, Wasi.Sockets.INetwork.ErrorCode>> CreateTcpSocket(Wasi.Sockets.INetwork.IpAddressFamily @addressFamily);
 
     }
 }

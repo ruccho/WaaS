@@ -3,6 +3,7 @@
 
 namespace Wasi.Io
 {
+    // interface error
     [global::WaaS.ComponentModel.Binding.ComponentInterface(@"error")]
     public partial interface IError
     {
@@ -25,8 +26,8 @@ namespace Wasi.Io
         ///     The set of functions which can "downcast" an `error` into a more
         ///     concrete type is open.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IErrorResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("error")]
+        public partial interface IErrorResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Returns a string that is suitable to assist humans in debugging
@@ -38,7 +39,7 @@ namespace Wasi.Io
             ///     hazard.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]error.to-debug-string")]
-            string ToDebugString(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IError.IErrorResource> @self);
+            global::System.Threading.Tasks.ValueTask<string> ToDebugString(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IError.IErrorResourceImpl> @self);
 
         }
 

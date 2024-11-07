@@ -7,6 +7,7 @@ namespace WaaS.Runtime
     public class ExternalStackFrame : IStackFrameCore
     {
         [ThreadStatic] private static Stack<ExternalStackFrame> pool;
+        private ExecutionContext context;
 
         private ExternalFunction function;
         private Memory<StackValueItem> inputValues;
@@ -28,6 +29,7 @@ namespace WaaS.Runtime
             inputValuesArray = default;
             outputValuesArray = default;
             invoked = default;
+            context = default;
 
             if (++Version != ushort.MaxValue)
             {
@@ -49,7 +51,7 @@ namespace WaaS.Runtime
             ThrowIfOutdated(version);
             if (invoked) throw new InvalidOperationException();
             invoked = true;
-            function.Invoke(inputValues.Span, outputValues.Span);
+            function.Invoke(context, inputValues.Span, outputValues.Span);
             return StackFrameState.Completed;
         }
 
@@ -59,17 +61,20 @@ namespace WaaS.Runtime
             outputValues.Span.CopyTo(dest);
         }
 
-        public static ExternalStackFrame Get(ExternalFunction function, ReadOnlySpan<StackValueItem> inputValues)
+        public static ExternalStackFrame Get(ExecutionContext context, ExternalFunction function,
+            ReadOnlySpan<StackValueItem> inputValues)
         {
             pool ??= new Stack<ExternalStackFrame>();
             if (!pool.TryPop(out var pooled)) pooled = new ExternalStackFrame();
-            pooled.Reset(function, inputValues);
+            pooled.Reset(context, function, inputValues);
             return pooled;
         }
 
-        private void Reset(ExternalFunction function, ReadOnlySpan<StackValueItem> inputValues)
+        private void Reset(ExecutionContext context, ExternalFunction function,
+            ReadOnlySpan<StackValueItem> inputValues)
         {
             this.function = function;
+            this.context = context;
             var type = function.Type;
             inputValuesArray = ArrayPool<StackValueItem>.Shared.Rent(type.ParameterTypes.Length);
             outputValuesArray = ArrayPool<StackValueItem>.Shared.Rent(type.ResultTypes.Length);

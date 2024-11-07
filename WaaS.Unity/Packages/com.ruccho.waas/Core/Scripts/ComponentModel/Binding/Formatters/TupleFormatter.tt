@@ -43,10 +43,6 @@ namespace WaaS.ComponentModel.Binding
         }
 #>
     {
-        public IValueType? Type { get; } = new ResolverTupleType(new IValueType[] { <#=
-            string.Join(", ",
-                Enumerable.Range(1, i).Select(x => $"FormatterProvider.GetFormatter<{GetTypeParam(x)}>().Type")) #> });
-
         public async STask<Tuple<<#= GetTypeParams(i) #>>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();
@@ -79,10 +75,6 @@ namespace WaaS.ComponentModel.Binding
         }
 #>
     {
-        public IValueType? Type { get; } = new ResolverTupleType(new IValueType[] { <#=
-            string.Join(", ",
-                Enumerable.Range(1, i).Select(x => $"FormatterProvider.GetFormatter<{GetTypeParam(x)}>().Type")) #> });
-
         public async STask<ValueTuple<<#= GetTypeParams(i) #>>> PullAsync(Pullable pullable)
         {
             var prelude = await pullable.PullPrimitiveValueAsync<RecordPrelude>();

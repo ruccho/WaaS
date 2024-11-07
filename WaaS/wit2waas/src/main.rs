@@ -6,7 +6,7 @@ use crate::utils::*;
 use anyhow::Result;
 use std::fs;
 use clap::Parser;
-use wit_parser::{Function, FunctionKind, PackageId, Resolve, TypeDefKind, WorldItem};
+use wit_parser::{Function, FunctionKind, PackageId, Resolve, Type, TypeDefKind, TypeOwner, WorldItem};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -186,9 +186,19 @@ fn process_dir(resolve: &Resolve, package_id: PackageId, out_dir: &str) -> Resul
                 }
 
                 // types
-                for (name, id) in &interface.types
+                for (name, type_id) in &interface.types
                 {
-                    let ty = resolve.types.get(*id).unwrap();
+                    let ty = resolve.types.get(*type_id).unwrap();
+
+                    // filter defined by itself
+                    if let TypeOwner::Interface(owner_id) = ty.owner {
+                        if owner_id != *id {
+                            continue;
+                        }
+                    }else{
+                        continue;
+                    }
+
                     source.push_docs(&ty.docs);
                     match &ty.kind {
                         TypeDefKind::Record(element) => {
@@ -206,10 +216,8 @@ fn process_dir(resolve: &Resolve, package_id: PackageId, out_dir: &str) -> Resul
                             source.push_line_empty();
                         }
                         TypeDefKind::Resource => {
-                            source.push_line("[global::WaaS.ComponentModel.Binding.ComponentResource]");
-                            let resource_name = to_upper_camel(name);
-                            source.push_line(&format!("I{}ResourceType {} {{ get; }}", resource_name, resource_name));
-                            source.push_line(&format!("public partial interface I{}ResourceType : global::WaaS.ComponentModel.Runtime.IResourceType", to_upper_camel(name)));
+                            source.push_line(&format!("[global::WaaS.ComponentModel.Binding.ComponentResource(\"{name}\")]"));
+                            source.push_line(&format!("public partial interface I{}ResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl", to_upper_camel(name)));
                             source.open_block();
                             {
                                 for (_name, function) in &interface.functions {
@@ -218,17 +226,17 @@ fn process_dir(resolve: &Resolve, package_id: PackageId, out_dir: &str) -> Resul
                                             continue;
                                         }
                                         FunctionKind::Method(method_type) => {
-                                            if id != method_type {
+                                            if type_id != method_type {
                                                 continue;
                                             }
                                         }
                                         FunctionKind::Static(method_type) => {
-                                            if id != method_type {
+                                            if type_id != method_type {
                                                 continue;
                                             }
                                         }
                                         FunctionKind::Constructor(method_type) => {
-                                            if id != method_type {
+                                            if type_id != method_type {
                                                 continue;
                                             }
                                         }
@@ -258,20 +266,28 @@ fn process_dir(resolve: &Resolve, package_id: PackageId, out_dir: &str) -> Resul
                             source.push_line_empty();
                         }
                         TypeDefKind::Variant(element) => {
-                            source.push_line("[global::WaaS.ComponentModel.Binding.ComponentVariant]");
+                            source.push_line("[global::WaaS.ComponentModel.Binding.ComponentVariant, global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Auto)]");
                             source.push_line(&format!("public readonly partial struct {}", to_upper_camel(name)));
                             source.open_block();
                             {
                                 for case in &element.cases {
                                     source.push_docs(&case.docs);
                                     source.push_line("[global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]");
-                                    let ty = if let Some(ty) = &case.ty {
-                                        format!("{}?", ty.to_waas(resolve)?)
+                                    let ty_string = if let Some(ty) = &case.ty {
+                                        if let Type::Id(id) = ty {
+                                            if let TypeDefKind::Option(element) = resolve.types.get(*id).unwrap().kind {
+                                                format!("global::WaaS.ComponentModel.Binding.Option<{}>?", element.to_waas(resolve)?)
+                                            } else {
+                                                format!("{}?", ty.to_waas(resolve)?)
+                                            }
+                                        }else {
+                                            format!("{}?", ty.to_waas(resolve)?)
+                                        }
                                     } else {
                                         "global::WaaS.ComponentModel.Binding.None?".to_string()
                                     };
 
-                                    source.push_line(&format!("public {} {} {{ get; init; }}", ty, to_upper_camel(&case.name)))
+                                    source.push_line(&format!("public {} {} {{ get; init; }}", ty_string, to_upper_camel(&case.name)))
                                 }
                             }
                             source.close_block();

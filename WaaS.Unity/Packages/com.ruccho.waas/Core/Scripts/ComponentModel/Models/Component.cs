@@ -18,7 +18,7 @@ namespace WaaS.ComponentModel.Models
         private readonly List<IImport<ISortedExportable>> imports = new();
         private readonly List<IUnresolved<ISorted>> instantiations = new();
 
-        internal Component(ref ModuleReader reader, long? size = null, IIndexSpace parentIndexSpace = null)
+        internal Component(ref ModuleReader reader, long? size = null, IIndexSpace? parentIndexSpace = null)
         {
             long rest = 0;
             if (size.HasValue)

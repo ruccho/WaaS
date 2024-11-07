@@ -9,9 +9,6 @@ namespace WaaS.ComponentModel.Binding
 {
     internal class FlagsFormatter<TEnum> : IFormatter<TEnum> where TEnum : unmanaged, Enum
     {
-        private static readonly IValueType type = new FlagsType();
-        public IValueType? Type => type;
-
         public async STask<TEnum> PullAsync(Pullable adapter)
         {
             var value = await adapter.PullPrimitiveValueAsync<uint>();

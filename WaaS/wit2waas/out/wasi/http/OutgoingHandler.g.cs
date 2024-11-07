@@ -3,6 +3,7 @@
 
 namespace Wasi.Http
 {
+    // interface outgoing-handler
     /// <summary>
     ///     This interface defines a handler of outgoing HTTP Requests. It should be
     ///     imported by components which wish to make HTTP Requests.
@@ -23,7 +24,7 @@ namespace Wasi.Http
         ///     through the `future-incoming-response`.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"handle")]
-        global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IFutureIncomingResponseResource>, Wasi.Http.ITypes.ErrorCode> Handle(global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IOutgoingRequestResource> @request, global::WaaS.ComponentModel.Runtime.Owned<Wasi.Http.ITypes.IRequestOptionsResource>? @options);
+        global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IFutureIncomingResponseResourceImpl>, Wasi.Http.ITypes.ErrorCode>> Handle(global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IOutgoingRequestResourceImpl> @request, global::WaaS.ComponentModel.Binding.Owned<Wasi.Http.ITypes.IRequestOptionsResourceImpl>? @options);
 
     }
 }

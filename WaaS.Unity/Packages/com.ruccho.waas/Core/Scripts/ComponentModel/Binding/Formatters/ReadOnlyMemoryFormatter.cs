@@ -2,15 +2,12 @@
 
 using System;
 using STask;
-using WaaS.ComponentModel.Models;
 using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
     internal class ReadOnlyMemoryFormatter<T> : IFormatter<ReadOnlyMemory<T>>
     {
-        public IValueType? Type { get; } = new ResolvedListType(FormatterProvider.GetFormatter<T>().Type);
-
         public async STask<ReadOnlyMemory<T>> PullAsync(Pullable adapter)
         {
             var prelude = await adapter.PullPrimitiveValueAsync<ListPrelude>();

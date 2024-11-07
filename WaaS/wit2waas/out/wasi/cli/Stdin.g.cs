@@ -3,11 +3,12 @@
 
 namespace Wasi.Cli
 {
+    // interface stdin
     [global::WaaS.ComponentModel.Binding.ComponentInterface(@"stdin")]
     public partial interface IStdin
     {
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"get-stdin")]
-        global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IStreams.IInputStreamResource> GetStdin();
+        global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IStreams.IInputStreamResourceImpl>> GetStdin();
 
     }
 }

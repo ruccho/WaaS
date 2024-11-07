@@ -3,6 +3,7 @@
 
 namespace Wasi.Filesystem
 {
+    // interface types
     /// <summary>
     ///     WASI filesystem is a filesystem API primarily intended to let users run WASI
     ///     programs that access their files on their existing filesystems, without
@@ -45,7 +46,7 @@ namespace Wasi.Filesystem
         ///     errors are filesystem-related errors.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"filesystem-error-code")]
-        Wasi.Filesystem.ITypes.ErrorCode? FilesystemErrorCode(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Io.IError.IErrorResource> @err);
+        global::System.Threading.Tasks.ValueTask<Wasi.Filesystem.ITypes.ErrorCode?> FilesystemErrorCode(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Io.IError.IErrorResourceImpl> @err);
 
         /// <summary>
         ///     File size or length of a region within a file.
@@ -262,7 +263,7 @@ namespace Wasi.Filesystem
         /// <summary>
         ///     When setting a timestamp, this gives the value to set it to.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentVariant]
+        [global::WaaS.ComponentModel.Binding.ComponentVariant, global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Auto)]
         public readonly partial struct NewTimestamp
         {
             /// <summary>
@@ -520,8 +521,8 @@ namespace Wasi.Filesystem
         ///     directory, named pipe, special file, or other object on which filesystem
         ///     calls may be made.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IDescriptorResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("descriptor")]
+        public partial interface IDescriptorResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Return a stream for reading from a file, if available.
@@ -534,7 +535,7 @@ namespace Wasi.Filesystem
             ///     Note: This allows using `read-stream`, which is similar to `read` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.read-via-stream")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IStreams.IInputStreamResource>, Wasi.Filesystem.ITypes.ErrorCode> ReadViaStream(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, Wasi.Filesystem.ITypes.Filesize @offset);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IStreams.IInputStreamResourceImpl>, Wasi.Filesystem.ITypes.ErrorCode>> ReadViaStream(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, Wasi.Filesystem.ITypes.Filesize @offset);
 
             /// <summary>
             ///     Return a stream for writing to a file, if available.
@@ -545,7 +546,7 @@ namespace Wasi.Filesystem
             ///     POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.write-via-stream")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IStreams.IOutputStreamResource>, Wasi.Filesystem.ITypes.ErrorCode> WriteViaStream(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, Wasi.Filesystem.ITypes.Filesize @offset);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IStreams.IOutputStreamResourceImpl>, Wasi.Filesystem.ITypes.ErrorCode>> WriteViaStream(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, Wasi.Filesystem.ITypes.Filesize @offset);
 
             /// <summary>
             ///     Return a stream for appending to a file, if available.
@@ -556,7 +557,7 @@ namespace Wasi.Filesystem
             ///     `O_APPEND` in in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.append-via-stream")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IStreams.IOutputStreamResource>, Wasi.Filesystem.ITypes.ErrorCode> AppendViaStream(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IStreams.IOutputStreamResourceImpl>, Wasi.Filesystem.ITypes.ErrorCode>> AppendViaStream(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self);
 
             /// <summary>
             ///     Provide file advisory information on a descriptor.
@@ -564,7 +565,7 @@ namespace Wasi.Filesystem
             ///     This is similar to `posix_fadvise` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.advise")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode> Advise(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, Wasi.Filesystem.ITypes.Filesize @offset, Wasi.Filesystem.ITypes.Filesize @length, Wasi.Filesystem.ITypes.Advice @advice);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode>> Advise(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, Wasi.Filesystem.ITypes.Filesize @offset, Wasi.Filesystem.ITypes.Filesize @length, Wasi.Filesystem.ITypes.Advice @advice);
 
             /// <summary>
             ///     Synchronize the data of a file to disk.
@@ -575,7 +576,7 @@ namespace Wasi.Filesystem
             ///     Note: This is similar to `fdatasync` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.sync-data")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode> SyncData(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode>> SyncData(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self);
 
             /// <summary>
             ///     Get flags associated with a descriptor.
@@ -586,7 +587,7 @@ namespace Wasi.Filesystem
             ///     from `fdstat_get` in earlier versions of WASI.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.get-flags")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.DescriptorFlags, Wasi.Filesystem.ITypes.ErrorCode> GetFlags(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.DescriptorFlags, Wasi.Filesystem.ITypes.ErrorCode>> GetFlags(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self);
 
             /// <summary>
             ///     Get the dynamic type of a descriptor.
@@ -601,7 +602,7 @@ namespace Wasi.Filesystem
             ///     from `fdstat_get` in earlier versions of WASI.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.get-type")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.DescriptorType, Wasi.Filesystem.ITypes.ErrorCode> GetType(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.DescriptorType, Wasi.Filesystem.ITypes.ErrorCode>> GetType(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self);
 
             /// <summary>
             ///     Adjust the size of an open file. If this increases the file's size, the
@@ -610,7 +611,7 @@ namespace Wasi.Filesystem
             ///     Note: This was called `fd_filestat_set_size` in earlier versions of WASI.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.set-size")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode> SetSize(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, Wasi.Filesystem.ITypes.Filesize @size);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode>> SetSize(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, Wasi.Filesystem.ITypes.Filesize @size);
 
             /// <summary>
             ///     Adjust the timestamps of an open file or directory.
@@ -620,7 +621,7 @@ namespace Wasi.Filesystem
             ///     Note: This was called `fd_filestat_set_times` in earlier versions of WASI.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.set-times")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode> SetTimes(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, Wasi.Filesystem.ITypes.NewTimestamp @dataAccessTimestamp, Wasi.Filesystem.ITypes.NewTimestamp @dataModificationTimestamp);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode>> SetTimes(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, Wasi.Filesystem.ITypes.NewTimestamp @dataAccessTimestamp, Wasi.Filesystem.ITypes.NewTimestamp @dataModificationTimestamp);
 
             /// <summary>
             ///     Read from a descriptor, without using and updating the descriptor's offset.
@@ -636,7 +637,7 @@ namespace Wasi.Filesystem
             ///     Note: This is similar to `pread` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.read")]
-            global::WaaS.ComponentModel.Binding.Result<(global::System.ReadOnlyMemory<byte>, bool), Wasi.Filesystem.ITypes.ErrorCode> Read(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, Wasi.Filesystem.ITypes.Filesize @length, Wasi.Filesystem.ITypes.Filesize @offset);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<(global::System.ReadOnlyMemory<byte>, bool), Wasi.Filesystem.ITypes.ErrorCode>> Read(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, Wasi.Filesystem.ITypes.Filesize @length, Wasi.Filesystem.ITypes.Filesize @offset);
 
             /// <summary>
             ///     Write to a descriptor, without using and updating the descriptor's offset.
@@ -650,7 +651,7 @@ namespace Wasi.Filesystem
             ///     Note: This is similar to `pwrite` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.write")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.Filesize, Wasi.Filesystem.ITypes.ErrorCode> Write(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, global::System.ReadOnlyMemory<byte> @buffer, Wasi.Filesystem.ITypes.Filesize @offset);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.Filesize, Wasi.Filesystem.ITypes.ErrorCode>> Write(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, global::System.ReadOnlyMemory<byte> @buffer, Wasi.Filesystem.ITypes.Filesize @offset);
 
             /// <summary>
             ///     Read directory entries from a directory.
@@ -664,7 +665,7 @@ namespace Wasi.Filesystem
             ///     do not interfere with each other.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.read-directory")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Filesystem.ITypes.IDirectoryEntryStreamResource>, Wasi.Filesystem.ITypes.ErrorCode> ReadDirectory(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Filesystem.ITypes.IDirectoryEntryStreamResourceImpl>, Wasi.Filesystem.ITypes.ErrorCode>> ReadDirectory(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self);
 
             /// <summary>
             ///     Synchronize the data and metadata of a file to disk.
@@ -675,7 +676,7 @@ namespace Wasi.Filesystem
             ///     Note: This is similar to `fsync` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.sync")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode> Sync(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode>> Sync(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self);
 
             /// <summary>
             ///     Create a directory.
@@ -683,7 +684,7 @@ namespace Wasi.Filesystem
             ///     Note: This is similar to `mkdirat` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.create-directory-at")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode> CreateDirectoryAt(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, string @path);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode>> CreateDirectoryAt(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, string @path);
 
             /// <summary>
             ///     Return the attributes of an open file or directory.
@@ -697,7 +698,7 @@ namespace Wasi.Filesystem
             ///     Note: This was called `fd_filestat_get` in earlier versions of WASI.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.stat")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.DescriptorStat, Wasi.Filesystem.ITypes.ErrorCode> Stat(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.DescriptorStat, Wasi.Filesystem.ITypes.ErrorCode>> Stat(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self);
 
             /// <summary>
             ///     Return the attributes of a file or directory.
@@ -709,7 +710,7 @@ namespace Wasi.Filesystem
             ///     Note: This was called `path_filestat_get` in earlier versions of WASI.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.stat-at")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.DescriptorStat, Wasi.Filesystem.ITypes.ErrorCode> StatAt(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, Wasi.Filesystem.ITypes.PathFlags @pathFlags, string @path);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.DescriptorStat, Wasi.Filesystem.ITypes.ErrorCode>> StatAt(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, Wasi.Filesystem.ITypes.PathFlags @pathFlags, string @path);
 
             /// <summary>
             ///     Adjust the timestamps of a file or directory.
@@ -720,7 +721,7 @@ namespace Wasi.Filesystem
             ///     WASI.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.set-times-at")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode> SetTimesAt(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, Wasi.Filesystem.ITypes.PathFlags @pathFlags, string @path, Wasi.Filesystem.ITypes.NewTimestamp @dataAccessTimestamp, Wasi.Filesystem.ITypes.NewTimestamp @dataModificationTimestamp);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode>> SetTimesAt(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, Wasi.Filesystem.ITypes.PathFlags @pathFlags, string @path, Wasi.Filesystem.ITypes.NewTimestamp @dataAccessTimestamp, Wasi.Filesystem.ITypes.NewTimestamp @dataModificationTimestamp);
 
             /// <summary>
             ///     Create a hard link.
@@ -728,7 +729,7 @@ namespace Wasi.Filesystem
             ///     Note: This is similar to `linkat` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.link-at")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode> LinkAt(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, Wasi.Filesystem.ITypes.PathFlags @oldPathFlags, string @oldPath, global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @newDescriptor, string @newPath);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode>> LinkAt(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, Wasi.Filesystem.ITypes.PathFlags @oldPathFlags, string @oldPath, global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @newDescriptor, string @newPath);
 
             /// <summary>
             ///     Open a file or directory.
@@ -745,7 +746,7 @@ namespace Wasi.Filesystem
             ///     Note: This is similar to `openat` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.open-at")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Runtime.Owned<Wasi.Filesystem.ITypes.IDescriptorResource>, Wasi.Filesystem.ITypes.ErrorCode> OpenAt(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, Wasi.Filesystem.ITypes.PathFlags @pathFlags, string @path, Wasi.Filesystem.ITypes.OpenFlags @openFlags, Wasi.Filesystem.ITypes.DescriptorFlags @flags);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.Owned<Wasi.Filesystem.ITypes.IDescriptorResourceImpl>, Wasi.Filesystem.ITypes.ErrorCode>> OpenAt(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, Wasi.Filesystem.ITypes.PathFlags @pathFlags, string @path, Wasi.Filesystem.ITypes.OpenFlags @openFlags, Wasi.Filesystem.ITypes.DescriptorFlags @flags);
 
             /// <summary>
             ///     Read the contents of a symbolic link.
@@ -756,7 +757,7 @@ namespace Wasi.Filesystem
             ///     Note: This is similar to `readlinkat` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.readlink-at")]
-            global::WaaS.ComponentModel.Binding.Result<string, Wasi.Filesystem.ITypes.ErrorCode> ReadlinkAt(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, string @path);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<string, Wasi.Filesystem.ITypes.ErrorCode>> ReadlinkAt(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, string @path);
 
             /// <summary>
             ///     Remove a directory.
@@ -766,7 +767,7 @@ namespace Wasi.Filesystem
             ///     Note: This is similar to `unlinkat(fd, path, AT_REMOVEDIR)` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.remove-directory-at")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode> RemoveDirectoryAt(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, string @path);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode>> RemoveDirectoryAt(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, string @path);
 
             /// <summary>
             ///     Rename a filesystem object.
@@ -774,7 +775,7 @@ namespace Wasi.Filesystem
             ///     Note: This is similar to `renameat` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.rename-at")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode> RenameAt(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, string @oldPath, global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @newDescriptor, string @newPath);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode>> RenameAt(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, string @oldPath, global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @newDescriptor, string @newPath);
 
             /// <summary>
             ///     Create a symbolic link (also known as a "symlink").
@@ -785,7 +786,7 @@ namespace Wasi.Filesystem
             ///     Note: This is similar to `symlinkat` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.symlink-at")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode> SymlinkAt(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, string @oldPath, string @newPath);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode>> SymlinkAt(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, string @oldPath, string @newPath);
 
             /// <summary>
             ///     Unlink a filesystem object that is not a directory.
@@ -794,7 +795,7 @@ namespace Wasi.Filesystem
             ///     Note: This is similar to `unlinkat(fd, path, 0)` in POSIX.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.unlink-file-at")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode> UnlinkFileAt(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, string @path);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Filesystem.ITypes.ErrorCode>> UnlinkFileAt(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, string @path);
 
             /// <summary>
             ///     Test whether two descriptors refer to the same filesystem object.
@@ -805,7 +806,7 @@ namespace Wasi.Filesystem
             ///     may be used instead.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.is-same-object")]
-            bool IsSameObject(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @other);
+            global::System.Threading.Tasks.ValueTask<bool> IsSameObject(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @other);
 
             /// <summary>
             ///     Return a hash of the metadata associated with a filesystem object referred
@@ -829,7 +830,7 @@ namespace Wasi.Filesystem
             ///     However, none of these is required.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.metadata-hash")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.MetadataHashValue, Wasi.Filesystem.ITypes.ErrorCode> MetadataHash(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.MetadataHashValue, Wasi.Filesystem.ITypes.ErrorCode>> MetadataHash(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self);
 
             /// <summary>
             ///     Return a hash of the metadata associated with a filesystem object referred
@@ -838,21 +839,21 @@ namespace Wasi.Filesystem
             ///     This performs the same hash computation as `metadata-hash`.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]descriptor.metadata-hash-at")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.MetadataHashValue, Wasi.Filesystem.ITypes.ErrorCode> MetadataHashAt(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResource> @self, Wasi.Filesystem.ITypes.PathFlags @pathFlags, string @path);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.MetadataHashValue, Wasi.Filesystem.ITypes.ErrorCode>> MetadataHashAt(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDescriptorResourceImpl> @self, Wasi.Filesystem.ITypes.PathFlags @pathFlags, string @path);
 
         }
 
         /// <summary>
         ///     A stream of directory entries.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IDirectoryEntryStreamResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("directory-entry-stream")]
+        public partial interface IDirectoryEntryStreamResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Read a single directory entry from a `directory-entry-stream`.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]directory-entry-stream.read-directory-entry")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.DirectoryEntry?, Wasi.Filesystem.ITypes.ErrorCode> ReadDirectoryEntry(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Filesystem.ITypes.IDirectoryEntryStreamResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Filesystem.ITypes.DirectoryEntry?, Wasi.Filesystem.ITypes.ErrorCode>> ReadDirectoryEntry(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Filesystem.ITypes.IDirectoryEntryStreamResourceImpl> @self);
 
         }
 

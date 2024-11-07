@@ -3,6 +3,7 @@
 
 namespace Wasi.Cli
 {
+    // interface terminal-input
     /// <summary>
     ///     Terminal input.
     ///     
@@ -16,8 +17,8 @@ namespace Wasi.Cli
         /// <summary>
         ///     The input side of a terminal.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface ITerminalInputResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("terminal-input")]
+        public partial interface ITerminalInputResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
         }
 

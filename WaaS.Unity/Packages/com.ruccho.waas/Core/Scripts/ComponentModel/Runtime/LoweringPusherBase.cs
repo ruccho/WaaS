@@ -144,18 +144,18 @@ namespace WaaS.ComponentModel.Runtime
             }
         }
 
-        public void PushOwned<T>(Owned<T> handle) where T : class, IResourceType
+        public void PushOwned(Owned handle)
         {
-            if (GetNextType() is not IOwnedType { Type: T } owned) throw new InvalidOperationException();
-            // if (owned.Type != handle.Type) throw new InvalidOperationException();
-            PushU32Core(handle.MoveOut());
+            if (GetNextType() is not IOwnedType owned) throw new InvalidOperationException();
+            if (owned.Type != handle.Type) throw new InvalidOperationException();
+            PushU32Core(handle.GetValue());
         }
 
-        public void PushBorrowed<T>(Borrowed<T> handle) where T : class, IResourceType
+        public void PushBorrowed(Borrowed handle)
         {
-            if (GetNextType() is not IBorrowedType { Type: T } borrowed) throw new InvalidOperationException();
-            // if (borrowed.Type != handle.Type) throw new InvalidOperationException();
-            PushU32Core(handle.MoveOut());
+            if (GetNextType() is not IBorrowedType borrowed) throw new InvalidOperationException();
+            if (borrowed.Type != handle.Type) throw new InvalidOperationException();
+            PushU32Core(handle.GetValue());
         }
 
         public void Push(ReadOnlySpan<char> value)

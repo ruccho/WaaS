@@ -3,11 +3,12 @@
 
 namespace Wasi.Cli
 {
+    // interface stdout
     [global::WaaS.ComponentModel.Binding.ComponentInterface(@"stdout")]
     public partial interface IStdout
     {
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"get-stdout")]
-        global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IStreams.IOutputStreamResource> GetStdout();
+        global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IStreams.IOutputStreamResourceImpl>> GetStdout();
 
     }
 }

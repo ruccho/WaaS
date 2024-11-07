@@ -117,7 +117,8 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
 /* lang=c#  */$$"""
                     partial {{namedSymbol.TypeKind switch {
                         TypeKind.Class => "class",
-                        TypeKind.Struct => "struct"
+                        TypeKind.Struct => "struct",
+                        _ => "/* unknown */"
                     }}} {{namedSymbol.ToDisplayString(ForTypeDeclaration)}}
                     {
                         static {{namedSymbol.Name}}()
@@ -199,67 +200,16 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
         return member switch
         {
             IFieldSymbol field => field.Type,
-            IPropertySymbol property => property.Type
+            IPropertySymbol property => property.Type,
+            _ => throw new ArgumentOutOfRangeException(nameof(member), member, null)
         };
-    }
-
-    private static bool TryGetNullableElement(ITypeSymbol symbol, out ITypeSymbol? elementType)
-    {
-        elementType = default;
-        if (symbol is not INamedTypeSymbol { IsGenericType: true } namedTypeSymbol) return false;
-
-        if (!namedTypeSymbol.ConstructUnboundGenericType().Matches("System.Nullable`1")) return false;
-
-        elementType = namedTypeSymbol.TypeArguments[0];
-        return true;
     }
 
     private static void EmitRecordFormatterBody(INamedTypeSymbol namedSymbol, StringBuilder sourceBuilder)
     {
         var name = namedSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-        var members = namedSymbol.GetMembers()
-            .Where(member =>
-            {
-                return member.DeclaredAccessibility == Accessibility.Public &&
-                       !member.IsStatic &&
-                       member.GetAttributes().Select(attr => attr.AttributeClass).WhereNotNull().Any(attr =>
-                           attr.Matches("WaaS.ComponentModel.Binding.ComponentFieldAttribute"));
-            }).ToArray();
-
-        sourceBuilder.AppendLine(
-/* lang=c#  */"""
-                          public global::WaaS.ComponentModel.Runtime.IValueType Type { get; } = new global::WaaS.ComponentModel.Models.ResolvedRecordType(
-                              new global::WaaS.ComponentModel.Models.ResolvedRecordField[]
-                              {
-              """);
-        foreach (var member in members)
-        {
-            var memberType = GetMemberType(member);
-            bool isNullable;
-            if (TryGetNullableElement(memberType, out var elementType))
-            {
-                memberType = elementType!;
-                isNullable = true;
-            }
-            else
-            {
-                isNullable = memberType.NullableAnnotation is NullableAnnotation.Annotated;
-            }
-
-            var memberTypeExpression = isNullable
-                ? $"global::WaaS.ComponentModel.Binding.Option<{memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>"
-                : memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            sourceBuilder.AppendLine(
-                /* lang=c#  */
-                $$"""
-                                      new global::WaaS.ComponentModel.Models.ResolvedRecordField(@"{{Utils.ToComponentApiName(member)}}", global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{memberTypeExpression}}>().Type ?? throw new global::System.InvalidOperationException()),
-                  """);
-        }
-
-        sourceBuilder.AppendLine(
-/* lang=c#  */"""                });""");
+        var members = namedSymbol.GetRecordMembers().ToArray();
 
         sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
@@ -276,7 +226,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
         {
             var memberType = GetMemberType(member);
             bool isNullable;
-            if (TryGetNullableElement(memberType, out var elementType))
+            if (memberType.TryGetNullableElement(out var elementType))
             {
                 memberType = elementType!;
                 isNullable = true;
@@ -317,7 +267,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
         {
             var memberType = GetMemberType(member);
             bool isNullable;
-            if (TryGetNullableElement(memberType, out var elementType))
+            if (memberType.TryGetNullableElement(out var elementType))
             {
                 memberType = elementType!;
                 isNullable = true;
@@ -355,38 +305,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
     {
         var name = namedSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-        var members = namedSymbol.GetMembers()
-            .Where(member =>
-            {
-                return member.DeclaredAccessibility == Accessibility.Public &&
-                       !member.IsStatic &&
-                       member.GetAttributes().Select(attr => attr.AttributeClass).WhereNotNull().Any(attr =>
-                           attr.Matches("WaaS.ComponentModel.Binding.ComponentCaseAttribute"));
-            }).ToArray();
-
-        bodyBuilder.AppendLine(
-/* lang=c#  */"""
-                          public global::WaaS.ComponentModel.Runtime.IValueType Type { get; } = new global::WaaS.ComponentModel.Models.ResolvedVariantType(
-                              new global::WaaS.ComponentModel.Models.ResolvedVariantCase[]
-                              {
-              """);
-        foreach (var member in members)
-        {
-            var memberType = GetMemberType(member);
-            if (TryGetNullableElement(memberType, out var elementType)) memberType = elementType!;
-            var isNone = memberType.Matches("WaaS.ComponentModel.Binding.None");
-            var typeExpression = isNone
-                ? "null"
-                : $"global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>().Type";
-            bodyBuilder.AppendLine(
-                /* lang=c#  */
-                $$"""
-                                      new global::WaaS.ComponentModel.Models.ResolvedVariantCase(@"{{Utils.ToComponentApiName(member)}}", {{typeExpression}}),
-                  """);
-        }
-
-        bodyBuilder.AppendLine(
-/* lang=c#  */"""                });""");
+        var members = namedSymbol.GetVariantMembers().ToArray();
 
         bodyBuilder.AppendLine(
 /* lang=c#  */$$"""
@@ -403,7 +322,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
         {
             var member = members[i];
             var memberType = GetMemberType(member);
-            if (TryGetNullableElement(memberType, out var elementType)) memberType = elementType!;
+            if (memberType.TryGetNullableElement(out var elementType)) memberType = elementType!;
             var isNone = memberType.Matches("WaaS.ComponentModel.Binding.None");
             var valueExpression = isNone
                 ? "default(global::WaaS.ComponentModel.Binding.None)"
@@ -431,7 +350,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
         foreach (var member in members)
         {
             var memberType = GetMemberType(member);
-            var isNone = TryGetNullableElement(memberType, out var elementType) &&
+            var isNone = memberType.TryGetNullableElement(out var elementType) &&
                          elementType!.Matches("WaaS.ComponentModel.Binding.None");
             bodyBuilder.AppendLine(
 /* lang=c#  */$$"""
@@ -479,12 +398,13 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
         var name = namedSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
         var targetType = namedSymbol.GetAttributes()
-            .First(attr => attr.AttributeClass.Matches("WaaS.ComponentModel.Binding.ComponentAliasAttribute"))
+            .First(attr => attr.AttributeClass?.Matches("WaaS.ComponentModel.Binding.ComponentAliasAttribute") ?? false)
             .ConstructorArguments[0].Value as ITypeSymbol;
+
+        if (targetType is null) return;
 
         sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
-                            public global::WaaS.ComponentModel.Runtime.IValueType Type { get; } = global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Type;
                             public async global::STask.STask<{{name}}> PullAsync(global::WaaS.ComponentModel.Binding.Pullable pullable)
                             {
                                 return await pullable.PullValueAsync<{{targetType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>();

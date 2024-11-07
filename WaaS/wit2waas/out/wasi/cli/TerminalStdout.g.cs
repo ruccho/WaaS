@@ -3,6 +3,7 @@
 
 namespace Wasi.Cli
 {
+    // interface terminal-stdout
     /// <summary>
     ///     An interface providing an optional `terminal-output` for stdout as a
     ///     link-time authority.
@@ -15,7 +16,7 @@ namespace Wasi.Cli
         ///     allowing further interaction with it.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"get-terminal-stdout")]
-        global::WaaS.ComponentModel.Runtime.Owned<Wasi.Cli.ITerminalOutput.ITerminalOutputResource>? GetTerminalStdout();
+        global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Cli.ITerminalOutput.ITerminalOutputResourceImpl>?> GetTerminalStdout();
 
     }
 }

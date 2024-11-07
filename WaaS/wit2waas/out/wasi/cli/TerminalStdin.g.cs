@@ -3,6 +3,7 @@
 
 namespace Wasi.Cli
 {
+    // interface terminal-stdin
     /// <summary>
     ///     An interface providing an optional `terminal-input` for stdin as a
     ///     link-time authority.
@@ -15,7 +16,7 @@ namespace Wasi.Cli
         ///     allowing further interaction with it.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"get-terminal-stdin")]
-        global::WaaS.ComponentModel.Runtime.Owned<Wasi.Cli.ITerminalInput.ITerminalInputResource>? GetTerminalStdin();
+        global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Cli.ITerminalInput.ITerminalInputResourceImpl>?> GetTerminalStdin();
 
     }
 }

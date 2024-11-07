@@ -568,24 +568,7 @@ namespace WaaS.ComponentModel.Runtime
             }
         }
 
-        public Owned<T> PullOwned<THandle, T>() where T : class, IResourceType
-        {
-            if (GetNextType().Despecialize() is not IOwnedType { Type: T resourceType })
-                throw new InvalidOperationException();
-
-            try
-            {
-                var value = Flattened ? NextFlattenedI32() : LoadSerialized<uint>();
-
-                return OwnedCore.GetHandle(resourceType, value);
-            }
-            finally
-            {
-                typeCursor++;
-            }
-        }
-
-        public Owned<IResourceType> PullOwned()
+        public Owned PullOwned()
         {
             if (GetNextType().Despecialize() is not IOwnedType { Type: { } resourceType })
                 throw new InvalidOperationException();
@@ -594,7 +577,7 @@ namespace WaaS.ComponentModel.Runtime
             {
                 var value = Flattened ? NextFlattenedI32() : LoadSerialized<uint>();
 
-                return OwnedCore.GetHandle(resourceType, value);
+                return Ownership.GetHandle(resourceType, value, null);
             }
             finally
             {
@@ -602,24 +585,7 @@ namespace WaaS.ComponentModel.Runtime
             }
         }
 
-        public Borrowed<T> PullBorrowed<T>() where T : class, IResourceType
-        {
-            if (GetNextType().Despecialize() is not IBorrowedType { Type: T resourceType })
-                throw new InvalidOperationException();
-
-            try
-            {
-                var value = Flattened ? NextFlattenedI32() : LoadSerialized<uint>();
-
-                return BorrowedCore.GetHandle<T>(resourceType, value);
-            }
-            finally
-            {
-                typeCursor++;
-            }
-        }
-
-        public Borrowed<IResourceType> PullBorrowed()
+        public Borrowed PullBorrowed()
         {
             if (GetNextType().Despecialize() is not IBorrowedType { Type: { } resourceType })
                 throw new InvalidOperationException();
@@ -628,7 +594,9 @@ namespace WaaS.ComponentModel.Runtime
             {
                 var value = Flattened ? NextFlattenedI32() : LoadSerialized<uint>();
 
-                return BorrowedCore.GetHandle<IResourceType>(resourceType, value);
+                var owned = Ownership.GetHandle(resourceType, value, null);
+                //owned.// TODO: lifetime
+                return owned.Borrow();
             }
             finally
             {

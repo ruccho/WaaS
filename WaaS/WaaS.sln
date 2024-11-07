@@ -8,7 +8,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WaaS.Tests.Wast", "WaaS.Tes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WaaS.Tests", "WaaS.Tests\WaaS.Tests.csproj", "{16B7645A-ED48-49D1-8F25-0AECDA473669}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wasi", "wit2waas\out\wasi\wasi.csproj", "{6245567C-4402-4FAD-A384-519B6BE9CD88}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wasi", "wasi\wasi.csproj", "{9A19B797-326D-4918-9DCE-EBE8D3DBCE4C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,9 +32,9 @@ Global
 		{16B7645A-ED48-49D1-8F25-0AECDA473669}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{16B7645A-ED48-49D1-8F25-0AECDA473669}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{16B7645A-ED48-49D1-8F25-0AECDA473669}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6245567C-4402-4FAD-A384-519B6BE9CD88}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6245567C-4402-4FAD-A384-519B6BE9CD88}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6245567C-4402-4FAD-A384-519B6BE9CD88}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6245567C-4402-4FAD-A384-519B6BE9CD88}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A19B797-326D-4918-9DCE-EBE8D3DBCE4C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A19B797-326D-4918-9DCE-EBE8D3DBCE4C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A19B797-326D-4918-9DCE-EBE8D3DBCE4C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A19B797-326D-4918-9DCE-EBE8D3DBCE4C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -24,8 +24,8 @@ namespace WaaS.ComponentModel.Runtime
         ValuePusher PushList(int length);
         void PushFlags(uint flagValue);
 
-        void PushOwned<T>(Owned<T> handle) where T : class, IResourceType;
+        void PushOwned(Owned handle);
 
-        void PushBorrowed<T>(Borrowed<T> handle) where T : class, IResourceType;
+        void PushBorrowed(Borrowed handle);
     }
 }

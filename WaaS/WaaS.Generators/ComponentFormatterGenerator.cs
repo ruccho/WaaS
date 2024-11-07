@@ -25,9 +25,9 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
         if (context.TargetSymbol is not INamedTypeSymbol typeSymbol) return;
 
         var variantSelectors = typeSymbol.GetAttributes().Where(attr =>
-            attr.AttributeClass.Matches($"{FormatNamespace}.VariantAttribute")).ToArray();
+            attr.AttributeClass?.Matches($"{FormatNamespace}.VariantAttribute") ?? false).ToArray();
         var variantFallbackSelectors = typeSymbol.GetAttributes().Where(attr =>
-            attr.AttributeClass.Matches($"{FormatNamespace}.VariantFallbackAttribute")).ToArray();
+            attr.AttributeClass?.Matches($"{FormatNamespace}.VariantFallbackAttribute") ?? false).ToArray();
 
         StringBuilder sourceBuilder = new();
 
@@ -65,7 +65,7 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
             .OfType<IPropertySymbol>()
             .Where(p => !p
                 .GetAttributes()
-                .Any(attr => attr.AttributeClass.Matches($"{FormatNamespace}.IgnoreAttribute"))).ToArray();
+                .Any(attr => attr.AttributeClass?.Matches($"{FormatNamespace}.IgnoreAttribute") ?? false)).ToArray();
 
         if (variantSelectors.Any() || variantFallbackSelectors.Any())
         {
@@ -142,7 +142,7 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
                 sourceBuilder.Append("                ");
 
                 var dontAddToSort = propertySymbol.GetAttributes()
-                    .Any(attr => attr.AttributeClass.Matches($"{FormatNamespace}.DontAddToSortAttribute"));
+                    .Any(attr => attr.AttributeClass?.Matches($"{FormatNamespace}.DontAddToSortAttribute") ?? false);
                 AppendValueReader(propertySymbol.Type, dontAddToSort, sourceBuilder);
             }
 

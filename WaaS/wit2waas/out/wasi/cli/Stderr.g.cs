@@ -3,11 +3,12 @@
 
 namespace Wasi.Cli
 {
+    // interface stderr
     [global::WaaS.ComponentModel.Binding.ComponentInterface(@"stderr")]
     public partial interface IStderr
     {
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"get-stderr")]
-        global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IStreams.IOutputStreamResource> GetStderr();
+        global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IStreams.IOutputStreamResourceImpl>> GetStderr();
 
     }
 }

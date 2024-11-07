@@ -3,6 +3,7 @@
 
 namespace Wasi.Sockets
 {
+    // interface udp
     [global::WaaS.ComponentModel.Binding.ComponentInterface(@"udp")]
     public partial interface IUdp
     {
@@ -57,8 +58,8 @@ namespace Wasi.Sockets
         /// <summary>
         ///     A UDP socket handle.
         /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IUdpSocketResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("udp-socket")]
+        public partial interface IUdpSocketResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Bind the socket to a specific network on the provided IP address and port.
@@ -89,10 +90,10 @@ namespace Wasi.Sockets
             ///     - <https://man.freebsd.org/cgi/man.cgi?query=bind&sektion=2&format=html>
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]udp-socket.start-bind")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> StartBind(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResource> @self, global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.INetwork.INetworkResource> @network, Wasi.Sockets.INetwork.IpSocketAddress @localAddress);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> StartBind(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResourceImpl> @self, global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.INetwork.INetworkResourceImpl> @network, Wasi.Sockets.INetwork.IpSocketAddress @localAddress);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]udp-socket.finish-bind")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> FinishBind(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> FinishBind(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResourceImpl> @self);
 
             /// <summary>
             ///     Set up inbound & outbound communication channels, optionally to a specific peer.
@@ -137,7 +138,7 @@ namespace Wasi.Sockets
             ///     - <https://man.freebsd.org/cgi/man.cgi?connect>
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]udp-socket.stream")]
-            global::WaaS.ComponentModel.Binding.Result<(global::WaaS.ComponentModel.Runtime.Owned<Wasi.Sockets.IUdp.IIncomingDatagramStreamResource>, global::WaaS.ComponentModel.Runtime.Owned<Wasi.Sockets.IUdp.IOutgoingDatagramStreamResource>), Wasi.Sockets.INetwork.ErrorCode> Stream(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResource> @self, Wasi.Sockets.INetwork.IpSocketAddress? @remoteAddress);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<(global::WaaS.ComponentModel.Binding.Owned<Wasi.Sockets.IUdp.IIncomingDatagramStreamResourceImpl>, global::WaaS.ComponentModel.Binding.Owned<Wasi.Sockets.IUdp.IOutgoingDatagramStreamResourceImpl>), Wasi.Sockets.INetwork.ErrorCode>> Stream(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResourceImpl> @self, Wasi.Sockets.INetwork.IpSocketAddress? @remoteAddress);
 
             /// <summary>
             ///     Get the current bound address.
@@ -158,7 +159,7 @@ namespace Wasi.Sockets
             ///     - <https://man.freebsd.org/cgi/man.cgi?getsockname>
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]udp-socket.local-address")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Sockets.INetwork.IpSocketAddress, Wasi.Sockets.INetwork.ErrorCode> LocalAddress(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Sockets.INetwork.IpSocketAddress, Wasi.Sockets.INetwork.ErrorCode>> LocalAddress(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResourceImpl> @self);
 
             /// <summary>
             ///     Get the address the socket is currently streaming to.
@@ -173,7 +174,7 @@ namespace Wasi.Sockets
             ///     - <https://man.freebsd.org/cgi/man.cgi?query=getpeername&sektion=2&n=1>
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]udp-socket.remote-address")]
-            global::WaaS.ComponentModel.Binding.Result<Wasi.Sockets.INetwork.IpSocketAddress, Wasi.Sockets.INetwork.ErrorCode> RemoteAddress(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<Wasi.Sockets.INetwork.IpSocketAddress, Wasi.Sockets.INetwork.ErrorCode>> RemoteAddress(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResourceImpl> @self);
 
             /// <summary>
             ///     Whether this is a IPv4 or IPv6 socket.
@@ -181,7 +182,7 @@ namespace Wasi.Sockets
             ///     Equivalent to the SO_DOMAIN socket option.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]udp-socket.address-family")]
-            Wasi.Sockets.INetwork.IpAddressFamily AddressFamily(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<Wasi.Sockets.INetwork.IpAddressFamily> AddressFamily(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResourceImpl> @self);
 
             /// <summary>
             ///     Equivalent to the IP_TTL & IPV6_UNICAST_HOPS socket options.
@@ -192,10 +193,10 @@ namespace Wasi.Sockets
             ///     - `invalid-argument`:     (set) The TTL value must be 1 or higher.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]udp-socket.unicast-hop-limit")]
-            global::WaaS.ComponentModel.Binding.Result<byte, Wasi.Sockets.INetwork.ErrorCode> UnicastHopLimit(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<byte, Wasi.Sockets.INetwork.ErrorCode>> UnicastHopLimit(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResourceImpl> @self);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]udp-socket.set-unicast-hop-limit")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> SetUnicastHopLimit(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResource> @self, byte @value);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> SetUnicastHopLimit(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResourceImpl> @self, byte @value);
 
             /// <summary>
             ///     The kernel buffer space reserved for sends/receives on this socket.
@@ -210,16 +211,16 @@ namespace Wasi.Sockets
             ///     - `invalid-argument`:     (set) The provided value was 0.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]udp-socket.receive-buffer-size")]
-            global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Sockets.INetwork.ErrorCode> ReceiveBufferSize(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Sockets.INetwork.ErrorCode>> ReceiveBufferSize(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResourceImpl> @self);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]udp-socket.set-receive-buffer-size")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> SetReceiveBufferSize(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResource> @self, ulong @value);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> SetReceiveBufferSize(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResourceImpl> @self, ulong @value);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]udp-socket.send-buffer-size")]
-            global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Sockets.INetwork.ErrorCode> SendBufferSize(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Sockets.INetwork.ErrorCode>> SendBufferSize(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResourceImpl> @self);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]udp-socket.set-send-buffer-size")]
-            global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode> SetSendBufferSize(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResource> @self, ulong @value);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::WaaS.ComponentModel.Binding.None, Wasi.Sockets.INetwork.ErrorCode>> SetSendBufferSize(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResourceImpl> @self, ulong @value);
 
             /// <summary>
             ///     Create a `pollable` which will resolve once the socket is ready for I/O.
@@ -228,12 +229,12 @@ namespace Wasi.Sockets
             ///     It's planned to be removed when `future` is natively supported in Preview3.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]udp-socket.subscribe")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IPoll.IPollableResource> Subscribe(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IPoll.IPollableResourceImpl>> Subscribe(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IUdpSocketResourceImpl> @self);
 
         }
 
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IIncomingDatagramStreamResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("incoming-datagram-stream")]
+        public partial interface IIncomingDatagramStreamResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Receive messages on the socket.
@@ -261,7 +262,7 @@ namespace Wasi.Sockets
             ///     - <https://man.freebsd.org/cgi/man.cgi?query=recv&sektion=2>
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]incoming-datagram-stream.receive")]
-            global::WaaS.ComponentModel.Binding.Result<global::System.ReadOnlyMemory<Wasi.Sockets.IUdp.IncomingDatagram>, Wasi.Sockets.INetwork.ErrorCode> Receive(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IIncomingDatagramStreamResource> @self, ulong @maxResults);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<global::System.ReadOnlyMemory<Wasi.Sockets.IUdp.IncomingDatagram>, Wasi.Sockets.INetwork.ErrorCode>> Receive(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IIncomingDatagramStreamResourceImpl> @self, ulong @maxResults);
 
             /// <summary>
             ///     Create a `pollable` which will resolve once the stream is ready to receive again.
@@ -270,12 +271,12 @@ namespace Wasi.Sockets
             ///     It's planned to be removed when `future` is natively supported in Preview3.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]incoming-datagram-stream.subscribe")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IPoll.IPollableResource> Subscribe(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IIncomingDatagramStreamResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IPoll.IPollableResourceImpl>> Subscribe(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IIncomingDatagramStreamResourceImpl> @self);
 
         }
 
-        [global::WaaS.ComponentModel.Binding.ComponentResource]
-        public partial interface IOutgoingDatagramStreamResource : global::WaaS.ComponentModel.Runtime.IResourceType
+        [global::WaaS.ComponentModel.Binding.ComponentResource("outgoing-datagram-stream")]
+        public partial interface IOutgoingDatagramStreamResourceImpl : global::WaaS.ComponentModel.Binding.IResourceImpl
         {
             /// <summary>
             ///     Check readiness for sending. This function never blocks.
@@ -291,7 +292,7 @@ namespace Wasi.Sockets
             ///     Never returns `would-block`.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-datagram-stream.check-send")]
-            global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Sockets.INetwork.ErrorCode> CheckSend(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IOutgoingDatagramStreamResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Sockets.INetwork.ErrorCode>> CheckSend(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IOutgoingDatagramStreamResourceImpl> @self);
 
             /// <summary>
             ///     Send messages on the socket.
@@ -330,7 +331,7 @@ namespace Wasi.Sockets
             ///     - <https://man.freebsd.org/cgi/man.cgi?query=send&sektion=2>
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-datagram-stream.send")]
-            global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Sockets.INetwork.ErrorCode> Send(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IOutgoingDatagramStreamResource> @self, global::System.ReadOnlyMemory<Wasi.Sockets.IUdp.OutgoingDatagram> @datagrams);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Result<ulong, Wasi.Sockets.INetwork.ErrorCode>> Send(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IOutgoingDatagramStreamResourceImpl> @self, global::System.ReadOnlyMemory<Wasi.Sockets.IUdp.OutgoingDatagram> @datagrams);
 
             /// <summary>
             ///     Create a `pollable` which will resolve once the stream is ready to send again.
@@ -339,7 +340,7 @@ namespace Wasi.Sockets
             ///     It's planned to be removed when `future` is natively supported in Preview3.
             /// </summary>
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]outgoing-datagram-stream.subscribe")]
-            global::WaaS.ComponentModel.Runtime.Owned<Wasi.Io.IPoll.IPollableResource> Subscribe(global::WaaS.ComponentModel.Runtime.Borrowed<Wasi.Sockets.IUdp.IOutgoingDatagramStreamResource> @self);
+            global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Io.IPoll.IPollableResourceImpl>> Subscribe(global::WaaS.ComponentModel.Binding.Borrowed<Wasi.Sockets.IUdp.IOutgoingDatagramStreamResourceImpl> @self);
 
         }
 

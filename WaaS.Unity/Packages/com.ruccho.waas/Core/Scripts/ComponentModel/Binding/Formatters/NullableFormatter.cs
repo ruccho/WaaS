@@ -5,8 +5,6 @@ namespace WaaS.ComponentModel.Binding
 {
     internal class NullableFormatter<T> : IFormatter<T?> where T : struct
     {
-        public IValueType Type => FormatterProvider.GetFormatter<Option<T>>().Type;
-
         public async STask<T?> PullAsync(Pullable adapter)
         {
             return (await FormatterProvider.GetFormatter<Option<T>>().PullAsync(adapter)).ToNullable();

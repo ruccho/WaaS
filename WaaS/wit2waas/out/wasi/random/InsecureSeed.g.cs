@@ -3,6 +3,7 @@
 
 namespace Wasi.Random
 {
+    // interface insecure-seed
     /// <summary>
     ///     The insecure-seed interface for seeding hash-map DoS resistance.
     ///     
@@ -32,7 +33,7 @@ namespace Wasi.Random
         ///     protection.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"insecure-seed")]
-        (ulong, ulong) InsecureSeed();
+        global::System.Threading.Tasks.ValueTask<(ulong, ulong)> InsecureSeed();
 
     }
 }

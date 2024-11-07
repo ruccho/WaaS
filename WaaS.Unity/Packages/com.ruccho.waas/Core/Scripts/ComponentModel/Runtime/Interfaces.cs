@@ -170,7 +170,8 @@ namespace WaaS.ComponentModel.Runtime
 
     public interface IResourceType : IType
     {
-        IFunction Destructor { get; }
+        uint New(uint rep);
+        void Drop(ExecutionContext context, uint index);
     }
 
     public interface IFunctionType : IType

@@ -3,6 +3,7 @@
 
 namespace Wasi.Cli
 {
+    // interface environment
     [global::WaaS.ComponentModel.Binding.ComponentInterface(@"environment")]
     public partial interface IEnvironment
     {
@@ -17,20 +18,20 @@ namespace Wasi.Cli
         ///     values each time it is called.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"get-environment")]
-        global::System.ReadOnlyMemory<(string, string)> GetEnvironment();
+        global::System.Threading.Tasks.ValueTask<global::System.ReadOnlyMemory<(string, string)>> GetEnvironment();
 
         /// <summary>
         ///     Get the POSIX-style arguments to the program.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"get-arguments")]
-        global::System.ReadOnlyMemory<string> GetArguments();
+        global::System.Threading.Tasks.ValueTask<global::System.ReadOnlyMemory<string>> GetArguments();
 
         /// <summary>
         ///     Return a path that programs should use as their initial current working
         ///     directory, interpreting `.` as shorthand for this.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"initial-cwd")]
-        global::WaaS.ComponentModel.Binding.Option<string> InitialCwd();
+        global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Option<string>> InitialCwd();
 
     }
 }

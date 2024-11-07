@@ -3,6 +3,7 @@
 
 namespace Wasi.Sockets
 {
+    // interface instance-network
     /// <summary>
     ///     This interface provides a value-export of the default network handle..
     /// </summary>
@@ -13,7 +14,7 @@ namespace Wasi.Sockets
         ///     Get a handle to the default network.
         /// </summary>
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"instance-network")]
-        global::WaaS.ComponentModel.Runtime.Owned<Wasi.Sockets.INetwork.INetworkResource> InstanceNetwork();
+        global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wasi.Sockets.INetwork.INetworkResourceImpl>> InstanceNetwork();
 
     }
 }
