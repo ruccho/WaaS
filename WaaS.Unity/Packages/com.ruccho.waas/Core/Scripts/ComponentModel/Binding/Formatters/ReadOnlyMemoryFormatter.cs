@@ -1,6 +1,7 @@
 ﻿#nullable enable
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using STask;
 using WaaS.ComponentModel.Runtime;
 
@@ -27,7 +28,7 @@ namespace WaaS.ComponentModel.Binding
 
     internal class ReadOnlyMemoryFormatterProvider : IProceduralFormatterProvider
     {
-        public bool TryCreateFormatter<T>(out IFormatter<T> formatter)
+        public bool TryCreateFormatter<T>([NotNullWhen(true)] out IFormatter<T>? formatter)
         {
             if (typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(ReadOnlyMemory<>))
             {

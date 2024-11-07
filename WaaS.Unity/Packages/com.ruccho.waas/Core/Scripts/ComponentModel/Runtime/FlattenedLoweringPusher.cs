@@ -129,7 +129,8 @@ namespace WaaS.ComponentModel.Runtime
             var count = checked((int)recordType.FlattenedCount);
             var dest = Destination.Slice(destinationCursor, count);
             destinationCursor += count;
-            return Get(dest).Init(Context, ElementTypeSelector.FromRecord(recordType)).Wrap();
+            return Get(dest).Init(Context ?? throw new InvalidOperationException(),
+                ElementTypeSelector.FromRecord(recordType)).Wrap();
         }
 
         public override ValuePusher PushVariant(int caseIndex)
@@ -157,7 +158,8 @@ namespace WaaS.ComponentModel.Runtime
                 if ((byte)dest.Span[i].valueType == 0) // not fixed yet
                     dest.Span[i] = new StackValueItem(prejoinedTypes[i]);
 
-            return Get(dest).Init(Context, ElementTypeSelector.FromSingle(caseType.Despecialize())).Wrap();
+            return Get(dest).Init(Context ?? throw new InvalidOperationException(),
+                ElementTypeSelector.FromSingle(caseType.Despecialize())).Wrap();
         }
     }
 }

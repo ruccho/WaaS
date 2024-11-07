@@ -192,7 +192,7 @@ namespace WaaS.ComponentModel.Binding
 
         private class Awaiter<T> : IAwaiter<T>
         {
-            [ThreadStatic] public static Stack<Awaiter<T>> pool;
+            [ThreadStatic] private static Stack<Awaiter<T>>? pool;
 
             private STaskCompletionSource<T> core;
 

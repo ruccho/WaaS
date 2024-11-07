@@ -166,7 +166,7 @@ namespace WaaS.ComponentModel.Models
             public override void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
                 Span<StackValueItem> results)
             {
-                type.Drop(context, parameters[0].ExpectValueI32());
+                type.Drop(parameters[0].ExpectValueI32());
             }
         }
     }

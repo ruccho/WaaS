@@ -58,7 +58,8 @@ namespace WaaS.ComponentModel.Models
 
             public IModuleExports CoreExports => this;
 
-            public bool TryGetExport<T>(string name, out ICoreSortedExportable<T> result) where T : IExternal
+            public bool TryGetExport<T>(string name, [NotNullWhen(true)] out ICoreSortedExportable<T>? result)
+                where T : IExternal
             {
                 if (exports.TryGetValue(name, out var export))
                     if (export is ICoreSortedExportable<T> t)
@@ -71,7 +72,7 @@ namespace WaaS.ComponentModel.Models
                 return false;
             }
 
-            bool IModuleExports.TryGetExport<T>(string name, out T value)
+            bool IModuleExports.TryGetExport<T>(string name, [NotNullWhen(true)] out T? value) where T : default
             {
                 if (exports.TryGetValue(name, out var export))
                 {

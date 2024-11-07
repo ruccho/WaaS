@@ -359,7 +359,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
             if (!isNone)
                 bodyBuilder.AppendLine(
 /* lang=c#  */$$"""
-                                        global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push(value.{{member.Name}}, pusher);
+                                        global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push(value.{{member.Name}} ?? throw new global::System.InvalidOperationException(), pusher);
                 """);
             bodyBuilder.AppendLine(
 /* lang=c#  */"""                        break;""");

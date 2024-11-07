@@ -154,8 +154,8 @@ namespace WaaS.ComponentModel.Runtime
 
     public interface IResultType : IValueType
     {
-        IValueType Type { get; }
-        IValueType ErrorType { get; }
+        IValueType? Type { get; }
+        IValueType? ErrorType { get; }
     }
 
     public interface IOwnedType : IDespecializedValueType
@@ -171,7 +171,7 @@ namespace WaaS.ComponentModel.Runtime
     public interface IResourceType : IType
     {
         uint New(uint rep);
-        void Drop(ExecutionContext context, uint index);
+        void Drop(uint index);
     }
 
     public interface IFunctionType : IType

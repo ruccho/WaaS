@@ -392,7 +392,7 @@ namespace WaaS.ComponentModel.Runtime
         {
             if ((info.begin & (info.alignment - 1)) != 0) throw new InvalidOperationException();
 
-            var bytes = Context.Options.MemoryToRealloc.Span.Slice(checked((int)info.begin),
+            var bytes = Context.Options.MemoryToRealloc!.Span.Slice(checked((int)info.begin),
                 checked((int)info.byteLength));
             return info.encoding.GetCharCount(bytes);
         }
@@ -401,7 +401,7 @@ namespace WaaS.ComponentModel.Runtime
         {
             if ((info.begin & (info.alignment - 1)) != 0) throw new InvalidOperationException();
 
-            var bytes = Context.Options.MemoryToRealloc.Span.Slice(checked((int)info.begin),
+            var bytes = Context.Options.MemoryToRealloc!.Span.Slice(checked((int)info.begin),
                 checked((int)info.byteLength));
             return info.encoding.GetMaxCharCount(bytes.Length);
         }
@@ -412,7 +412,7 @@ namespace WaaS.ComponentModel.Runtime
             {
                 if ((info.begin & (info.alignment - 1)) != 0) throw new InvalidOperationException();
 
-                var bytes = Context.Options.MemoryToRealloc.Span.Slice(checked((int)info.begin),
+                var bytes = Context.Options.MemoryToRealloc!.Span.Slice(checked((int)info.begin),
                     checked((int)info.byteLength));
 
                 return info.encoding.GetString(bytes);
@@ -429,7 +429,7 @@ namespace WaaS.ComponentModel.Runtime
             {
                 if ((info.begin & (info.alignment - 1)) != 0) throw new InvalidOperationException();
 
-                var bytes = Context.Options.MemoryToRealloc.Span.Slice(checked((int)info.begin),
+                var bytes = Context.Options.MemoryToRealloc!.Span.Slice(checked((int)info.begin),
                     checked((int)info.byteLength));
 
                 return info.encoding.GetChars(bytes, result);
@@ -464,7 +464,7 @@ namespace WaaS.ComponentModel.Runtime
                 if ((begin & ((1 << elementType.AlignmentRank) - 1)) != 0) throw new InvalidOperationException();
 
                 return new ValueLifter(Context, ElementTypeSelector.FromList(listType, checked((int)length)),
-                    Context.Options.MemoryToRealloc.Span.Slice(checked((int)begin),
+                    Context.Options.MemoryToRealloc!.Span.Slice(checked((int)begin),
                         checked((int)(length * elementType.ElementSize))));
             }
             finally
@@ -577,7 +577,7 @@ namespace WaaS.ComponentModel.Runtime
             {
                 var value = Flattened ? NextFlattenedI32() : LoadSerialized<uint>();
 
-                return Ownership.GetHandle(resourceType, value, null);
+                return Ownership.GetHandle(resourceType, value);
             }
             finally
             {
@@ -594,7 +594,7 @@ namespace WaaS.ComponentModel.Runtime
             {
                 var value = Flattened ? NextFlattenedI32() : LoadSerialized<uint>();
 
-                var owned = Ownership.GetHandle(resourceType, value, null);
+                var owned = Ownership.GetHandle(resourceType, value);
                 //owned.// TODO: lifetime
                 return owned.Borrow();
             }

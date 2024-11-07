@@ -203,7 +203,8 @@ namespace WaaS.ComponentModel.Models
                 var depth = reader.ReadUnalignedLeb128U32();
                 var index = reader.ReadUnalignedLeb128U32();
 
-                for (var i = 0; i < depth; i++) indexSpace = indexSpace.Parent;
+                for (var i = 0; i < depth; i++)
+                    indexSpace = indexSpace.Parent ?? throw new InvalidModuleException("Invalid depth");
 
                 result = new AliasTargetOuter(indexSpace, depth, index);
                 return true;
@@ -223,7 +224,8 @@ namespace WaaS.ComponentModel.Models
 
             public T ResolveFirstTime(IInstanceResolutionContext context)
             {
-                for (var i = 0; i < Depth; i++) context = context.Parent;
+                for (var i = 0; i < Depth; i++)
+                    context = context.Parent ?? throw new InvalidModuleException("Invalid depth");
                 return context.Resolve(Target);
             }
         }

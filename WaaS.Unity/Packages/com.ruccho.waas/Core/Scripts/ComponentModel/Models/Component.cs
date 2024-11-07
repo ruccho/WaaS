@@ -233,7 +233,8 @@ namespace WaaS.ComponentModel.Models
 
             public IModuleExports CoreExports => this;
 
-            public bool TryGetExport<T>(string name, out ICoreSortedExportable<T> result) where T : IExternal
+            public bool TryGetExport<T>(string name, [NotNullWhen(true)] out ICoreSortedExportable<T>? result)
+                where T : IExternal
             {
                 if (cachedExports.TryGetValue(name, out var cachedExport))
                 {
@@ -245,7 +246,7 @@ namespace WaaS.ComponentModel.Models
                 if (Instance.TryGetExport(name, out T export))
                 {
                     result = new WrappedExport<T>(export);
-                    cachedExports.Add(name, result as ICoreSortedExportable<IExternal>);
+                    cachedExports.Add(name, (result as ICoreSortedExportable<IExternal>)!);
                     return true;
                 }
 

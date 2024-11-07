@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using WaaS.ComponentModel.Runtime;
 using WaaS.Models;
@@ -689,13 +690,14 @@ namespace WaaS.ComponentModel.Models
 
         IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
         {
-            return new ResolvedResultType(context.Resolve(Type), context.Resolve(ErrorType));
+            return new ResolvedResultType(Type != null ? context.Resolve(Type) : null,
+                ErrorType != null ? context.Resolve(ErrorType) : null);
         }
     }
 
     public class ResolvedResultType : IResultType
     {
-        public ResolvedResultType(IValueType type, IValueType errorType)
+        public ResolvedResultType(IValueType? type, IValueType? errorType)
         {
             Type = type;
             ErrorType = errorType;
@@ -703,8 +705,8 @@ namespace WaaS.ComponentModel.Models
 
         private IDespecializedValueType? Despecialized { get; set; }
 
-        public IValueType Type { get; }
-        public IValueType ErrorType { get; }
+        public IValueType? Type { get; }
+        public IValueType? ErrorType { get; }
 
         public IDespecializedValueType Despecialize()
         {
@@ -872,6 +874,7 @@ namespace WaaS.ComponentModel.Models
 
         private class ResolvedResourceType : IResourceType
         {
+            [ThreadStatic] private static ExecutionContext? contextForDestructor;
             private readonly IInvocableFunction? destructor;
             private readonly ResourceTable<uint> table = new();
 
@@ -885,12 +888,13 @@ namespace WaaS.ComponentModel.Models
                 return unchecked((uint)table.Add(rep));
             }
 
-            public void Drop(ExecutionContext context, uint index)
+            public void Drop(uint index)
             {
                 if (destructor != null)
                 {
                     var indexValue = new StackValueItem(index);
-                    context.InterruptFrame(destructor, MemoryMarshal.CreateSpan(ref indexValue, 1),
+                    contextForDestructor ??= new ExecutionContext();
+                    contextForDestructor.InterruptFrame(destructor, MemoryMarshal.CreateSpan(ref indexValue, 1),
                         Span<StackValueItem>.Empty);
                 }
 
@@ -1163,7 +1167,7 @@ namespace WaaS.ComponentModel.Models
     internal class ExportableDescriptorFormatter : IFormatter<IExportableDescriptor<ISortedExportable>>
     {
         public bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace,
-            out IExportableDescriptor<ISortedExportable> result)
+            [NotNullWhen(true)] out IExportableDescriptor<ISortedExportable>? result)
         {
             var tag = reader.Clone().ReadUnaligned<byte>();
             switch (tag)

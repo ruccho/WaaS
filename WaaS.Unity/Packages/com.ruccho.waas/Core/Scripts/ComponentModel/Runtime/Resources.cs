@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Threading;
 using STask;
 using WaaS.ComponentModel.Binding;
-using ExecutionContext = WaaS.Runtime.ExecutionContext;
 
 namespace WaaS.ComponentModel.Runtime
 {
@@ -18,16 +17,14 @@ namespace WaaS.ComponentModel.Runtime
 
         public IResourceType? Type { get; private set; }
         private uint Value { get; set; }
-        private ExecutionContext Context { get; set; }
 
-        public static Owned GetHandle(IResourceType type, uint value, ExecutionContext context)
+        public static Owned GetHandle(IResourceType type, uint value)
         {
             pool ??= new Stack<Ownership>();
             if (!pool.TryPop(out var popped)) popped = new Ownership();
 
             popped.Type = type;
             popped.Value = value;
-            popped.Context = context;
             return new Owned(popped);
         }
 
@@ -104,7 +101,7 @@ namespace WaaS.ComponentModel.Runtime
 
         private void CallDestructor()
         {
-            Type!.Drop(Context, Value);
+            Type!.Drop(Value);
         }
     }
 

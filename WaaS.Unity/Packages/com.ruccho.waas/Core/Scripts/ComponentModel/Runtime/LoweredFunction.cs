@@ -80,7 +80,7 @@ namespace WaaS.ComponentModel.Runtime
                 lifter = flatten
                     ? new ValueLifter(this, typeSelector, inputValues)
                     : new ValueLifter(this, typeSelector,
-                        MemoryToRealloc.Span.Slice(checked((int)inputValues[0].ExpectValueI32())));
+                        MemoryToRealloc!.Span[checked((int)inputValues[0].ExpectValueI32())..]);
             }
 
             var binder = ComponentFunction.GetBinder(context);
@@ -94,15 +94,15 @@ namespace WaaS.ComponentModel.Runtime
             [ThreadStatic] private static Stack<Frame>? pool;
             private FunctionBinder binder;
 
-            private LoweredFunction function;
+            private LoweredFunction? function;
             private StackFrame internalFrame;
 
-            public ushort Version { get; }
+            public ushort Version { get; private set; }
 
             public int GetResultLength(ushort version)
             {
                 ThrowIfOutdated(version);
-                return function.ComponentFunction.Type.Result != null ? 1 : 0;
+                return function!.ComponentFunction.Type.Result != null ? 1 : 0;
             }
 
             public void Dispose(ushort version)
@@ -114,11 +114,9 @@ namespace WaaS.ComponentModel.Runtime
                 binder.Dispose();
                 binder = default;
 
-                if (++version != ushort.MaxValue)
-                {
-                    pool ??= new Stack<Frame>();
-                    pool.Push(this);
-                }
+                if (++Version == ushort.MaxValue) return;
+                pool ??= new Stack<Frame>();
+                pool.Push(this);
             }
 
             public StackFrameState MoveNext(ushort version, Waker waker)
@@ -130,7 +128,8 @@ namespace WaaS.ComponentModel.Runtime
             public void TakeResults(ushort version, Span<StackValueItem> dest)
             {
                 ThrowIfOutdated(version);
-                using var pusher = LoweringPusherBase.GetRoot(function, false, 1, out var items).Wrap();
+                using var pusher = LoweringPusherBase
+                    .GetRoot(function ?? throw new InvalidOperationException(), false, 1, out var items).Wrap();
                 binder.TakeResults(pusher);
                 items.UnsafeItems.CopyTo(dest);
             }

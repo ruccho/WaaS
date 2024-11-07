@@ -11,7 +11,7 @@ namespace WaaS.ComponentModel.Runtime
     {
         private int typeCursor;
 
-        protected ICanonContext Context { get; private set; }
+        protected ICanonContext? Context { get; private set; }
         private ElementTypeSelector RootType { get; set; }
 
         public ushort Version { get; private set; }
@@ -122,7 +122,7 @@ namespace WaaS.ComponentModel.Runtime
             PushU32Core(checked((uint)length));
 
             return SerializedLoweringPusher.Get(
-                    Context.Options.MemoryToRealloc!.AsMemory().Slice(checked((int)ptr), checked((int)size)))
+                    Context!.Options.MemoryToRealloc!.AsMemory().Slice(checked((int)ptr), checked((int)size)))
                 .Init(Context, ElementTypeSelector.FromList(listType, length))
                 .Wrap();
         }
@@ -164,7 +164,7 @@ namespace WaaS.ComponentModel.Runtime
                 throw new InvalidOperationException();
             // MoveNextType();
 
-            var destEncoding = Context.Options.StringEncoding;
+            var destEncoding = Context!.Options.StringEncoding;
             uint ptr;
             uint length;
             switch (destEncoding)
@@ -175,7 +175,7 @@ namespace WaaS.ComponentModel.Runtime
                     length = (uint)encoding.GetByteCount(value);
                     ptr = Realloc(0, 0, 1, length);
                     encoding.GetBytes(value,
-                        Context.Options.MemoryToRealloc.Span.Slice(checked((int)ptr), (int)length));
+                        Context.Options.MemoryToRealloc!.Span.Slice(checked((int)ptr), (int)length));
                     break;
                 }
                 case CanonOptionStringEncodingKind.Utf16:
@@ -185,7 +185,7 @@ namespace WaaS.ComponentModel.Runtime
                     var span = MemoryMarshal.AsBytes(value);
                     ptr = Realloc(0, 0, 2, checked((uint)span.Length));
                     if ((ptr & 1) != 0) throw new TrapException();
-                    span.CopyTo(Context.Options.MemoryToRealloc.Span.Slice(checked((int)ptr), span.Length));
+                    span.CopyTo(Context.Options.MemoryToRealloc!.Span.Slice(checked((int)ptr), span.Length));
                     length = (uint)value.Length;
                     break;
                 }
@@ -234,7 +234,7 @@ namespace WaaS.ComponentModel.Runtime
             }
             else
             {
-                var ptr = context.Realloc(0, 0, checked((uint)(1 << type.AlignmentRank)),
+                var ptr = context.Realloc(0, 0, checked((uint)(1 << type!.AlignmentRank)),
                     type.ElementSize);
                 result = SerializedLoweringPusher.Get(
                     context.Options.MemoryToRealloc!.AsMemory().Slice(checked((int)ptr), type.ElementSize));
@@ -279,7 +279,7 @@ namespace WaaS.ComponentModel.Runtime
 
         private uint Realloc(uint originalPtr, uint originalSize, uint alignment, uint newSize)
         {
-            return Context.Realloc(originalPtr, originalSize, alignment, newSize);
+            return Context!.Realloc(originalPtr, originalSize, alignment, newSize);
         }
 
         protected abstract void Dispose(bool reuse);

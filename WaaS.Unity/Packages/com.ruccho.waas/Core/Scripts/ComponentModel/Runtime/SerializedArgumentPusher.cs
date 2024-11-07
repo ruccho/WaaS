@@ -86,7 +86,8 @@ namespace WaaS.ComponentModel.Runtime
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, recordType.AlignmentRank);
             var dest = Destination.Slice(checked((int)destinationCursor), size);
             destinationCursor += size;
-            return Get(dest).Init(Context, ElementTypeSelector.FromRecord(recordType)).Wrap();
+            return Get(dest).Init(Context ?? throw new InvalidOperationException(),
+                ElementTypeSelector.FromRecord(recordType)).Wrap();
         }
 
         public override ValuePusher PushVariant(int caseIndex)
@@ -117,7 +118,8 @@ namespace WaaS.ComponentModel.Runtime
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, caseTypeDespecialized.AlignmentRank);
             var dest = Destination.Slice(checked((int)destinationCursor), size);
             destinationCursor += size;
-            return Get(dest).Init(Context, ElementTypeSelector.FromSingle(caseTypeDespecialized)).Wrap();
+            return Get(dest).Init(Context ?? throw new InvalidOperationException(),
+                ElementTypeSelector.FromSingle(caseTypeDespecialized)).Wrap();
         }
     }
 }

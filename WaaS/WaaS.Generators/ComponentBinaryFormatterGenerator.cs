@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis;
 namespace WaaS.Generators;
 
 [Generator(LanguageNames.CSharp)]
-public class ComponentFormatterGenerator : IIncrementalGenerator
+public class ComponentBinaryFormatterGenerator : IIncrementalGenerator
 {
     private const string FormatNamespace = "WaaS.ComponentModel.Models";
 
@@ -47,13 +47,13 @@ public class ComponentFormatterGenerator : IIncrementalGenerator
                 {
                     static {{typeSymbol.Name}}()
                     {
-                        global::{{FormatNamespace}}.Formatter<{{typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>.Default = new Formatter();
+                        global::{{FormatNamespace}}.Formatter<{{typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>.Default = new {{typeSymbol.Name}}Formatter();
                         StaticConstructor();
                     }
                     
                     static partial void StaticConstructor();
                 
-                    internal class Formatter : global::{{FormatNamespace}}.IFormatter<{{typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>
+                    private class {{typeSymbol.Name}}Formatter : global::{{FormatNamespace}}.IFormatter<{{typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>
                     {
                         public bool TryRead(ref global::WaaS.Models.ModuleReader reader, global::{{FormatNamespace}}.IIndexSpace indexSpace, out {{typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}} result)
                         {

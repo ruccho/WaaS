@@ -19,7 +19,7 @@ namespace WaaS.ComponentModel.Runtime
         private readonly HashSet<object> resolving = new();
 
         public InstanceResolutionContext(IReadOnlyDictionary<string, ISortedExportable> imports,
-            IInstanceResolutionContext parent)
+            IInstanceResolutionContext? parent)
         {
             this.imports = imports;
             Parent = parent;

@@ -1,6 +1,7 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using WaaS.ComponentModel.Runtime;
-using WaaS.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
@@ -23,7 +24,7 @@ namespace WaaS.ComponentModel.Binding
             throw new InvalidOperationException("resource.new is not supported for host resource types.");
         }
 
-        public void Drop(ExecutionContext context, uint index)
+        public void Drop(uint index)
         {
             resources.RemoveAt(unchecked((int)index));
         }
@@ -31,7 +32,7 @@ namespace WaaS.ComponentModel.Binding
         public Owned Wrap(T value)
         {
             return Ownership.GetHandle(this,
-                AllocateResourceId(value), null);
+                AllocateResourceId(value));
         }
 
         public T Unwrap(Borrowed handle)

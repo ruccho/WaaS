@@ -11,13 +11,11 @@ namespace WaaS.ComponentModel.Runtime
 {
     public class LiftedFunction : IFunction, ICanonOptions
     {
-        private readonly Memory? memoryToRealloc;
-
         public LiftedFunction(IInvocableFunction coreFunction, IFunctionType type,
             CanonOptionStringEncodingKind stringEncoding, IInvocableFunction? reallocFunction,
             IInvocableFunction? postReturnFunction, Memory? memoryToRealloc)
         {
-            this.memoryToRealloc = memoryToRealloc;
+            MemoryToRealloc = memoryToRealloc;
             CoreFunction = coreFunction;
             Type = type;
             StringEncoding = stringEncoding;
@@ -31,7 +29,8 @@ namespace WaaS.ComponentModel.Runtime
         public CanonOptionStringEncodingKind StringEncoding { get; }
 
         public IInvocableFunction? ReallocFunction { get; }
-        public Memory MemoryToRealloc => memoryToRealloc;
+        public Memory? MemoryToRealloc { get; }
+
         public IFunctionType Type { get; }
 
         public FunctionBinder GetBinder(ExecutionContext context)
@@ -43,14 +42,14 @@ namespace WaaS.ComponentModel.Runtime
         {
             private static readonly Stack<Binder> Pool = new();
             private StackFrame frame;
-            private LiftedFunction function;
+            private LiftedFunction? function;
             private int invoked;
             private StackValueItems stackValueItems;
 
-            public ExecutionContext Context { get; private set; }
-            public ICanonOptions Options => function;
+            private ExecutionContext? Context { get; set; }
+            public ICanonOptions Options => function ?? throw new InvalidOperationException();
 
-            public IFunction ComponentFunction => function;
+            public IFunction ComponentFunction => function ?? throw new InvalidOperationException();
 
             public uint Realloc(uint originalPtr, uint originalSize, uint alignment, uint newSize)
             {
@@ -59,11 +58,13 @@ namespace WaaS.ComponentModel.Runtime
                 args[1] = new StackValueItem(originalSize);
                 args[2] = new StackValueItem(alignment);
                 args[3] = new StackValueItem(newSize);
-                Context.InterruptFrame(function.ReallocFunction, args[..4], args[4..]);
+                Context!.InterruptFrame(function!.ReallocFunction, args[..4], args[4..]);
                 return args[4].ExpectValueI32();
             }
 
             public ushort Version { get; private set; }
+
+            public ValuePusher ArgumentPusher { get; private set; }
 
             public void Dispose(ushort version)
             {
@@ -74,17 +75,15 @@ namespace WaaS.ComponentModel.Runtime
                 Pool.Push(this);
             }
 
-            public ValuePusher ArgumentPusher { get; private set; }
-
             public StackFrame CreateFrame()
             {
                 if (Interlocked.CompareExchange(ref invoked, 1, 0) != 0) throw new InvalidOperationException();
-                return frame = function.CoreFunction.CreateFrame(Context, stackValueItems.UnsafeItems);
+                return frame = function!.CoreFunction.CreateFrame(Context, stackValueItems.UnsafeItems);
             }
 
             public void TakeResults(ValuePusher resultValuePusher)
             {
-                var coreResultTypes = function.CoreFunction.Type.ResultTypes;
+                var coreResultTypes = function!.CoreFunction.Type.ResultTypes;
                 Span<StackValueItem> resultValues = stackalloc StackValueItem[frame.ResultLength];
                 frame.TakeResults(resultValues);
                 frame.Dispose();
@@ -102,7 +101,7 @@ namespace WaaS.ComponentModel.Runtime
                     var lifter = flatten
                         ? new ValueLifter(this, ElementTypeSelector.FromSingle(resultType), resultValues)
                         : new ValueLifter(this, ElementTypeSelector.FromSingle(resultType),
-                            function.MemoryToRealloc.Span.Slice(checked((int)resultValues[0].ExpectValueI32())));
+                            function.MemoryToRealloc!.Span.Slice(checked((int)resultValues[0].ExpectValueI32())));
 
                     ValueTransfer.TransferNext(ref lifter, resultValuePusher);
                 }
@@ -111,7 +110,7 @@ namespace WaaS.ComponentModel.Runtime
 
                 // TODO: make async
                 var postReturn = function.PostReturnFunction;
-                if (postReturn != null) Context.InterruptFrame(postReturn, resultValues, Span<StackValueItem>.Empty);
+                if (postReturn != null) Context!.InterruptFrame(postReturn, resultValues, Span<StackValueItem>.Empty);
             }
 
             private void Reset(ExecutionContext context, LiftedFunction function)

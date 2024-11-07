@@ -52,9 +52,9 @@ namespace WaaS.ComponentModel.Models
     {
     }
 
-    internal static class Formatter<T>
+    internal static class Formatter<T> where T : notnull
     {
-        private static IFormatter<T> defaultFormatter;
+        private static IFormatter<T>? defaultFormatter;
 
         static Formatter()
         {
@@ -63,7 +63,7 @@ namespace WaaS.ComponentModel.Models
 
         public static IFormatter<T> Default
         {
-            private get => defaultFormatter;
+            private get => defaultFormatter ?? throw new InvalidOperationException();
             set => defaultFormatter ??= value;
         }
 
