@@ -4,6 +4,7 @@ using System;
 
 namespace WaaS.ComponentModel.Binding
 {
+    [AttributeUsage(AttributeTargets.Method)]
     public class ComponentApiAttribute : Attribute
     {
         public ComponentApiAttribute(bool ignore)
