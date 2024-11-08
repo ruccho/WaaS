@@ -1,0 +1,39 @@
+---
+title: Component Model API
+sidebar_position: 4
+---
+
+import DocCardList from '@theme/DocCardList';
+
+:::info
+Component Model についての概要は 「[Component Model ではじめる](./../getting-started/component-model.md)」 も参照してください。
+:::
+
+### Component Model のワークフロー
+
+```mermaid
+flowchart TD
+    WIT
+    CSharp["C# interface"]
+    Bindings
+    Wasm["Wasm component"]
+    WaaS["Run on WaaS"]
+    WIT-- wit2waas -->CSharp
+    WIT-- wit-bindgen -->Bindings
+    Bindings-->Wasm
+    CSharp-- Binding Generator -->CSharpBinding["C# bindings"]
+    CSharpBinding-->WaaS
+    Wasm-- load -->WaaS
+    subgraph Guest Source
+        Rust
+        Go
+        MoonBit
+        Etc
+    end
+    Rust-->Wasm
+    Go-->Wasm
+    MoonBit-->Wasm
+    Etc["..."]-->Wasm
+```
+
+<DocCardList />
