@@ -8,6 +8,11 @@ using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
+    /// <summary>
+    ///     Component result type.
+    /// </summary>
+    /// <typeparam name="TOk"></typeparam>
+    /// <typeparam name="TError"></typeparam>
     [ComponentVariant]
     [StructLayout(LayoutKind.Auto)]
     public readonly partial struct Result<TOk, TError>

@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Context object for instruction validation.
+    /// </summary>
     public readonly struct ValidationContext
     {
         public Module Module { get; }

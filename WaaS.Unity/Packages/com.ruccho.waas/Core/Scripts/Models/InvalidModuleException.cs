@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Exception to be thrown when the module is invalid or unsupported.
+    /// </summary>
     public class InvalidModuleException : Exception
     {
         public InvalidModuleException()

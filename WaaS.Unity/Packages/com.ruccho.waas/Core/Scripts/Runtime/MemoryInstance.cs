@@ -3,6 +3,9 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents an instance of a memory.
+    /// </summary>
     public class MemoryInstance
     {
         public MemoryInstance(MemorySection memorySection, ImportSection importSection, IImports imports,

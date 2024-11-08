@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Table section in a WebAssembly module.
+    /// </summary>
     public class TableSection : Section
     {
         internal TableSection(ref ModuleReader reader)
@@ -18,6 +21,9 @@ namespace WaaS.Models
         public ReadOnlyMemory<TableType> TableTypes { get; }
     }
 
+    /// <summary>
+    ///     Single table entry in a table section.
+    /// </summary>
     public readonly struct TableType : IEquatable<TableType>
     {
         public ElementType ElementType { get; }

@@ -4,6 +4,9 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents an instance of a linear memory.
+    /// </summary>
     public class Memory : IDisposable, IExternal
     {
         public const int PageSizeRank = 16; // 64KiB

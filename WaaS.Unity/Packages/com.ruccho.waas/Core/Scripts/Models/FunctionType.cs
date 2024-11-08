@@ -3,6 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Represents types of parameters and results of a function.
+    /// </summary>
     public class FunctionType
     {
         internal FunctionType(ref ModuleReader reader)

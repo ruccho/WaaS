@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Code section in a WebAssembly module.
+    /// </summary>
     public class CodeSection : Section
     {
         internal CodeSection(ref ModuleReader reader)

@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Type section of a WebAssembly module.
+    /// </summary>
     public class TypeSection : Section
     {
         internal TypeSection(ref ModuleReader reader)

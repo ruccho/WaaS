@@ -222,13 +222,11 @@ namespace WaaS.ComponentModel.Models
 
             public IUnresolved<T> Get(uint index)
             {
-                // Console.WriteLine($"  Get {typeof(T).Name} #{index}");
                 return items[checked((int)index)];
             }
 
             public void Add(IUnresolved<T> value, out int index)
             {
-                // Console.WriteLine($"Add {typeof(T).Name}({value.GetType().Name}) #{items.Count}");
                 index = items.Count;
                 items.Add(value);
             }

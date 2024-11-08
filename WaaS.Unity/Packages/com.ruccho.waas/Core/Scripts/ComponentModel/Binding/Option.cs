@@ -6,8 +6,7 @@ using System.Runtime.InteropServices;
 namespace WaaS.ComponentModel.Binding
 {
     /// <summary>
-    ///     Optional reference type to indicate formatter that the value is nullable.
-    ///     For value types, use Nullable&lt;T&gt; instead.
+    ///     Component option type.
     /// </summary>
     /// <typeparam name="T"></typeparam>
     [ComponentVariant]

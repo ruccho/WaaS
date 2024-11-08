@@ -4,6 +4,9 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents an instance of exported items from a WebAssembly module.
+    /// </summary>
     public class ExportInstance
     {
         private readonly Dictionary<string, IExternal> items = new();
@@ -30,6 +33,9 @@ namespace WaaS.Runtime
         public IReadOnlyDictionary<string, IExternal> Items => items;
     }
 
+    /// <summary>
+    ///     Represents an item that can be exported from / imported to a WebAssembly module.
+    /// </summary>
     public interface IExternal
     {
     }

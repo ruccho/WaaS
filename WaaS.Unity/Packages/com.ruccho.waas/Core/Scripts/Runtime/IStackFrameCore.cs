@@ -2,6 +2,9 @@
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents a stack frame.
+    /// </summary>
     public interface IStackFrameCore : IVersionedDisposable<ushort>
     {
         int GetResultLength(ushort version);

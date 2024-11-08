@@ -3,6 +3,9 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents an instance of functions.
+    /// </summary>
     public class FunctionInstance
     {
         public FunctionInstance(Instance instance, ImportSection importSection, IImports importObject)

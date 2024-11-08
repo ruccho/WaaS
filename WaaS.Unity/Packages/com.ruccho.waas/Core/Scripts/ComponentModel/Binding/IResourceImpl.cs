@@ -5,11 +5,18 @@ using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
+    /// <summary>
+    ///     Represents the implementation of a resource.
+    /// </summary>
     public interface IResourceImpl
     {
         IResourceType Type { get; }
     }
 
+    /// <summary>
+    ///     Owned resource handle.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public readonly struct Owned<T> where T : IResourceImpl
     {
         static Owned()
@@ -48,6 +55,10 @@ namespace WaaS.ComponentModel.Binding
         }
     }
 
+    /// <summary>
+    ///     Borrowed resource handle.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public readonly struct Borrowed<T> where T : IResourceImpl
     {
         static Borrowed()

@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Represents a local variable in a function.
+    /// </summary>
     public readonly struct Local : IEquatable<Local>
     {
         public uint Count { get; }

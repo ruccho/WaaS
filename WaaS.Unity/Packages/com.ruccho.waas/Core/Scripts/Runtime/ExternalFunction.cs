@@ -4,6 +4,9 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents a function that can be invoked from a WebAssembly module.
+    /// </summary>
     public abstract class ExternalFunction : IInvocableFunction
     {
         public abstract FunctionType Type { get; }
@@ -17,6 +20,9 @@ namespace WaaS.Runtime
             Span<StackValueItem> results);
     }
 
+    /// <summary>
+    ///     Represents an external function that can be created from a function pointer.
+    /// </summary>
     public unsafe class ExternalFunctionPointer : ExternalFunction
     {
         private readonly delegate*<object /*state*/, ReadOnlySpan<StackValueItem> /*parameters*/
@@ -42,6 +48,9 @@ namespace WaaS.Runtime
         }
     }
 
+    /// <summary>
+    ///     Represents an external function that can be created from a delegate.
+    /// </summary>
     public class ExternalFunctionDelegate : ExternalFunction
     {
         public delegate void InvokeDelegate(object state, ReadOnlySpan<StackValueItem> parameters,
@@ -69,6 +78,10 @@ namespace WaaS.Runtime
         }
     }
 
+    /// <summary>
+    ///     Represents an external function that can be created from a delegate.
+    ///     It uses dynamic invocation of the delegate.
+    /// </summary>
     public class ExternalFunctionCoreBoxedDelegate : ExternalFunction
     {
         public ExternalFunctionCoreBoxedDelegate(Delegate @delegate)

@@ -9,6 +9,9 @@ using ExecutionContext = WaaS.Runtime.ExecutionContext;
 
 namespace WaaS.ComponentModel.Binding
 {
+    /// <summary>
+    ///     Represents a function whose implementation is provided by the host code.
+    /// </summary>
     public abstract class ExternalFunction : IFunction
     {
         public abstract IFunctionType Type { get; }

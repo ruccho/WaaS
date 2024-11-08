@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Represents the body of a function.
+    /// </summary>
     public class FunctionBody
     {
         internal FunctionBody(ref ModuleReader reader)

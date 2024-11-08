@@ -3,6 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Export section in a WebAssembly module.
+    /// </summary>
     public class ExportSection : Section
     {
         internal ExportSection(ref ModuleReader reader)
@@ -19,6 +22,9 @@ namespace WaaS.Models
         public ReadOnlyMemory<Export> Exports { get; }
     }
 
+    /// <summary>
+    ///     Single export entry in an export section.
+    /// </summary>
     public readonly struct Export
     {
         public string Name { get; }

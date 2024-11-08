@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Base class for all sections in a WebAssembly module.
+    /// </summary>
     public abstract class Section
     {
         internal static Section Read(ref ModuleReader reader)

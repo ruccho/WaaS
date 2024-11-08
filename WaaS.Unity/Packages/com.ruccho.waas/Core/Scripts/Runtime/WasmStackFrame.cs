@@ -6,6 +6,9 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents a stack frame of a WebAssembly function loaded from binary.
+    /// </summary>
     public class WasmStackFrame : IStackFrameCore
     {
         [ThreadStatic] private static Stack<WasmStackFrame> pool;

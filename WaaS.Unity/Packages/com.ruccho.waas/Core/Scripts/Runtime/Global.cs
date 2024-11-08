@@ -4,6 +4,9 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents global that can be accessed from a WebAssembly module.
+    /// </summary>
     public class Global : IExternal
     {
         protected StackValueItem stackValue;
@@ -23,6 +26,9 @@ namespace WaaS.Runtime
         }
     }
 
+    /// <summary>
+    ///     Represents mutable global that can be accessed from a WebAssembly module.
+    /// </summary>
     public class GlobalMutable : Global
     {
         internal GlobalMutable(StackValueItem value) : base(value)
@@ -38,6 +44,10 @@ namespace WaaS.Runtime
         }
     }
 
+    /// <summary>
+    ///     Represents global that can be accessed from a WebAssembly module.
+    /// </summary>
+    /// <typeparam name="TValue"></typeparam>
     public sealed class Global<TValue> : Global where TValue : unmanaged
     {
         public Global(TValue value) : base(default)
@@ -53,6 +63,10 @@ namespace WaaS.Runtime
         public ref readonly TValue Value => ref Unsafe.As<uint, TValue>(ref Unsafe.AsRef(in stackValue.valueI32));
     }
 
+    /// <summary>
+    ///     Represents mutable global that can be accessed from a WebAssembly module.
+    /// </summary>
+    /// <typeparam name="TValue"></typeparam>
     public sealed class GlobalMutable<TValue> : GlobalMutable where TValue : unmanaged
     {
         public GlobalMutable(TValue value) : base(default)

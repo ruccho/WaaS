@@ -3,6 +3,9 @@ using WaaS.Runtime;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Used to validate the result type of a block.
+    /// </summary>
     public readonly struct BlockResultType
     {
         public readonly bool IsLoop;
@@ -63,6 +66,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents a function in the WebAssembly module.
+    /// </summary>
     public class Function
     {
         public Function(FunctionType type, FunctionBody function, uint typeIndex, int functionIndex)

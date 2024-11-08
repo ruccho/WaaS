@@ -3,6 +3,9 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents an instance of a function.
+    /// </summary>
     public class InstanceFunction : IInvocableFunction
     {
         public readonly Function function;

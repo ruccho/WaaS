@@ -10,6 +10,9 @@ using WaaS.Runtime;
 
 namespace WaaS.ComponentModel.Models
 {
+    /// <summary>
+    ///     Represents a WebAssembly component.
+    /// </summary>
     public class Component : IUnresolved<IComponent>, IComponent
     {
         private readonly List<CustomSection> customSections = new();
@@ -163,12 +166,22 @@ namespace WaaS.ComponentModel.Models
             return this;
         }
 
+        /// <summary>
+        ///     Creates a new component from the given buffer.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns></returns>
         public static Component Create(ReadOnlySpan<byte> buffer)
         {
             var reader = new ModuleReader(buffer);
             return new Component(ref reader);
         }
 
+        /// <summary>
+        ///     Creates a new component from the given buffer.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns></returns>
         public static Component Create(ReadOnlySequence<byte> buffer)
         {
             var reader = new ModuleReader(buffer);

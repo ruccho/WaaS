@@ -3,6 +3,9 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents a table in the WebAssembly module.
+    /// </summary>
     public abstract class Table : IExternal
     {
         protected Table(Limits limits)
@@ -13,6 +16,10 @@ namespace WaaS.Runtime
         public Limits Limits { get; }
     }
 
+    /// <summary>
+    ///     Represents a table in the WebAssembly module.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public class Table<T> : Table
     {
         private readonly T[] buffer;

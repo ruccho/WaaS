@@ -3,6 +3,9 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents a global instance.
+    /// </summary>
     public class GlobalInstance
     {
         internal GlobalInstance(ImportSection importSection, GlobalSection globalSection, IImports importObject)

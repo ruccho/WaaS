@@ -3,6 +3,9 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents an invalid code exception.
+    /// </summary>
     public class InvalidCodeException : Exception
     {
         public InvalidCodeException(Function function = null)

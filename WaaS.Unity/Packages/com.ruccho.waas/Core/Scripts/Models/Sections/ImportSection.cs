@@ -3,6 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Import section in a WebAssembly module.
+    /// </summary>
     public class ImportSection : Section
     {
         internal ImportSection(ref ModuleReader reader)
@@ -17,6 +20,9 @@ namespace WaaS.Models
         public ReadOnlyMemory<Import> Imports { get; }
     }
 
+    /// <summary>
+    ///     Single import entry in an import section.
+    /// </summary>
     public readonly struct Import : IEquatable<Import>
     {
         public string ModuleName { get; }
@@ -56,6 +62,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Descriptor of an import entry.
+    /// </summary>
     [StructLayout(LayoutKind.Explicit)]
     public readonly struct ImportDescriptor : IEquatable<ImportDescriptor>
     {
@@ -174,6 +183,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Kind of an import entry.
+    /// </summary>
     public enum ImportKind : byte
     {
         Type = 0,
@@ -182,6 +194,9 @@ namespace WaaS.Models
         Global = 3
     }
 
+    /// <summary>
+    ///     Type of table element.
+    /// </summary>
     public enum ElementType : byte
     {
         FuncRef = 0x70

@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Memory section in a WebAssembly module.
+    /// </summary>
     public class MemorySection : Section
     {
         internal MemorySection(ref ModuleReader reader)
@@ -16,6 +19,9 @@ namespace WaaS.Models
         public ReadOnlyMemory<MemoryType> MemoryTypes { get; }
     }
 
+    /// <summary>
+    ///     Single memory type entry in a memory section.
+    /// </summary>
     public readonly struct MemoryType : IEquatable<MemoryType>
     {
         public Limits Limits { get; }

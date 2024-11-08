@@ -2,6 +2,9 @@
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     A wrapper of IStackFrameCore.
+    /// </summary>
     public readonly struct StackFrame : IDisposable, IEquatable<StackFrame>
     {
         internal readonly IStackFrameCore core;

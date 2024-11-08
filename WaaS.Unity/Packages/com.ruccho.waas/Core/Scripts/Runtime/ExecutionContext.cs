@@ -4,6 +4,10 @@ using System.Threading.Tasks;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents an execution context, which is used to manage the execution of WebAssembly functions.
+    ///     It contains a stack of frames and behaves like a thread of execution.
+    /// </summary>
     public class ExecutionContext : IDisposable
     {
         private readonly Stack<StackFrame> frames = new();

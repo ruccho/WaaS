@@ -3,6 +3,9 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     An exception thrown when a WebAssembly instruction fails.
+    /// </summary>
     public class WasmException : Exception
     {
         public WasmException(InstanceFunction function, Instruction instruction, string message = null,

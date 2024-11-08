@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents a stack frame used to invoke an asynchronous external function.
+    /// </summary>
     public class AsyncExternalStackFrame : IStackFrameCore
     {
         [ThreadStatic] private static Stack<AsyncExternalStackFrame> pool;
@@ -39,6 +42,12 @@ namespace WaaS.Runtime
             inputValuesArray = default;
             outputValuesArray = default;
             state = default;
+
+            if (++Version != ushort.MaxValue)
+            {
+                pool ??= new();
+                pool.Push(this);
+            }
         }
 
         public int GetResultLength(ushort version)
@@ -66,7 +75,7 @@ namespace WaaS.Runtime
             outputValues.Span.CopyTo(dest);
         }
 
-        public ushort Version { get; }
+        public ushort Version { get; private set; }
 
         public static AsyncExternalStackFrame Get(AsyncExternalFunction function,
             ReadOnlySpan<StackValueItem> inputValues)

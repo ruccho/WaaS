@@ -6,6 +6,9 @@ using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
+    /// <summary>
+    ///     An adapter for pushing and pulling values.
+    /// </summary>
     public class PushPullAdapter : IValuePusherCore, IPullableCore
     {
         [ThreadStatic] private static Stack<PushPullAdapter>? pool;

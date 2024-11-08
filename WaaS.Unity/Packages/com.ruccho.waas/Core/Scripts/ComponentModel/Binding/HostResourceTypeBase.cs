@@ -5,6 +5,10 @@ using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
+    /// <summary>
+    ///     Base class for host-provided resource types.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public abstract class HostResourceTypeBase<T> : IHostResourceType<T> where T : class
     {
         private readonly ResourceTable<T> resources = new();

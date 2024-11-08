@@ -2,6 +2,10 @@
 
 namespace STask
 {
+    /// <summary>
+    ///     Task-like without SynchronizationContext-awareness nor ThreadPool usage.
+    ///     It is mainly for single-threaded use. 
+    /// </summary>
     [AsyncMethodBuilder(typeof(STaskMethodBuilder))]
     public readonly struct STaskVoid
     {
@@ -28,6 +32,10 @@ namespace STask
         }
     }
 
+    /// <summary>
+    ///     Task-like without SynchronizationContext-awareness nor ThreadPool usage.
+    ///     It is mainly for single-threaded use. 
+    /// </summary>
     [AsyncMethodBuilder(typeof(STaskMethodBuilder<>))]
     public readonly struct STask<TResult>
     {

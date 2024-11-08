@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Element section in a WebAssembly module.
+    /// </summary>
     public class ElementSection : Section
     {
         internal ElementSection(ref ModuleReader reader)
@@ -16,6 +19,9 @@ namespace WaaS.Models
         public ReadOnlyMemory<Element> Elements { get; }
     }
 
+    /// <summary>
+    ///     Single element entry in an element section.
+    /// </summary>
     public class Element
     {
         internal Element(ref ModuleReader reader)

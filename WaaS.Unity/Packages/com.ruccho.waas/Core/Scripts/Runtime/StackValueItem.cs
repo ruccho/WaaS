@@ -3,6 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents a value on the stack.
+    /// </summary>
     [StructLayout(LayoutKind.Explicit, Size = 16)]
     public struct StackValueItem : IEquatable<StackValueItem>
     {

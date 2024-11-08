@@ -4,6 +4,9 @@ using System.Collections.Generic;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Represents a core WebAssembly module.
+    /// </summary>
     public class Module
     {
         internal Module(ref ModuleReader reader, long? size = null)

@@ -4,6 +4,9 @@ using System.Collections.Generic;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents a stack frame used to invoke an external function.
+    /// </summary>
     public class ExternalStackFrame : IStackFrameCore
     {
         [ThreadStatic] private static Stack<ExternalStackFrame> pool;

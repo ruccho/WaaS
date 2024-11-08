@@ -2,6 +2,9 @@
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents a label on the stack.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct Label
     {

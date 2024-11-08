@@ -3,6 +3,9 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     A collection of tables in a WebAssembly instance.
+    /// </summary>
     public class TableInstance
     {
         public TableInstance(GlobalInstance globals, FunctionInstance functions,

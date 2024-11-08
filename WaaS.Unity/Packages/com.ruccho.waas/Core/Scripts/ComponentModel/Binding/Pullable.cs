@@ -5,6 +5,9 @@ using STask;
 
 namespace WaaS.ComponentModel.Binding
 {
+    /// <summary>
+    ///     Pullable interface for Canonical ABI.
+    /// </summary>
     public struct Pullable : IDisposable
     {
         private readonly ushort version;

@@ -3,6 +3,9 @@ using WaaS.Runtime;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Constant expression in a WebAssembly module.
+    /// </summary>
     public class ConstantExpression
     {
         private bool _inEvaluation;

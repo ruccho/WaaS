@@ -6,6 +6,9 @@ using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
+    /// <summary>
+    ///     Provides Canonical ABI formatters for types.
+    /// </summary>
     public static class FormatterProvider
     {
         private static readonly IProceduralFormatterProvider[] proceduralProviders;

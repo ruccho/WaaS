@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Global section in a WebAssembly module.
+    /// </summary>
     public class GlobalSection : Section
     {
         internal GlobalSection(ref ModuleReader reader)
@@ -18,6 +21,9 @@ namespace WaaS.Models
         public ReadOnlyMemory<Global> Globals { get; }
     }
 
+    /// <summary>
+    ///     Single global entry in a global section.
+    /// </summary>
     public class Global
     {
         internal Global(ref ModuleReader reader)
@@ -30,6 +36,9 @@ namespace WaaS.Models
         public ConstantExpression Expression { get; }
     }
 
+    /// <summary>
+    ///     Type of global value.
+    /// </summary>
     public readonly struct GlobalType : IEquatable<GlobalType>
     {
         public ValueType ValueType { get; }
@@ -59,6 +68,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Mutability of a global value.
+    /// </summary>
     public enum Mutability : byte
     {
         Const = 0,

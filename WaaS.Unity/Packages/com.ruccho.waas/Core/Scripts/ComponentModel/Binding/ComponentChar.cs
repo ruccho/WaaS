@@ -4,6 +4,9 @@ using System;
 
 namespace WaaS.ComponentModel.Binding
 {
+    /// <summary>
+    ///     Represents a component character (Unicode scalar value).
+    /// </summary>
     public readonly struct ComponentChar : IEquatable<ComponentChar>
     {
         public readonly uint value;
