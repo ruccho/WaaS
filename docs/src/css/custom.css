@@ -1,28 +1,3 @@
-/*
-:root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
-  --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
-}
-
-[data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
-}
-*/
-
 :root {
   --ifm-color-primary: hsl(248, 81%, 46%);
   --ifm-color-primary-dark: hsl(248, 49%, 32%);
@@ -33,6 +8,7 @@
   --ifm-color-primary-lightest: hsl(248, 48%, 46%);
   --ifm-code-font-size: 95%;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --doc-sidebar-width: 330px !important;
 }
 
 [data-theme='dark'] {
@@ -49,6 +25,11 @@
 @media (max-width: 996px) {
   .navbar__item {
     display: initial;
+  }
+}
+@media (max-width: 576px) {
+  .header-link.navbar__link {
+    display: none;
   }
 }
 .header-github-link::before {

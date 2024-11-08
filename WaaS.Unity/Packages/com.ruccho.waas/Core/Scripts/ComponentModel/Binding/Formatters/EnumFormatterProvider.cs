@@ -2,7 +2,7 @@
 
 namespace WaaS.ComponentModel.Binding
 {
-    public class EnumFormatterProvider : IProceduralFormatterProvider
+    internal class EnumFormatterProvider : IProceduralFormatterProvider
     {
         public bool TryCreateFormatter<T>(out IFormatter<T> formatter)
         {

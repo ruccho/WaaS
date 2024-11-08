@@ -1,0 +1,15 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": ".",
+          "files": [
+            "WaaS.Core/WaaS.Core.csproj"
+          ]
+        }
+      ],
+      "dest": "api"
+    }
+  ]
+}

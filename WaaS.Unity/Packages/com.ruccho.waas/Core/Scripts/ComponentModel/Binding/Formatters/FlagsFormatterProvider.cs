@@ -2,7 +2,7 @@
 
 namespace WaaS.ComponentModel.Binding
 {
-    public class FlagsFormatterProvider : IProceduralFormatterProvider
+    internal class FlagsFormatterProvider : IProceduralFormatterProvider
     {
         public bool TryCreateFormatter<T>(out IFormatter<T> formatter)
         {

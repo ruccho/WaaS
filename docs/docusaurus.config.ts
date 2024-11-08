@@ -36,6 +36,17 @@ const config: Config = {
       } satisfies Preset.Options,
     ],
   ],
+  plugins: [
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'api',
+        path: 'api',
+        routeBasePath: 'api',
+        sidebarPath: './sidebars.ts',
+      },
+    ],
+  ],
 
   themeConfig: {
     image: 'img/social.png',
@@ -49,6 +60,12 @@ const config: Config = {
         {
           type: 'localeDropdown',
           position: 'left'
+        },
+        {
+          to: 'api',
+          label: 'API',
+          position: 'left',
+          className: 'header-link',
         },
         {
           href: 'https://github.com/ruccho/WaaS',

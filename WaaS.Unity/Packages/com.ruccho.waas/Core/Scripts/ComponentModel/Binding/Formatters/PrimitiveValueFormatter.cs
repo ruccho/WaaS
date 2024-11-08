@@ -6,8 +6,7 @@ using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
-    public class PrimitiveValueFormatter<T> : IFormatter<T>
-
+    internal class PrimitiveValueFormatter<T> : IFormatter<T>
     {
         private readonly Action<T, ValuePusher> push;
 
