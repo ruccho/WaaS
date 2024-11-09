@@ -4,11 +4,11 @@
 
 <h1>WaaS</h1>
 
+<p>
 <strong>
 Stands for <i>WebAssembly as a Script</i>, <br>a language-independent scripting engine for Unity and .NET.
 </strong>
-
-<br>
+</p>
 
 [![Releases](https://img.shields.io/github/release/ruccho/WaaS.svg)](https://github.com/ruccho/WaaS/releases)
 [![NuGet Version](https://img.shields.io/nuget/v/WaaS.svg)](https://www.nuget.org/packages/WaaS)
