@@ -294,7 +294,7 @@ namespace WaaS.ComponentModel.Models
     [GenerateFormatter]
     public partial class VariantType : IValueTypeDefinition
     {
-        public ReadOnlyMemory<Case> Cases { get; init; }
+        public ReadOnlyMemory<VariantCase> Cases { get; init; }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
         {
@@ -804,14 +804,39 @@ namespace WaaS.ComponentModel.Models
     }
 
     [GenerateFormatter]
-    public readonly partial struct LabeledValueType
+    public readonly partial struct LabeledValueType : IEquatable<LabeledValueType>
     {
         public string Label { get; }
         [DontAddToSort] public IUnresolvedValueType Type { get; }
+
+        public bool Equals(LabeledValueType other)
+        {
+            return Label == other.Label && Type.Equals(other.Type);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is LabeledValueType other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Label, Type);
+        }
+
+        public static bool operator ==(LabeledValueType left, LabeledValueType right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(LabeledValueType left, LabeledValueType right)
+        {
+            return !left.Equals(right);
+        }
     }
 
     [GenerateFormatter]
-    public readonly partial struct Case
+    public readonly partial struct VariantCase
     {
         public string Label { get; }
         [DontAddToSort] public IUnresolvedValueType? Type { get; }

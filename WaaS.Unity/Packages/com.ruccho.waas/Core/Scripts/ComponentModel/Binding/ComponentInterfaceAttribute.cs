@@ -9,7 +9,6 @@ namespace WaaS.ComponentModel.Binding
     public class ComponentInterfaceAttribute : Attribute
     {
         /// <summary>
-        /// 
         /// </summary>
         /// <param name="name">component name of the interface.</param>
         public ComponentInterfaceAttribute(string name)

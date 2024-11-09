@@ -1,6 +1,7 @@
 ﻿#nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace WaaS.ComponentModel.Binding
@@ -11,7 +12,7 @@ namespace WaaS.ComponentModel.Binding
     /// <typeparam name="T"></typeparam>
     [ComponentVariant]
     [StructLayout(LayoutKind.Auto)]
-    public readonly partial struct Option<T>
+    public readonly partial struct Option<T> : IEquatable<Option<T>>
     {
         [ComponentCase] public None? None { get; private init; }
 
@@ -30,6 +31,43 @@ namespace WaaS.ComponentModel.Binding
             None = new None(),
             Case = VariantCase.None
         };
+
+        public bool Equals(Option<T> other)
+        {
+            if (Case != other.Case) return false;
+
+            return Case switch
+            {
+                VariantCase.None => None!.Value == other.None!.Value,
+                VariantCase.Some => EqualityComparer<T?>.Default.Equals(Some, other.Some),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is Option<T> other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return Case switch
+            {
+                VariantCase.None => HashCode.Combine(None, (int)Case),
+                VariantCase.Some => HashCode.Combine(Some, (int)Case),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        public static bool operator ==(Option<T> left, Option<T> right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Option<T> left, Option<T> right)
+        {
+            return !left.Equals(right);
+        }
     }
 
     public static class OptionExtensions

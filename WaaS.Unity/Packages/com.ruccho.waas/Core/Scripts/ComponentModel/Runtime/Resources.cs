@@ -105,7 +105,7 @@ namespace WaaS.ComponentModel.Runtime
         }
     }
 
-    public readonly struct Owned
+    public readonly struct Owned : IEquatable<Owned>
     {
         static Owned()
         {
@@ -157,9 +157,34 @@ namespace WaaS.ComponentModel.Runtime
         {
             return new Borrowed(this);
         }
+
+        public bool Equals(Owned other)
+        {
+            return Ownership.Equals(other.Ownership) && Version == other.Version;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is Owned other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Ownership, Version);
+        }
+
+        public static bool operator ==(Owned left, Owned right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Owned left, Owned right)
+        {
+            return !left.Equals(right);
+        }
     }
 
-    public readonly struct Borrowed
+    public readonly struct Borrowed : IEquatable<Borrowed>
     {
         static Borrowed()
         {
@@ -191,6 +216,31 @@ namespace WaaS.ComponentModel.Runtime
         internal Borrowed(Owned source)
         {
             owned = source;
+        }
+
+        public bool Equals(Borrowed other)
+        {
+            return owned.Equals(other.owned);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is Borrowed other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return owned.GetHashCode();
+        }
+
+        public static bool operator ==(Borrowed left, Borrowed right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Borrowed left, Borrowed right)
+        {
+            return !left.Equals(right);
         }
     }
 }

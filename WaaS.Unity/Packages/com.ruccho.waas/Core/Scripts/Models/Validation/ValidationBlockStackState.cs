@@ -38,7 +38,7 @@ namespace WaaS.Models
             return stack[--Depth];
         }
 
-        public void ValidateResults(in ValidationContext context, BlockResultType blockResultType, bool exact)
+        internal void ValidateResults(in ValidationContext context, BlockResultType blockResultType, bool exact)
         {
             var arity = blockResultType.GetArity(context);
 

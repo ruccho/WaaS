@@ -106,16 +106,66 @@ namespace WaaS.ComponentModel.Models
     }
 
     [GenerateFormatter]
-    public readonly partial struct CoreSortIndex
+    public readonly partial struct CoreSortIndex : IEquatable<CoreSortIndex>
     {
         public CoreSort Sort { get; }
         public uint Index { get; }
+
+        public bool Equals(CoreSortIndex other)
+        {
+            return Sort.Equals(other.Sort) && Index == other.Index;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is CoreSortIndex other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Sort, Index);
+        }
+
+        public static bool operator ==(CoreSortIndex left, CoreSortIndex right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(CoreSortIndex left, CoreSortIndex right)
+        {
+            return !left.Equals(right);
+        }
     }
 
     [GenerateFormatter]
-    public readonly partial struct CoreSort : ISort
+    public readonly partial struct CoreSort : ISort, IEquatable<CoreSort>
     {
         public CoreSortTag Tag { get; }
+
+        public bool Equals(CoreSort other)
+        {
+            return Tag == other.Tag;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is CoreSort other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return (int)Tag;
+        }
+
+        public static bool operator ==(CoreSort left, CoreSort right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(CoreSort left, CoreSort right)
+        {
+            return !left.Equals(right);
+        }
     }
 
     public enum CoreSortTag : byte
@@ -313,10 +363,35 @@ namespace WaaS.ComponentModel.Models
     }
 
     [GenerateFormatter]
-    public readonly partial struct SortIndex
+    public readonly partial struct SortIndex : IEquatable<SortIndex>
     {
         public ISort Sort { get; }
         public uint Index { get; }
+
+        public bool Equals(SortIndex other)
+        {
+            return Sort.Equals(other.Sort) && Index == other.Index;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is SortIndex other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Sort, Index);
+        }
+
+        public static bool operator ==(SortIndex left, SortIndex right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(SortIndex left, SortIndex right)
+        {
+            return !left.Equals(right);
+        }
     }
 
     [GenerateFormatter]
@@ -327,9 +402,34 @@ namespace WaaS.ComponentModel.Models
     }
 
     [GenerateFormatter]
-    public readonly partial struct ComponentSort : ISort
+    public readonly partial struct ComponentSort : ISort, IEquatable<ComponentSort>
     {
         public SortTag Tag { get; }
+
+        public bool Equals(ComponentSort other)
+        {
+            return Tag == other.Tag;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ComponentSort other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return (int)Tag;
+        }
+
+        public static bool operator ==(ComponentSort left, ComponentSort right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(ComponentSort left, ComponentSort right)
+        {
+            return !left.Equals(right);
+        }
     }
 
     public enum SortTag : byte
@@ -388,7 +488,7 @@ namespace WaaS.ComponentModel.Models
         }
     }
 
-    public readonly struct InlineExport<T> : IInlineExport<T> where T : ISortedExportable
+    public readonly struct InlineExport<T> : IInlineExport<T>, IEquatable<InlineExport<T>> where T : ISortedExportable
     {
         public string ExportName { get; }
         public IUnresolved<T> Item { get; }
@@ -397,6 +497,31 @@ namespace WaaS.ComponentModel.Models
         {
             ExportName = exportName;
             Item = item;
+        }
+
+        public bool Equals(InlineExport<T> other)
+        {
+            return ExportName == other.ExportName && Item.Equals(other.Item);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is InlineExport<T> other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(ExportName, Item);
+        }
+
+        public static bool operator ==(InlineExport<T> left, InlineExport<T> right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(InlineExport<T> left, InlineExport<T> right)
+        {
+            return !left.Equals(right);
         }
     }
 }

@@ -25,7 +25,7 @@ namespace WaaS.Models
     /// <summary>
     ///     Single export entry in an export section.
     /// </summary>
-    public readonly struct Export
+    public readonly struct Export : IEquatable<Export>
     {
         public string Name { get; }
         public ExportDescriptor Descriptor { get; }
@@ -34,6 +34,31 @@ namespace WaaS.Models
         {
             Name = reader.ReadUtf8String();
             Descriptor = new ExportDescriptor(ref reader);
+        }
+
+        public bool Equals(Export other)
+        {
+            return Name == other.Name && Descriptor.Equals(other.Descriptor);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is Export other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Name, Descriptor);
+        }
+
+        public static bool operator ==(Export left, Export right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Export left, Export right)
+        {
+            return !left.Equals(right);
         }
     }
 

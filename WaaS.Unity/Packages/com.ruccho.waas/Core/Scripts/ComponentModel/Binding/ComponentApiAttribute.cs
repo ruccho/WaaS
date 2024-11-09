@@ -14,6 +14,7 @@ namespace WaaS.ComponentModel.Binding
         {
             Name = name;
         }
+
         public string? Name { get; }
     }
 }

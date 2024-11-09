@@ -9,7 +9,6 @@ namespace WaaS.ComponentModel.Binding
     public class ComponentResourceAttribute : Attribute
     {
         /// <summary>
-        /// 
         /// </summary>
         /// <param name="name">Component name of the resource.</param>
         public ComponentResourceAttribute(string name)

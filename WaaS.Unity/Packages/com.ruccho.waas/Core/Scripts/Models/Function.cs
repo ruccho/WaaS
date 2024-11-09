@@ -6,7 +6,7 @@ namespace WaaS.Models
     /// <summary>
     ///     Used to validate the result type of a block.
     /// </summary>
-    public readonly struct BlockResultType
+    internal readonly struct BlockResultType
     {
         public readonly bool IsLoop;
         private readonly bool useTypeIndex;

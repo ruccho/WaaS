@@ -45,7 +45,7 @@ namespace WaaS.Runtime
 
             if (++Version != ushort.MaxValue)
             {
-                pool ??= new();
+                pool ??= new Stack<AsyncExternalStackFrame>();
                 pool.Push(this);
             }
         }

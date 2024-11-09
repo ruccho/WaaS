@@ -339,10 +339,10 @@ namespace WaaS.Models
             return lhs <= rhs;
         }
     }
+
     /// <summary>
     ///     Represents "i32.ge_s" instruction.
     /// </summary>
-
     [OpCode(0x4E)]
     public partial class GeI32S : BinaryBoolInstruction<uint, ValueTypeI32>
     {

@@ -29,7 +29,6 @@ namespace WaaS.ComponentModel.Runtime
             return new ElementTypeSelector(Kind.Record, record, -1);
         }
 
-
         public static ElementTypeSelector FromList(IListType list, int length)
         {
             return new ElementTypeSelector(Kind.List, list, length);

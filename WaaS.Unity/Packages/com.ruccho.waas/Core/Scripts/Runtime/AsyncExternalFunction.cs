@@ -20,7 +20,7 @@ namespace WaaS.Runtime
     }
 
     /// <summary>
-    ///     Represents an asynchronous external function that can be created from a function pointer. 
+    ///     Represents an asynchronous external function that can be created from a function pointer.
     /// </summary>
     public unsafe class AsyncExternalFunctionPointer : AsyncExternalFunction
     {

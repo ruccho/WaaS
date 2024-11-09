@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace WaaS.Runtime
 {
     /// <summary>
-    ///     A set of "module exports" that can be imported by a WebAssembly module. 
+    ///     A set of "module exports" that can be imported by a WebAssembly module.
     /// </summary>
     public interface IImports
     {

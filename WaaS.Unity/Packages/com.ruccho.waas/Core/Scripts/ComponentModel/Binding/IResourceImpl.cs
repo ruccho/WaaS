@@ -1,5 +1,6 @@
 ﻿#nullable enable
 
+using System;
 using STask;
 using WaaS.ComponentModel.Runtime;
 
@@ -17,7 +18,7 @@ namespace WaaS.ComponentModel.Binding
     ///     Owned resource handle.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public readonly struct Owned<T> where T : IResourceImpl
+    public readonly struct Owned<T> : IEquatable<Owned<T>> where T : IResourceImpl
     {
         static Owned()
         {
@@ -53,13 +54,38 @@ namespace WaaS.ComponentModel.Binding
         {
             return new Owned<T>(owned);
         }
+
+        public bool Equals(Owned<T> other)
+        {
+            return handle.Equals(other.handle);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is Owned<T> other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return handle.GetHashCode();
+        }
+
+        public static bool operator ==(Owned<T> left, Owned<T> right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Owned<T> left, Owned<T> right)
+        {
+            return !left.Equals(right);
+        }
     }
 
     /// <summary>
     ///     Borrowed resource handle.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public readonly struct Borrowed<T> where T : IResourceImpl
+    public readonly struct Borrowed<T> : IEquatable<Borrowed<T>> where T : IResourceImpl
     {
         static Borrowed()
         {
@@ -94,6 +120,31 @@ namespace WaaS.ComponentModel.Binding
         public static explicit operator Borrowed<T>(Borrowed borrowed)
         {
             return new Borrowed<T>(borrowed);
+        }
+
+        public bool Equals(Borrowed<T> other)
+        {
+            return handle.Equals(other.handle);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is Borrowed<T> other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return handle.GetHashCode();
+        }
+
+        public static bool operator ==(Borrowed<T> left, Borrowed<T> right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Borrowed<T> left, Borrowed<T> right)
+        {
+            return !left.Equals(right);
         }
     }
 }

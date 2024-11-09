@@ -183,9 +183,34 @@ namespace WaaS.ComponentModel.Models
     }
 
     [GenerateFormatter]
-    public readonly partial struct CanonOptionStringEncoding : ICanonOption
+    public readonly partial struct CanonOptionStringEncoding : ICanonOption, IEquatable<CanonOptionStringEncoding>
     {
         public CanonOptionStringEncodingKind Kind { get; }
+
+        public bool Equals(CanonOptionStringEncoding other)
+        {
+            return Kind == other.Kind;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is CanonOptionStringEncoding other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return (int)Kind;
+        }
+
+        public static bool operator ==(CanonOptionStringEncoding left, CanonOptionStringEncoding right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(CanonOptionStringEncoding left, CanonOptionStringEncoding right)
+        {
+            return !left.Equals(right);
+        }
     }
 
     public enum CanonOptionStringEncodingKind : byte
@@ -196,31 +221,155 @@ namespace WaaS.ComponentModel.Models
     }
 
     [GenerateFormatter]
-    public readonly partial struct CanonOptionMemory : ICanonOption
+    public readonly partial struct CanonOptionMemory : ICanonOption, IEquatable<CanonOptionMemory>
     {
         public IUnresolved<ICoreSortedExportable<Memory>> Memory { get; }
+
+        public bool Equals(CanonOptionMemory other)
+        {
+            return Memory.Equals(other.Memory);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is CanonOptionMemory other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return Memory.GetHashCode();
+        }
+
+        public static bool operator ==(CanonOptionMemory left, CanonOptionMemory right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(CanonOptionMemory left, CanonOptionMemory right)
+        {
+            return !left.Equals(right);
+        }
     }
 
     [GenerateFormatter]
-    public readonly partial struct CanonOptionRealloc : ICanonOption
+    public readonly partial struct CanonOptionRealloc : ICanonOption, IEquatable<CanonOptionRealloc>
     {
         public IUnresolved<ICoreSortedExportable<IInvocableFunction>> Function { get; }
+
+        public bool Equals(CanonOptionRealloc other)
+        {
+            return Function.Equals(other.Function);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is CanonOptionRealloc other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return Function.GetHashCode();
+        }
+
+        public static bool operator ==(CanonOptionRealloc left, CanonOptionRealloc right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(CanonOptionRealloc left, CanonOptionRealloc right)
+        {
+            return !left.Equals(right);
+        }
     }
 
     [GenerateFormatter]
-    public readonly partial struct CanonOptionPostReturn : ICanonOption
+    public readonly partial struct CanonOptionPostReturn : ICanonOption, IEquatable<CanonOptionPostReturn>
     {
         public IUnresolved<ICoreSortedExportable<IInvocableFunction>> Function { get; }
+
+        public bool Equals(CanonOptionPostReturn other)
+        {
+            return Function.Equals(other.Function);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is CanonOptionPostReturn other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return Function.GetHashCode();
+        }
+
+        public static bool operator ==(CanonOptionPostReturn left, CanonOptionPostReturn right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(CanonOptionPostReturn left, CanonOptionPostReturn right)
+        {
+            return !left.Equals(right);
+        }
     }
 
     [GenerateFormatter]
-    public readonly partial struct CanonOptionAsync : ICanonOption
+    public readonly partial struct CanonOptionAsync : ICanonOption, IEquatable<CanonOptionAsync>
     {
+        public bool Equals(CanonOptionAsync other)
+        {
+            return true;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is CanonOptionAsync other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return 0;
+        }
+
+        public static bool operator ==(CanonOptionAsync left, CanonOptionAsync right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(CanonOptionAsync left, CanonOptionAsync right)
+        {
+            return !left.Equals(right);
+        }
     }
 
     [GenerateFormatter]
-    public readonly partial struct CanonOptionCallback : ICanonOption
+    public readonly partial struct CanonOptionCallback : ICanonOption, IEquatable<CanonOptionCallback>
     {
         public IUnresolved<ICoreSortedExportable<Memory>> Function { get; }
+
+        public bool Equals(CanonOptionCallback other)
+        {
+            return Function.Equals(other.Function);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is CanonOptionCallback other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return Function.GetHashCode();
+        }
+
+        public static bool operator ==(CanonOptionCallback left, CanonOptionCallback right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(CanonOptionCallback left, CanonOptionCallback right)
+        {
+            return !left.Equals(right);
+        }
     }
 }

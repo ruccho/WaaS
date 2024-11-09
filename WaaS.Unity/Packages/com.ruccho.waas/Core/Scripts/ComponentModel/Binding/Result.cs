@@ -1,10 +1,8 @@
 ﻿#nullable enable
 
+using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using STask;
-using WaaS.ComponentModel.Runtime;
-
-#pragma warning disable CS1998
 
 namespace WaaS.ComponentModel.Binding
 {
@@ -15,29 +13,46 @@ namespace WaaS.ComponentModel.Binding
     /// <typeparam name="TError"></typeparam>
     [ComponentVariant]
     [StructLayout(LayoutKind.Auto)]
-    public readonly partial struct Result<TOk, TError>
+    public readonly partial struct Result<TOk, TError> : IEquatable<Result<TOk, TError>>
     {
         [ComponentCase] public TOk? Ok { get; private init; }
         [ComponentCase] public TError? Error { get; private init; }
-    }
 
-    public readonly struct None
-    {
-        static None()
+        public bool Equals(Result<TOk, TError> other)
         {
-            FormatterProvider.Register(new Formatter());
+            if (Case != other.Case) return false;
+
+            return Case switch
+            {
+                VariantCase.Ok => EqualityComparer<TOk?>.Default.Equals(Ok, other.Ok),
+                VariantCase.Error => EqualityComparer<TError?>.Default.Equals(Error, other.Error),
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
 
-        private class Formatter : IFormatter<None>
+        public override bool Equals(object? obj)
         {
-            public async STask<None> PullAsync(Pullable adapter)
-            {
-                return default;
-            }
+            return obj is Result<TOk, TError> other && Equals(other);
+        }
 
-            public void Push(None value, ValuePusher pusher)
+        public override int GetHashCode()
+        {
+            return Case switch
             {
-            }
+                VariantCase.Ok => HashCode.Combine(Ok, (int)Case),
+                VariantCase.Error => HashCode.Combine(Error, (int)Case),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+        }
+
+        public static bool operator ==(Result<TOk, TError> left, Result<TOk, TError> right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Result<TOk, TError> left, Result<TOk, TError> right)
+        {
+            return !left.Equals(right);
         }
     }
 }
