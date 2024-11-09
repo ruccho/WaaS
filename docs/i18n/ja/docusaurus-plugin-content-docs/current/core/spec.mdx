@@ -1,0 +1,12 @@
+---
+title: Wasm 仕様
+sidebar_position: 6
+---
+
+- WaaSは[WebAssembly Core Specification 1.0](https://www.w3.org/TR/wasm-core-1/)を満たすWebAssemblyインタプリタです。
+- 一部の挙動は仕様と異なる場合があります:
+  - 整数から浮動小数点数への変換時にビット表現が間違っていることがあります。
+- コア仕様1.0に含まれていない提案された機能が追加されています:
+  - [Bulk Memory](https://github.com/WebAssembly/spec/blob/main/proposals/bulk-memory-operations/Overview.md)
+  - Mutable imported globals
+  - [Sign-extending operations](https://github.com/WebAssembly/spec/blob/main/proposals/sign-extension-ops/Overview.md)

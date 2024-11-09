@@ -1,0 +1,12 @@
+---
+title: Wasm Specifications
+sidebar_position: 6
+---
+
+- WaaS is a WebAssembly interpreter that satisfies [WebAssembly Core Specification 1.0](https://www.w3.org/TR/wasm-core-1/).
+- Some behaviors differ slightly from the spec:
+  - Bit representations may wrong at conversions from integers to floating-point numbers.
+- Some proposed features not included in core spec 1.0 are added:
+  - [Bulk Memory](https://github.com/WebAssembly/spec/blob/main/proposals/bulk-memory-operations/Overview.md)
+  - Mutable imported globals
+  - [Sign-extending operations](https://github.com/WebAssembly/spec/blob/main/proposals/sign-extension-ops/Overview.md)
