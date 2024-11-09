@@ -22,3 +22,6 @@
 [submodule "WaaS/wit2waas/wasi/wasi-http"]
 	path = WaaS/wit2waas/wasi/wasi-http
 	url = https://github.com/WebAssembly/wasi-http.git
+[submodule "WaaS/DocFxMarkdownGen"]
+	path = WaaS/DocFxMarkdownGen
+	url = https://github.com/ruccho/DocFxMarkdownGen.git

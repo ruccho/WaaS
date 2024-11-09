@@ -62,6 +62,12 @@ const config: Config = {
           position: 'left'
         },
         {
+          to: '/',
+          label: 'Docs',
+          position: 'left',
+          className: 'header-link',
+        },
+        {
           to: 'api',
           label: 'API',
           position: 'left',
