@@ -154,6 +154,9 @@ namespace WaaS.Runtime
             stackBuffer = ArrayPool<StackValueItem>.Shared.Rent(stackBufferSize);
             labelDepthStack = ArrayPool<int>.Shared.Rent(checked((int)maxLabelDepths.Value));
 
+            Array.Clear(stackBuffer, 0, stackBuffer.Length);
+            Array.Clear(labelDepthStack, 0, labelDepthStack.Length);
+
             locals = stackBuffer.AsMemory(0, numLocals);
             stack = stackBuffer.AsMemory(numLocals, checked((int)maxStackDepth.Value));
 

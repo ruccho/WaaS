@@ -17,8 +17,12 @@ namespace WaaS.ComponentModel.Runtime
         public static FlattenedLoweringPusher Get(int flattenedCount, out Memory<StackValueItem> destination)
         {
             if (!Pool.TryPop(out var pooled)) pooled = new FlattenedLoweringPusher();
+            var dest = ArrayPool<StackValueItem>.Shared.Rent(flattenedCount);
+            // for safety
+            Array.Clear(pooled.rentDestination, 0, pooled.rentDestination.Length);
+
             destination = pooled.Destination =
-                (pooled.rentDestination = ArrayPool<StackValueItem>.Shared.Rent(flattenedCount))
+                (pooled.rentDestination = dest)
                 .AsMemory().Slice(0, flattenedCount);
             pooled.destinationCursor = 0;
             return pooled;

@@ -16,6 +16,9 @@ namespace WaaS.ComponentModel.Runtime
             if (maxLength > 1024)
             {
                 var array = ArrayPool<char>.Shared.Rent(maxLength);
+                // for safety
+                Array.Clear(array, 0, array.Length);
+
                 try
                 {
                     TransferStringCore(info, ref lifter, pusher, array);
