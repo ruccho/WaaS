@@ -3,6 +3,8 @@
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>
         <LangVersion>9</LangVersion>
+        <PackageIconUrl>logo_1024.png</PackageIconUrl>
+        <IsPackable>true</IsPackable>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -32,11 +34,15 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Content Include="..\..\WaaS.Unity\Packages\com.ruccho.waas\Core\Scripts\ComponentModel\Binding\Formatters\TupleFormatter.tt">
+        <Content Include="..\..\WaaS.Unity\Packages\com.ruccho.waas\Core\Scripts\ComponentModel\Binding\Formatters\TupleFormatter.tt" Pack="false">
             <Link>Scripts\ComponentModel\Binding\Formatters\TupleFormatter.tt</Link>
             <Generator>TextTemplatingFileGenerator</Generator>
             <LastGenOutput>TupleFormatter.cs</LastGenOutput>
         </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="../WaaS/logo_1024.png" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
 </Project>
