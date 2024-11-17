@@ -7,7 +7,7 @@
   "targets": {
     ".NETStandard,Version=v2.0": {},
     ".NETStandard,Version=v2.0/": {
-      "WaaS.Generators/0.1.0": {
+      "WaaS.Generators/1.0.0": {
         "dependencies": {
           "Microsoft.CodeAnalysis.Analyzers": "3.3.4",
           "Microsoft.CodeAnalysis.CSharp": "4.3.0",
@@ -424,7 +424,7 @@
     }
   },
   "libraries": {
-    "WaaS.Generators/0.1.0": {
+    "WaaS.Generators/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

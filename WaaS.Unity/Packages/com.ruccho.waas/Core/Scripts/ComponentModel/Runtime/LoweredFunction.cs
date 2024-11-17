@@ -23,23 +23,41 @@ namespace WaaS.ComponentModel.Runtime
             var paramType = type.ParameterType;
             var paramFlattenedCount = paramType.FlattenedCount;
 
-            ValueType[] paramTypes;
-            if (paramFlattenedCount > 16)
-                paramTypes = new[] { ValueType.I32 };
-            else
-                paramType.Flatten(paramTypes = new ValueType[paramFlattenedCount]);
-
+            // result
+            var hasSerializedResult = false;
             var resultType = type.Result?.Despecialize();
             var resultFlattenedCount = resultType?.FlattenedCount ?? 0;
             ValueType[] resultTypes;
             if (resultFlattenedCount > 1)
-                resultTypes = new[] { ValueType.I32 };
+            {
+                resultTypes = Array.Empty<ValueType>();
+                hasSerializedResult = true;
+            }
             else if (resultFlattenedCount == 1)
                 resultType!.Flatten(resultTypes = new ValueType[resultFlattenedCount]);
             else
                 resultTypes = Array.Empty<ValueType>();
 
+            // params
+            ValueType[] paramTypes;
+            if (paramFlattenedCount > 16)
+            {
+                paramTypes = new ValueType[hasSerializedResult ? 2 : 1];
+                paramTypes[0] = ValueType.I32;
+            }
+            else
+            {
+                paramTypes = new ValueType[hasSerializedResult ? paramFlattenedCount + 1 : paramFlattenedCount];
+                paramType.Flatten(hasSerializedResult ? paramTypes.AsSpan()[..^1] : paramTypes);
+            }
+
+            if (hasSerializedResult)
+            {
+                paramTypes[^1] = ValueType.I32;
+            }
+
             Type = new FunctionType(paramTypes, resultTypes);
+            this.hasSerializedResult = hasSerializedResult;
         }
 
         public ICanonOptions Options => this;
@@ -56,6 +74,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public IInvocableFunction CoreExternal => this;
         public FunctionType Type { get; }
+        private readonly bool hasSerializedResult;
 
         public StackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues)
         {
@@ -70,23 +89,47 @@ namespace WaaS.ComponentModel.Runtime
                 count += despecialized.FlattenedCount;
             }
 
+            var inputValuesParams = hasSerializedResult ? inputValues[..^1] : inputValues;
+
             ValueLifter lifter;
             {
                 var flatten = count <= 16 /* MAX_FLAT_PARAMS */;
                 var typeSelector = ElementTypeSelector.FromRecord(functionType.ParameterType);
 
-                if (!flatten && inputValues.Length != 1) throw new InvalidOperationException();
+                if (!flatten && inputValuesParams.Length != 1) throw new InvalidOperationException();
 
-                lifter = flatten
-                    ? new ValueLifter(this, typeSelector, inputValues)
-                    : new ValueLifter(this, typeSelector,
-                        MemoryToRealloc!.Span[checked((int)inputValues[0].ExpectValueI32())..]);
+                if (flatten)
+                {
+                    lifter = new ValueLifter(this, typeSelector, inputValuesParams);
+                }
+                else
+                {
+                    var ptr = inputValuesParams[0].ExpectValueI32();
+                    if (Utils.ElementSizeAlignTo(ptr, functionType.ParameterType.AlignmentRank) != ptr)
+                    {
+                        throw new TrapException("Parameter pointer is not aligned");
+                    }
+                    lifter = new ValueLifter(this, typeSelector,
+                        MemoryToRealloc!.Span[checked((int)ptr)..]);
+                }
+            }
+
+            Memory<byte>? serializedResultMemory = null;
+            if (hasSerializedResult)
+            {
+                var ptr = inputValues[^1].ExpectValueI32();
+                if (Utils.ElementSizeAlignTo(ptr, functionType.Result!.Despecialize().AlignmentRank) != ptr)
+                {
+                    throw new TrapException("Result pointer is not aligned");
+                }
+                serializedResultMemory = MemoryToRealloc!.AsMemory()[(int)ptr..];
             }
 
             var binder = ComponentFunction.GetBinder(context);
             for (var i = 0; i < functionType.Parameters.Length; i++)
                 ValueTransfer.TransferNext(ref lifter, binder.ArgumentPusher);
-            return new StackFrame(Frame.Get(this, binder.CreateFrame(), binder));
+            return new StackFrame(Frame.Get(this, binder.CreateFrame(), binder,
+                serializedResultMemory));
         }
 
         private class Frame : IStackFrameCore
@@ -96,13 +139,21 @@ namespace WaaS.ComponentModel.Runtime
 
             private LoweredFunction? function;
             private StackFrame internalFrame;
+            private Memory<byte>? serializedResultMemory;
 
             public ushort Version { get; private set; }
 
             public int GetResultLength(ushort version)
             {
                 ThrowIfOutdated(version);
-                return function!.ComponentFunction.Type.Result != null ? 1 : 0;
+                if (function!.hasSerializedResult)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return function!.ComponentFunction.Type.Result != null ? 1 : 0;
+                }
             }
 
             public void Dispose(ushort version)
@@ -128,24 +179,48 @@ namespace WaaS.ComponentModel.Runtime
             public void TakeResults(ushort version, Span<StackValueItem> dest)
             {
                 ThrowIfOutdated(version);
-                using var pusher = LoweringPusherBase
-                    .GetRoot(function ?? throw new InvalidOperationException(), false, 1, out var items).Wrap();
-                binder.TakeResults(pusher);
-                items.UnsafeItems.CopyTo(dest);
+                if (function!.hasSerializedResult)
+                {
+                    using var pusher = LoweringPusherBase
+                        .GetRootForSerializedResult(function, serializedResultMemory!.Value).Wrap();
+                    binder.TakeResults(pusher);
+                }
+                else
+                {
+                    using var pusher = LoweringPusherBase
+                        .GetRoot(function ?? throw new InvalidOperationException(), false, 1, out var items).Wrap();
+                    binder.TakeResults(pusher);
+                    items.UnsafeItems.CopyTo(dest);
+                }
             }
 
-            private void Reset(LoweredFunction function, StackFrame internalFrame, FunctionBinder binder)
+            public bool DoesTakeResults(ushort version)
+            {
+                ThrowIfOutdated(version);
+                return internalFrame.DoesTakeResults();
+            }
+
+            public void PushResults(ushort version, Span<StackValueItem> source)
+            {
+                ThrowIfOutdated(version);
+                internalFrame.PushResults(source);
+            }
+
+            private void Reset(LoweredFunction function, StackFrame internalFrame, FunctionBinder binder,
+                Memory<byte>? serializedResultMemory)
             {
                 this.function = function;
                 this.internalFrame = internalFrame;
                 this.binder = binder;
+                this.serializedResultMemory = serializedResultMemory;
             }
 
-            public static Frame Get(LoweredFunction function, StackFrame internalFrame, FunctionBinder binder)
+            public static Frame Get(LoweredFunction function, StackFrame internalFrame, FunctionBinder binder,
+                Memory<byte>? serializedResultMemory)
             {
                 pool ??= new Stack<Frame>();
                 if (!pool.TryPop(out var pooled)) pooled = new Frame();
-                pooled.Reset(function, internalFrame, binder);
+                pooled.Reset(function, internalFrame, binder, serializedResultMemory);
                 return pooled;
             }
 

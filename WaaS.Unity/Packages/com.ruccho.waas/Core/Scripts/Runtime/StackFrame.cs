@@ -7,7 +7,7 @@ namespace WaaS.Runtime
     /// </summary>
     public readonly struct StackFrame : IDisposable, IEquatable<StackFrame>
     {
-        internal readonly IStackFrameCore core;
+        private readonly IStackFrameCore core;
         private readonly ushort version;
 
         public StackFrame(IStackFrameCore core)
@@ -33,6 +33,9 @@ namespace WaaS.Runtime
             core.TakeResults(version, dest);
         }
 
+        public bool DoesTakeResults() => core.DoesTakeResults(version);
+        public void PushResults(Span<StackValueItem> source) => core.PushResults(version, source);
+
         public bool Equals(StackFrame other)
         {
             return Equals(core, other.core) && version == other.version;
@@ -56,6 +59,11 @@ namespace WaaS.Runtime
         public static bool operator !=(StackFrame left, StackFrame right)
         {
             return !left.Equals(right);
+        }
+
+        public override string ToString()
+        {
+            return core.ToString();
         }
     }
 }

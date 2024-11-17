@@ -35,7 +35,7 @@ namespace WaaS.Runtime
                     throw new InvalidOperationException();
 
                 var type = instance.Module.TypeSection.FuncTypes.Span[checked((int)t.Value)];
-                if (!type.Match(invocableFunction.Type)) throw new InvalidOperationException();
+                if (!type.Match(invocableFunction.Type)) throw new InvalidOperationException($"Imported function type mismatch: {import.Name} (expected: {type}, actual: {invocableFunction.Type})");
 
                 functions[cursor++] = invocableFunction;
             }

@@ -89,7 +89,7 @@ namespace WaaS.Runtime
 
                 for (var i = 0; i < initialization.Length; i++)
                 {
-                    var element = initialization[i];
+                    var element = initialization[i].Evaluate(globals).ExpectValueI32();
                     var function = functionInstance.Functions.Span[checked((int)element)];
                     funcTable.Elements[checked((int)(offset + i))] = function;
                 }

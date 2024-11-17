@@ -14,7 +14,8 @@ namespace WaaS.Unity.Editor
         public override void OnImportAsset(AssetImportContext ctx)
         {
             var data = File.ReadAllBytes(ctx.assetPath);
-            var preamble = Unsafe.ReadUnaligned<Preamble>(ref data[0]);
+            var preambleBytes = data.AsSpan(0, Unsafe.SizeOf<Preamble>());
+            var preamble = Unsafe.ReadUnaligned<Preamble>(ref preambleBytes[0]);
             if (preamble.IsValid())
             {
                 var module = ScriptableObject.CreateInstance<ModuleAsset>();

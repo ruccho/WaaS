@@ -17,6 +17,12 @@ namespace WaaS.ComponentModel.Runtime
             this.core = core;
             version = core.Version;
         }
+        
+        public bool TryGetNextType(out IValueType? type)
+        {
+            ThrowIfDisposed();
+            return core!.TryGetNextType(out type);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ThrowIfDisposed()

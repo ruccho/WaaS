@@ -31,7 +31,7 @@ namespace WaaS.Models
                 _ => throw new ArgumentOutOfRangeException()
             };
 
-            if (reader.Position != next) throw new InvalidModuleException("section size mismatch");
+            if (reader.Position != next) throw new InvalidModuleException($"section {sectionId} size mismatch. expected position: 0x{next:X}, actual: 0x{reader.Position:X}");
 
             return section;
         }

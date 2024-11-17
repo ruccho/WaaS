@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Runtime.InteropServices;
 using WaaS.ComponentModel.Runtime;
 using WaaS.Models;
@@ -14,8 +15,8 @@ namespace WaaS.ComponentModel.Models
     [Variant(0x40, typeof(FunctionType))]
     [Variant(0x41, typeof(ComponentType))]
     [Variant(0x42, typeof(InstanceType))]
-    [VariantFallback(typeof(IValueTypeDefinition))]
     [VariantFallback(typeof(IResourceTypeDefinition))]
+    [VariantFallback(typeof(IValueTypeDefinition))]
     public partial interface ITypeDefinition : IUnresolved<IType>
     {
     }
@@ -593,6 +594,11 @@ namespace WaaS.ComponentModel.Models
         {
             return new FlagsType(labels);
         }
+
+        partial void Validate()
+        {
+            if (Labels.Length > 32) throw new NotSupportedException("Too many flags");
+        }
     }
 
     [GenerateFormatter]
@@ -864,10 +870,23 @@ namespace WaaS.ComponentModel.Models
 
                 var type = indexSpace.Get<IType>(reader.ReadUnalignedLeb128U32());
 
-                if (type is not IValueTypeDefinition valueTypeDef) throw new InvalidModuleException(); // validation
-
-                result = valueTypeDef;
+                result = new UnresolvedValueType(type);
                 return true;
+            }
+        }
+
+        private class UnresolvedValueType : IUnresolvedValueType
+        {
+            private readonly IUnresolved<IType> core;
+
+            public UnresolvedValueType(IUnresolved<IType> core)
+            {
+                this.core = core;
+            }
+
+            public IValueType ResolveFirstTime(IInstanceResolutionContext context)
+            {
+                return context.Resolve(core) as IValueType ?? throw new InvalidModuleException("Expected IValueType");
             }
         }
     }
@@ -1077,7 +1096,7 @@ namespace WaaS.ComponentModel.Models
         }
     }
 
-    public class InstanceType : ITypeDefinition
+    public class InstanceType : ITypeDefinition, IInstanceType
     {
         static InstanceType()
         {
@@ -1093,7 +1112,7 @@ namespace WaaS.ComponentModel.Models
 
         public IType ResolveFirstTime(IInstanceResolutionContext context)
         {
-            return new ResolvedInstanceType();
+            return this;
         }
 
         private class Formatter : IFormatter<InstanceType>
@@ -1115,11 +1134,6 @@ namespace WaaS.ComponentModel.Models
                 return true;
             }
         }
-
-        private class ResolvedInstanceType : IInstanceType
-        {
-            // TODO
-        }
     }
 
     [GenerateFormatter]
@@ -1133,7 +1147,7 @@ namespace WaaS.ComponentModel.Models
     [Variant(0x00, typeof(InstanceDeclaratorCoreType))]
     [Variant(0x01, typeof(InstanceDeclaratorType))]
     [Variant(0x02, typeof(InstanceDeclaratorAlias))]
-    [Variant(0x04, typeof(InstanceDeclaratorExportDecl))]
+    [Variant(0x04, typeof(ExportDeclarator))]
     public partial interface IInstanceDeclarator : IComponentDeclarator
     {
     }
@@ -1159,13 +1173,6 @@ namespace WaaS.ComponentModel.Models
 
 
     [GenerateFormatter]
-    public readonly partial struct InstanceDeclaratorExportDecl : IInstanceDeclarator
-    {
-        public ExportDeclarator Declaration { get; }
-    }
-
-
-    [GenerateFormatter]
     public readonly partial struct ImportDeclarator : IComponentDeclarator
     {
         public ImportExportName ImportName { get; }
@@ -1186,7 +1193,18 @@ namespace WaaS.ComponentModel.Models
             Formatter<IExportableDescriptor<ISortedExportable>>.Default = new ExportableDescriptorFormatter();
         }
 
-        bool ValidateArgument(ISortedExportable argument);
+        bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument);
+    }
+
+    internal static class ExportableDescriptorExtensions
+    {
+        public static bool ValidateExported(this IExportableDescriptor<ISortedExportable> desc,
+            IInstanceResolutionContext context, IInstance? instance, string name)
+        {
+            ISortedExportable? result = null;
+            instance?.TryGetExport(name, out result);
+            return desc.ValidateArgument(context, result);
+        }
     }
 
     internal class ExportableDescriptorFormatter : IFormatter<IExportableDescriptor<ISortedExportable>>
@@ -1199,7 +1217,7 @@ namespace WaaS.ComponentModel.Models
             {
                 case 0x00:
                     reader.ReadUnaligned<byte>();
-                    result = Formatter<ExportableDescriptorCoreModule>.Read(ref reader, indexSpace);
+                    result = Formatter<ExportableDescriptorCoreModuleType>.Read(ref reader, indexSpace);
                     return true;
                 case 0x01:
                     reader.ReadUnaligned<byte>();
@@ -1225,14 +1243,22 @@ namespace WaaS.ComponentModel.Models
     }
 
     [GenerateFormatter]
-    public readonly partial struct ExportableDescriptorCoreModule : IExportableDescriptor<ICoreModule>
+    public readonly partial struct ExportableDescriptorCoreModuleType : IExportableDescriptor<ICoreModule>
     {
         private byte Unknown0 { get; }
-        public ICoreModuleDeclaration Type { get; }
+        public IUnresolved<ICoreType> Type { get; }
 
-        public bool ValidateArgument(ISortedExportable argument)
+        partial void Validate()
         {
-            return argument is ICoreModule;
+            if (Unknown0 != 0x11) throw new InvalidModuleException();
+        }
+
+        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
+        {
+            if (argument is not ICoreModule module) return false;
+            var type = context.Resolve(Type);
+            if (type is not ICoreModuleType moduleType) return false;
+            return module.Validate(context, moduleType);
         }
     }
 
@@ -1241,9 +1267,14 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> Type { get; }
 
-        public bool ValidateArgument(ISortedExportable argument)
+        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
         {
-            return argument is IFunction;
+            if (argument is not IFunction) return false;
+            var type = context.Resolve(Type);
+            if (type is not IFunctionType functionType) return false;
+
+            // TODO
+            return true;
         }
     }
 
@@ -1252,7 +1283,7 @@ namespace WaaS.ComponentModel.Models
     {
         public ITypeBound Type { get; }
 
-        public bool ValidateArgument(ISortedExportable argument)
+        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
         {
             return argument is IType;
         }
@@ -1263,9 +1294,9 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> Type { get; }
 
-        public bool ValidateArgument(ISortedExportable argument)
+        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
         {
-            return argument is IComponent;
+            return true;
         }
     }
 
@@ -1274,9 +1305,22 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> Type { get; }
 
-        public bool ValidateArgument(ISortedExportable argument)
+        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
         {
-            return argument is IInstance;
+            var type = context.Resolve(Type);
+            if (type is not IInstanceType instanceType) return false;
+            var exports = instanceType.Exports;
+            if (!exports.Any() && argument is null) return true;
+
+            if (argument is not null && argument is not IInstance) return false;
+
+            context = new InstanceResolutionContext(null, context);
+            foreach (var (key, desc) in exports)
+            {
+                if (!desc.ValidateExported(context, (IInstance?)argument, key)) return false;
+            }
+
+            return true;
         }
     }
 

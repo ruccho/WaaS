@@ -34,6 +34,7 @@ namespace WaaS.ComponentModel.Runtime
         {
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 1);
             Unsafe.As<byte, ushort>(ref Destination.Span[checked((int)destinationCursor)]) = value;
+            destinationCursor += 2;
             MoveNextType();
         }
 
@@ -41,6 +42,7 @@ namespace WaaS.ComponentModel.Runtime
         {
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
             Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = value;
+            destinationCursor += 4;
             MoveNextType();
         }
 
@@ -48,13 +50,23 @@ namespace WaaS.ComponentModel.Runtime
         {
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 3);
             Unsafe.As<byte, ulong>(ref Destination.Span[checked((int)destinationCursor)]) = value;
+            destinationCursor += 8;
             MoveNextType();
         }
+
+        protected override void PushS8Core(sbyte value) => PushU8Core(unchecked((byte)value));
+
+        protected override void PushS16Core(short value) => PushU16Core(unchecked((ushort)value));
+
+        protected override void PushS32Core(int value) => PushU32Core(unchecked((uint)value));
+
+        protected override void PushS64Core(long value) => PushU64Core(unchecked((ulong)value));
 
         protected override void PushF32Core(float value)
         {
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
             Unsafe.As<byte, float>(ref Destination.Span[checked((int)destinationCursor)]) = value;
+            destinationCursor += 4;
             MoveNextType();
         }
 
@@ -62,6 +74,7 @@ namespace WaaS.ComponentModel.Runtime
         {
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 3);
             Unsafe.As<byte, double>(ref Destination.Span[checked((int)destinationCursor)]) = value;
+            destinationCursor += 8;
             MoveNextType();
         }
 
@@ -71,7 +84,6 @@ namespace WaaS.ComponentModel.Runtime
                 throw new InvalidOperationException();
 
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
-            var dest = Destination.Slice(checked((int)destinationCursor), 8);
             Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = ptr;
             destinationCursor += 4;
             Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = length;
@@ -99,13 +111,17 @@ namespace WaaS.ComponentModel.Runtime
             switch (discriminantTypeSizeRank)
             {
                 case 1:
-                    PushU8Core(checked((byte)caseIndex));
+                    Destination.Span[checked((int)destinationCursor++)] = (byte)caseIndex;
                     break;
                 case 2:
-                    PushU16Core(checked((ushort)caseIndex));
+                    destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
+                    Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = (ushort)caseIndex;
+                    destinationCursor += 4;
                     break;
                 case 4:
-                    PushU32Core(checked((uint)caseIndex));
+                    destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
+                    Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = (uint)caseIndex;
+                    destinationCursor += 4;
                     break;
                 default:
                     throw new IndexOutOfRangeException();

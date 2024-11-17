@@ -54,5 +54,10 @@ namespace WaaS.Models
                    MemoryMarshal.AsBytes(ResultTypes.Span)
                        .SequenceEqual(MemoryMarshal.AsBytes(other.ResultTypes.Span));
         }
+
+        public override string ToString()
+        {
+            return $"({string.Join(", ", ParameterTypes.ToArray())}) -> ({string.Join(", ", ResultTypes.ToArray())})";
+        }
     }
 }

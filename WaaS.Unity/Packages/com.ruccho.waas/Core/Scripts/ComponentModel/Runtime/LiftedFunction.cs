@@ -59,7 +59,9 @@ namespace WaaS.ComponentModel.Runtime
                 args[2] = new StackValueItem(alignment);
                 args[3] = new StackValueItem(newSize);
                 Context!.InterruptFrame(function!.ReallocFunction, args[..4], args[4..]);
-                return args[4].ExpectValueI32();
+                var ptr = args[4].ExpectValueI32();
+                if(alignment != 0 && (ptr & (alignment - 1)) != 0) throw new TrapException("Realloc returned unaligned pointer");
+                return ptr;
             }
 
             public ushort Version { get; private set; }
@@ -94,21 +96,34 @@ namespace WaaS.ComponentModel.Runtime
                 {
                     var flatten = resultType.FlattenedCount <= 1 /* MAX_FLAT_RESULTS */;
 
-                    if (!flatten)
+                    ValueLifter lifter;
+                    if (flatten)
+                    {
+                        unsafe
+                        {
+                            lifter = new ValueLifter(this, ElementTypeSelector.FromSingle(resultType), resultValues);
+                        }
+                    }
+                    else
+                    {
                         if (coreResultTypes.Length != 1)
                             throw new InvalidOperationException();
 
-                    var lifter = flatten
-                        ? new ValueLifter(this, ElementTypeSelector.FromSingle(resultType), resultValues)
-                        : new ValueLifter(this, ElementTypeSelector.FromSingle(resultType),
-                            function.MemoryToRealloc!.Span.Slice(checked((int)resultValues[0].ExpectValueI32())));
+                        var ptr = resultValues[0].ExpectValueI32();
+
+                        if (Utils.ElementSizeAlignTo(ptr, resultType.AlignmentRank) != ptr)
+                            throw new TrapException("Result pointer is not aligned");
+
+                        lifter = new ValueLifter(this, ElementTypeSelector.FromSingle(resultType),
+                            function.MemoryToRealloc!.Span.Slice(checked((int)ptr)));
+                    }
 
                     ValueTransfer.TransferNext(ref lifter, resultValuePusher);
                 }
 
                 // post-return
 
-                // TODO: make async
+                // TODO: make async?
                 var postReturn = function.PostReturnFunction;
                 if (postReturn != null) Context!.InterruptFrame(postReturn, resultValues, Span<StackValueItem>.Empty);
             }

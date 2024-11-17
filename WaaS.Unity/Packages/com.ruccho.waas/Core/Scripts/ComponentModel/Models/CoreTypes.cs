@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using WaaS.ComponentModel.Runtime;
 using WaaS.Models;
 using WaaS.Runtime;
@@ -68,14 +70,42 @@ namespace WaaS.ComponentModel.Models
         }
     }
 
-    [GenerateFormatter]
-    public readonly partial struct CoreModuleType : ICoreTypeDefinition
+    public interface ICoreModuleType : ICoreType
     {
+        ReadOnlyMemory<ICoreModuleDeclaration> Declarations { get; }
+    }
+
+    public class CoreModuleType : ICoreTypeDefinition, ICoreModuleType
+    {
+        static CoreModuleType()
+        {
+            Formatter<CoreModuleType>.Default = new CoreModuleTypeFormatter();
+        }
+
+        private class CoreModuleTypeFormatter : IFormatter<CoreModuleType>
+        {
+            public bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace, out CoreModuleType result)
+            {
+                var newIndexSpace = new IndexSpace(indexSpace);
+                result = new CoreModuleType(
+                    reader.ReadVector(
+                        static (ref ModuleReader reader, IIndexSpace indexSpace) =>
+                            Formatter<ICoreModuleDeclaration>.Read(ref reader, indexSpace), newIndexSpace)
+                );
+                return true;
+            }
+        }
+
+        private CoreModuleType(ReadOnlyMemory<ICoreModuleDeclaration> declarations)
+        {
+            Declarations = declarations;
+        }
+
         public ReadOnlyMemory<ICoreModuleDeclaration> Declarations { get; }
 
         public ICoreType ResolveFirstTime(IInstanceResolutionContext context)
         {
-            throw new NotImplementedException();
+            return this;
         }
     }
 
@@ -95,28 +125,51 @@ namespace WaaS.ComponentModel.Models
             Formatter<CoreImportDeclaration>.Default = new Formatter();
         }
 
-        internal class Formatter : IFormatter<CoreImportDeclaration>
+        private class Formatter : IFormatter<CoreImportDeclaration>
         {
             public bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace, out CoreImportDeclaration result)
             {
                 var import = new Import(ref reader);
-                result = new CoreImportDeclaration(import);
+                IUnresolved<ICoreType>? type = null;
+                switch (import.Description.Kind)
+                {
+                    case ImportKind.Type:
+                    {
+                        type = indexSpace.Get<ICoreType>(import.Description.TypeIndex!.Value);
+                        break;
+                    }
+                    case ImportKind.Table:
+                    case ImportKind.Memory:
+                    case ImportKind.Global:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                result = new CoreImportDeclaration(import.ModuleName, import.Name, import.Description, type);
                 return true;
             }
         }
 
-        public Import Import { get; }
+        public string ModuleName { get; }
+        public string Name { get; }
+        public ImportDescriptor Descriptor { get; }
+        public ImportKind Kind => Descriptor.Kind;
+        public IUnresolved<ICoreType>? Type { get; }
 
-        public CoreImportDeclaration(Import import)
+        public CoreImportDeclaration(string moduleName, string name, ImportDescriptor descriptor, IUnresolved<ICoreType>? type)
         {
-            Import = import;
+            ModuleName = moduleName;
+            Name = name;
+            Descriptor = descriptor;
+            Type = type;
         }
     }
 
     [GenerateFormatter]
     public readonly partial struct CoreTypeDeclaration : ICoreModuleDeclaration
     {
-        public ICoreType Type { get; }
+        public ICoreTypeDefinition Type { get; }
     }
 
     [GenerateFormatter]
@@ -131,21 +184,31 @@ namespace WaaS.ComponentModel.Models
 
         public CoreAliasDeclaration OnAfterRead(IIndexSpace indexSpace)
         {
-            for (var i = 0; i < Depth; i++) indexSpace = indexSpace.Parent;
+            for (var i = 0; i < Depth; i++) indexSpace = indexSpace.Parent ?? throw new InvalidOperationException();
+
+            IUnresolved<ICoreSorted> target = Sort switch
+            {
+                CoreSortTag.Function => indexSpace.Get<ICoreSortedExportable<IInvocableFunction>>(Index),
+                CoreSortTag.Table => indexSpace.Get<ICoreSortedExportable<Table>>(Index),
+                CoreSortTag.Memory => indexSpace.Get<ICoreSortedExportable<Memory>>(Index),
+                CoreSortTag.Global => indexSpace.Get<ICoreSortedExportable<Global>>(Index),
+                CoreSortTag.Type => indexSpace.Get<ICoreType>(Index),
+                CoreSortTag.Module => indexSpace.Get<ICoreModule>(Index),
+                CoreSortTag.Instance => indexSpace.Get<ICoreInstance>(Index),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+
+            indexSpace.AddUntyped(target);
+
             return new CoreAliasDeclaration
             {
-                Target = Sort switch
-                {
-                    CoreSortTag.Function => indexSpace.Get<ICoreSortedExportable<IInvocableFunction>>(Index),
-                    CoreSortTag.Table => indexSpace.Get<ICoreSortedExportable<Table>>(Index),
-                    CoreSortTag.Memory => indexSpace.Get<ICoreSortedExportable<Memory>>(Index),
-                    CoreSortTag.Global => indexSpace.Get<ICoreSortedExportable<Global>>(Index),
-                    CoreSortTag.Type => indexSpace.Get<ICoreType>(Index),
-                    CoreSortTag.Module => indexSpace.Get<ICoreModule>(Index),
-                    CoreSortTag.Instance => indexSpace.Get<ICoreInstance>(Index),
-                    _ => throw new ArgumentOutOfRangeException()
-                }
+                Target = target
             };
+        }
+
+        partial void Validate()
+        {
+            if (AliasKind != 1) throw new InvalidModuleException();
         }
     }
 
@@ -162,7 +225,32 @@ namespace WaaS.ComponentModel.Models
             {
                 var name = reader.ReadUtf8String();
                 var descriptor = new ImportDescriptor(ref reader);
-                result = new CoreExportDeclaration(name, descriptor);
+
+                CoreFunctionType? functionType = null;
+                switch (descriptor.Kind)
+                {
+                    case ImportKind.Type:
+                    {
+                        if (indexSpace.Get<ICoreType>(descriptor.TypeIndex!.Value) is not CoreFunctionType
+                            coreFunctionType)
+                        {
+                            result = default;
+                            return false;
+                        }
+
+                        functionType = coreFunctionType;
+
+                        break;
+                    }
+                    case ImportKind.Table:
+                    case ImportKind.Memory:
+                    case ImportKind.Global:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                result = new CoreExportDeclaration(name, descriptor, functionType);
                 return true;
             }
         }
@@ -170,10 +258,17 @@ namespace WaaS.ComponentModel.Models
         public string Name { get; }
         public ImportDescriptor Descriptor { get; }
 
-        public CoreExportDeclaration(string name, ImportDescriptor descriptor)
+        public ImportKind Kind => Descriptor.Kind;
+        public CoreFunctionType? FunctionType { get; }
+
+        public CoreExportDeclaration(
+            string name,
+            ImportDescriptor descriptor,
+            CoreFunctionType? functionType)
         {
             Name = name;
             Descriptor = descriptor;
+            FunctionType = functionType;
         }
     }
 }

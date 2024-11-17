@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using WaaS.ComponentModel.Models;
 using WaaS.Runtime;
 
 namespace WaaS.ComponentModel.Runtime
@@ -31,6 +32,7 @@ namespace WaaS.ComponentModel.Runtime
     public interface ICoreModule : ICoreSorted, ISortedExportable
     {
         ICoreInstance Instantiate(IReadOnlyDictionary<string, ICoreInstance> imports);
+        bool Validate(IInstanceResolutionContext context, ICoreModuleType coreModuleType);
     }
 
     public interface ICoreInstance : ICoreSorted
@@ -194,5 +196,6 @@ namespace WaaS.ComponentModel.Runtime
 
     public interface IInstanceType : IType
     {
+        IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> Exports { get; }
     }
 }

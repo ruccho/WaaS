@@ -20,10 +20,10 @@ namespace WaaS.Runtime
                 var desc = export.Descriptor;
                 IExternal item = desc.Kind switch
                 {
-                    ExportKind.Function => functionInstance.Functions.Span[checked((int)desc.FunctionIndex.Value)],
-                    ExportKind.Table => tables.Tables.Span[checked((int)desc.TableIndex.Value)],
-                    ExportKind.Memory => memories.Memories.Span[checked((int)desc.MemoryIndex.Value)],
-                    ExportKind.Global => globals.Globals.Span[checked((int)desc.GlobalIndex.Value)],
+                    ExportKind.Function => functionInstance.Functions.Span[checked((int)desc.FunctionIndex!.Value)],
+                    ExportKind.Table => tables.Tables.Span[checked((int)desc.TableIndex!.Value)],
+                    ExportKind.Memory => memories.Memories.Span[checked((int)desc.MemoryIndex!.Value)],
+                    ExportKind.Global => globals.Globals.Span[checked((int)desc.GlobalIndex!.Value)],
                     _ => throw new ArgumentOutOfRangeException()
                 };
                 items.Add(export.Name, item);

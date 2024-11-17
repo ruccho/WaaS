@@ -138,25 +138,32 @@ namespace WaaS.ComponentModel.Models
             IReadOnlyDictionary<string, ISortedExportable> arguments)
         {
             // validate
+            var newContext = new InstanceResolutionContext(arguments, context);
+
             List<IImport<ISortedExportable>>? missingImports = null;
             foreach (var import in imports)
-                if (!arguments.TryGetValue(import.Name.Name, out var argument) ||
-                    !import.Descriptor.ValidateArgument(argument))
+            {
+                arguments.TryGetValue(import.Name.Name, out var argument);
+                if (!import.Descriptor.ValidateArgument(newContext, argument))
                 {
                     missingImports ??= new List<IImport<ISortedExportable>>();
                     missingImports.Add(import);
                 }
+            }
 
             if (missingImports != null)
                 throw new LinkException(
                     $"The import is missing or invalid: \n{string.Join("\n", missingImports.Select(i => i.Name.Name))}");
 
-            var newContext = new InstanceResolutionContext(arguments, context);
             Dictionary<string, ISortedExportable> resolvedExports = new();
             foreach (var export in exports) resolvedExports.Add(export.Name.Name, newContext.Resolve(export.Target));
 
             // instantiations need to be resolved (unexposed instances may initialize other instance's state)
-            foreach (var instantiation in instantiations) newContext.Resolve(instantiation);
+            for (var i = 0; i < instantiations.Count; i++)
+            {
+                var instantiation = instantiations[i];
+                newContext.Resolve(instantiation);
+            }
 
             return new Instance(resolvedExports);
         }
@@ -226,6 +233,236 @@ namespace WaaS.ComponentModel.Models
             foreach (var (key, value) in imports) moduleImports.Add(key, value.CoreExports);
 
             return new CoreInstance(new Instance(Module, moduleImports));
+        }
+
+        public bool Validate(IInstanceResolutionContext context, ICoreModuleType coreModuleType)
+        {
+            var importSection = Module.ImportSection;
+
+            foreach (var decl in coreModuleType.Declarations.Span)
+            {
+                if (decl is not CoreExportDeclaration exportDecl) continue;
+
+                Export exported;
+                {
+                    foreach (var export in Module.ExportSection.Exports.Span)
+                    {
+                        if (export.Name == exportDecl.Name)
+                        {
+                            exported = export;
+                            goto FOUND;
+                        }
+                    }
+
+                    return false;
+                    FOUND: ;
+                }
+
+                var providedDesc = exported.Descriptor;
+
+                switch (exportDecl.Kind)
+                {
+                    case ImportKind.Type:
+                    {
+                        int index = 0;
+                        var descModuleFuncIndex = providedDesc.FunctionIndex ?? throw new InvalidOperationException();
+                        WaaS.Models.FunctionType functionType;
+                        if (importSection != null)
+                        {
+                            foreach (var import in importSection.Imports.Span)
+                            {
+                                var desc = import.Description;
+                                if (desc.Kind == ImportKind.Type)
+                                {
+                                    if (index++ == descModuleFuncIndex)
+                                    {
+                                        functionType =
+                                            Module.TypeSection.FuncTypes.Span[checked((int)desc.TypeIndex!.Value)];
+                                        goto FOUND;
+                                    }
+                                }
+                            }
+                        }
+
+                        var functions = Module.InternalFunctions.Span;
+                        index = checked((int)providedDesc.FunctionIndex!.Value) - index;
+                        if (index >= functions.Length) return false;
+                        functionType = functions[index].Type;
+                        FOUND: ;
+
+                        if (!functionType.Match(exportDecl.FunctionType!.Value.Type)) return false;
+                        break;
+                    }
+                    case ImportKind.Table:
+                    {
+                        var requestedTableType = exportDecl.Descriptor.TableType!.Value;
+                        if (providedDesc.Kind != ExportKind.Table) return false;
+                        int index = 0;
+                        TableType providedTableType;
+                        if (importSection != null)
+                        {
+                            foreach (var import in importSection.Imports.Span)
+                            {
+                                var desc = import.Description;
+                                if (desc.Kind == ImportKind.Table)
+                                {
+                                    if (index++ == providedDesc.TableIndex)
+                                    {
+                                        providedTableType = import.Description.TableType!.Value;
+                                        goto FOUND;
+                                    }
+                                }
+                            }
+                        }
+
+                        var tables = Module.TableSection.TableTypes.Span;
+                        index = checked((int)providedDesc.TableIndex!.Value) - index;
+                        if (index >= tables.Length) return false;
+                        providedTableType = tables[index];
+
+                        FOUND: ;
+
+                        if (requestedTableType.ElementType != providedTableType.ElementType) return false;
+
+                        // allow subtyping
+                        if (requestedTableType.Limits.Min > providedTableType.Limits.Min) return false;
+                        break;
+                    }
+                    case ImportKind.Memory:
+                    {
+                        var requestedType = exportDecl.Descriptor.MemoryType!.Value;
+                        if (providedDesc.Kind != ExportKind.Memory) return false;
+                        int index = 0;
+                        MemoryType providedType;
+                        if (importSection != null)
+                        {
+                            foreach (var import in importSection.Imports.Span)
+                            {
+                                var desc = import.Description;
+                                if (desc.Kind == ImportKind.Memory)
+                                {
+                                    if (index++ == providedDesc.MemoryIndex)
+                                    {
+                                        providedType = import.Description.MemoryType!.Value;
+                                        goto FOUND;
+                                    }
+                                }
+                            }
+                        }
+
+                        var memories = Module.MemorySection.MemoryTypes.Span;
+                        index = checked((int)providedDesc.MemoryIndex!.Value) - index;
+                        if (index >= memories.Length) return false;
+                        providedType = memories[index];
+
+                        FOUND: ;
+
+                        // allow subtyping
+                        if (requestedType.Limits.Min > providedType.Limits.Min) return false;
+                        break;
+                    }
+                    case ImportKind.Global:
+                    {
+                        var requestedType = exportDecl.Descriptor.GlobalType!.Value;
+                        if (providedDesc.Kind != ExportKind.Global) return false;
+                        int index = 0;
+                        GlobalType providedType;
+                        if (importSection != null)
+                        {
+                            foreach (var import in importSection.Imports.Span)
+                            {
+                                var desc = import.Description;
+                                if (desc.Kind == ImportKind.Global)
+                                {
+                                    if (index++ == providedDesc.GlobalIndex)
+                                    {
+                                        providedType = import.Description.GlobalType!.Value;
+                                        goto FOUND;
+                                    }
+                                }
+                            }
+                        }
+
+                        var globals = Module.GlobalSection.Globals.Span;
+                        index = checked((int)providedDesc.GlobalIndex!.Value) - index;
+                        if (index >= globals.Length) return false;
+                        providedType = globals[index].Type;
+
+                        FOUND: ;
+                        if (requestedType != providedType) return false;
+                        break;
+                    }
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+
+            if (importSection != null)
+            {
+                foreach (var import in Module.ImportSection.Imports.Span)
+                {
+                    CoreImportDeclaration importDecl;
+                    {
+                        foreach (var decl in coreModuleType.Declarations.Span)
+                        {
+                            if (decl is not CoreImportDeclaration coreImportDecl) continue;
+
+                            if (coreImportDecl.ModuleName == import.ModuleName &&
+                                coreImportDecl.Name == import.Name &&
+                                coreImportDecl.Kind == import.Description.Kind)
+                            {
+                                importDecl = coreImportDecl;
+                                goto FOUND;
+                            }
+                        }
+
+                        return false;
+
+                        FOUND: ;
+                    }
+
+                    var requestedImport = import.Description;
+                    switch (requestedImport.Kind)
+                    {
+                        case ImportKind.Type:
+                        {
+                            var t = importDecl.Type ?? throw new InvalidOperationException();
+                            if (context.Resolve(t) is not CoreFunctionType coreFunctionType) return false;
+                            var tModule = Module.TypeSection.FuncTypes.Span[checked((int)requestedImport.TypeIndex!.Value)];
+                            if (!coreFunctionType.Type.Match(tModule)) return false;
+                            break;
+                        }
+                        case ImportKind.Table:
+                        {
+                            var provided = importDecl.Descriptor.TableType!.Value;
+
+                            if (provided.ElementType != requestedImport.TableType!.Value.ElementType) return false;
+                            
+                            // allow subtyping
+                            if (requestedImport.TableType!.Value.Limits.Min > provided.Limits.Min) return false;
+                            break;
+                        }
+                        case ImportKind.Memory:
+                        {
+                            var provided = importDecl.Descriptor.MemoryType!.Value;
+                            
+                            // allow subtyping
+                            if (requestedImport.MemoryType!.Value.Limits.Min > provided.Limits.Min) return false;
+                            break;
+                        }
+                        case ImportKind.Global:
+                        {
+                            var provided = importDecl.Descriptor.GlobalType!.Value;
+                            if (provided != requestedImport.GlobalType) return false;
+                            break;
+                        }
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                }
+            }
+
+            return true;
         }
 
         public ICoreModule ResolveFirstTime(IInstanceResolutionContext context)

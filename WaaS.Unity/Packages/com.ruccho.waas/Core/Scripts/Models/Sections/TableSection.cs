@@ -49,5 +49,15 @@ namespace WaaS.Models
         {
             return HashCode.Combine((int)ElementType, Limits);
         }
+
+        public static bool operator ==(TableType left, TableType right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(TableType left, TableType right)
+        {
+            return !left.Equals(right);
+        }
     }
 }

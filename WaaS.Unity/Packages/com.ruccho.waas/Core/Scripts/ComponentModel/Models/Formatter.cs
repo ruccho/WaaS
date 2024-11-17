@@ -67,7 +67,7 @@ namespace WaaS.ComponentModel.Models
             set => defaultFormatter ??= value;
         }
 
-        public static IFormatter<T> UnsafeGetDefault()
+        private static IFormatter<T> UnsafeGetDefault()
         {
             return Default;
         }
@@ -82,7 +82,8 @@ namespace WaaS.ComponentModel.Models
 
         public static T Read(ref ModuleReader reader, IIndexSpace indexSpace, bool addToSort = true)
         {
-            if (!UnsafeGetDefault().TryRead(ref reader, indexSpace, out var read)) throw new InvalidModuleException();
+            var pos = reader.Position;
+            if (!UnsafeGetDefault().TryRead(ref reader, indexSpace, out var read)) throw new InvalidModuleException($"Failed to read {typeof(T)} at 0x{pos:X}");
 
             if (read is IReadCallbackReceiver<T> receiver) read = receiver.OnAfterRead(indexSpace);
 
@@ -91,13 +92,13 @@ namespace WaaS.ComponentModel.Models
             return read;
         }
 
-        public static bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace, [NotNullWhen(true)] out T? result)
+        public static bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace, [NotNullWhen(true)] out T? result, bool addToSort = true)
         {
             if (!UnsafeGetDefault().TryRead(ref reader, indexSpace, out result)) return false;
 
             if (result is IReadCallbackReceiver<T> receiver) result = receiver.OnAfterRead(indexSpace);
 
-            if (result is not IUnresolved<ISorted> sorted) return true;
+            if (!addToSort || result is not IUnresolved<ISorted> sorted) return true;
             indexSpace.AddUntyped(sorted);
             return true;
         }
@@ -222,7 +223,20 @@ namespace WaaS.ComponentModel.Models
 
             public IUnresolved<T> Get(uint index)
             {
+                #if DEBUG
+                try
+                {
+                    return items[checked((int)index)];
+                }
+                catch (ArgumentOutOfRangeException ex)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        $"Index was out of range. Sort {typeof(T)} has {items.Count} but index {index} was specified.",
+                        ex);
+                }
+                #else
                 return items[checked((int)index)];
+                #endif
             }
 
             public void Add(IUnresolved<T> value, out int index)

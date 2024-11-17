@@ -21,7 +21,7 @@ namespace WaaS.ComponentModel.Binding
             return new FunctionBinder(Binder.Get(context, this));
         }
 
-        protected abstract STaskVoid PullArgumentsAsync(ExecutionContext context, PushPullAdapter adapter,
+        protected abstract STaskVoid InvokeAsync(ExecutionContext context, PushPullAdapter adapter,
             STaskVoid frameMove, STask<ValuePusher> resultPusher);
 
         private class Binder : IFunctionBinderCore, IStackFrameCore, ISTaskSource<ValuePusher>
@@ -73,7 +73,7 @@ namespace WaaS.ComponentModel.Binding
                 pooled.waker = default;
                 pooled.resultPusherRequestedState = 0;
 
-                function.PullArgumentsAsync(
+                function.InvokeAsync(
                     context,
                     pusher,
                     new STaskVoid(pooled.frameMoveSource.TaskSource),
@@ -114,6 +114,13 @@ namespace WaaS.ComponentModel.Binding
 
             void IStackFrameCore.TakeResults(ushort version, Span<StackValueItem> dest)
             {
+            }
+
+            public bool DoesTakeResults(ushort version) => false;
+
+            public void PushResults(ushort version, Span<StackValueItem> source)
+            {
+                throw new InvalidOperationException();
             }
 
             #endregion
@@ -157,6 +164,28 @@ namespace WaaS.ComponentModel.Binding
             public bool IsCompleted => resultPusher.HasValue;
 
             #endregion
+        }
+    }
+
+    public class ExternalFunctionDelegate : ExternalFunction
+    {
+        public delegate STaskVoid InvokeAsyncDelegate(ExecutionContext context, PushPullAdapter adapter,
+            STaskVoid frameMove,
+            STask<ValuePusher> resultPusher);
+        
+        private readonly InvokeAsyncDelegate invokeAsync;
+        public override IFunctionType Type { get; }
+
+        protected override STaskVoid InvokeAsync(ExecutionContext context, PushPullAdapter adapter, STaskVoid frameMove,
+            STask<ValuePusher> resultPusher)
+        {
+            return invokeAsync(context, adapter, frameMove, resultPusher);
+        }
+
+        public ExternalFunctionDelegate(IFunctionType type, InvokeAsyncDelegate invokeAsync)
+        {
+            this.invokeAsync = invokeAsync;
+            Type = type;
         }
     }
 }

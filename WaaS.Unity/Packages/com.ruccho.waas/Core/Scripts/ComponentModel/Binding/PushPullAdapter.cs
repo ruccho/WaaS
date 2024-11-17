@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using STask;
 using WaaS.ComponentModel.Runtime;
 
@@ -48,6 +49,12 @@ namespace WaaS.ComponentModel.Binding
             if (Version != version) return;
             if (++Version == ushort.MaxValue) return;
             (pool ??= new Stack<PushPullAdapter>()).Push(this);
+        }
+
+        public bool TryGetNextType([NotNullWhen(true)] out IValueType? type)
+        {
+            type = default;
+            return false;
         }
 
         public void Push(bool value)

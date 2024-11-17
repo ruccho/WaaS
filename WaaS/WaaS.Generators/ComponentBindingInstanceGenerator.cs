@@ -258,7 +258,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
             sourceBuilder.AppendLine(
 /* lang=c#    */"""
                             
-                                protected override async global::STask.STaskVoid PullArgumentsAsync(
+                                protected override async global::STask.STaskVoid InvokeAsync(
                                     global::WaaS.Runtime.ExecutionContext __context,
                                     global::WaaS.ComponentModel.Binding.PushPullAdapter __adapter,
                                     global::STask.STaskVoid __frameMove,

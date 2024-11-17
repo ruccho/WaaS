@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text;
 using WaaS.ComponentModel.Models;
@@ -24,6 +25,12 @@ namespace WaaS.ComponentModel.Runtime
             Dispose(reuse);
         }
 
+        public bool TryGetNextType([NotNullWhen(true)] out IValueType? type)
+        {
+            type = GetNextType();
+            return type != null;
+        }
+
         public void Push(bool value)
         {
             if (GetNextType() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.Bool })
@@ -42,7 +49,7 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S8 })
                 throw new InvalidOperationException();
-            PushU8Core(unchecked((byte)value));
+            PushS8Core(value);
         }
 
         public void Push(ushort value)
@@ -56,7 +63,7 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S16 })
                 throw new InvalidOperationException();
-            PushU16Core(unchecked((ushort)value));
+            PushS16Core(value);
         }
 
         public void Push(uint value)
@@ -70,7 +77,7 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S32 })
                 throw new InvalidOperationException();
-            PushU32Core(unchecked((uint)value));
+            PushS32Core(value);
         }
 
         public void Push(ulong value)
@@ -84,7 +91,7 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S64 })
                 throw new InvalidOperationException();
-            PushU64Core(unchecked((ulong)value));
+            PushS64Core(value);
         }
 
         public void Push(float value)
@@ -202,7 +209,7 @@ namespace WaaS.ComponentModel.Runtime
         public abstract ValuePusher PushVariant(int caseIndex);
         public abstract void PushString(uint ptr, uint length);
 
-        public IValueType GetNextType()
+        public IValueType? GetNextType()
         {
             return RootType.GetNextType(typeCursor);
         }
@@ -249,6 +256,16 @@ namespace WaaS.ComponentModel.Runtime
             return result;
         }
 
+        public static LoweringPusherBase GetRootForSerializedResult(ICanonContext context, Memory<byte> dest)
+        {
+            var resultType = context.ComponentFunction.Type.Result!.Despecialize();
+            var pusher = SerializedLoweringPusher.Get(dest);
+
+            var selector = ElementTypeSelector.FromSingle(resultType);
+            pusher.Init(context, selector);
+            return pusher;
+        }
+
         protected LoweringPusherBase Init(ICanonContext context, ElementTypeSelector? rootType)
         {
             Context = context;
@@ -261,7 +278,7 @@ namespace WaaS.ComponentModel.Runtime
             var next = GetNextType();
             if (next is not T typed)
             {
-                next = next.Despecialize();
+                next = next?.Despecialize();
                 if (next is not T typed1) throw new InvalidOperationException();
                 typed = typed1;
             }
@@ -272,7 +289,7 @@ namespace WaaS.ComponentModel.Runtime
 
         protected IValueType MoveNextType()
         {
-            var result = GetNextType();
+            var result = GetNextType() ?? throw new InvalidOperationException();
             typeCursor++;
             return result;
         }
@@ -291,6 +308,14 @@ namespace WaaS.ComponentModel.Runtime
         protected abstract void PushU32Core(uint value);
 
         protected abstract void PushU64Core(ulong value);
+
+        protected abstract void PushS8Core(sbyte value);
+
+        protected abstract void PushS16Core(short value);
+
+        protected abstract void PushS32Core(int value);
+
+        protected abstract void PushS64Core(long value);
 
         protected abstract void PushF32Core(float value);
 

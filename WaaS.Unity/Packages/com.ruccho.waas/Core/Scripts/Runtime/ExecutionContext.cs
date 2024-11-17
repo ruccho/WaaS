@@ -58,8 +58,10 @@ namespace WaaS.Runtime
                     var depth = frames.Count - 1;
 
                     if (isFirst)
-                        // Logger.Log($"{new string(' ', depth * 4)}- {current}: resume");
+                    {
+                        // Console.WriteLine($"{new string(' ', depth * 4)}- {current}: resume");
                         isFirst = false;
+                    }
 
                     LoopCurrent:
 
@@ -101,12 +103,11 @@ namespace WaaS.Runtime
                                 return;
                             }
 
-                            if (frames.TryPeek(out var next) && next.core is WasmStackFrame nextWasm)
+                            if (frames.TryPeek(out var next) && next.DoesTakeResults())
                             {
                                 Span<StackValueItem> results = stackalloc StackValueItem[current.ResultLength];
                                 current.TakeResults(results);
-
-                                foreach (var value in results) nextWasm.Push(value.ExpectValue());
+                                next.PushResults(results);
                             }
 
                             current.Dispose();
@@ -120,9 +121,11 @@ namespace WaaS.Runtime
                 }
                 catch
                 {
-                    foreach (var f in frames) f.Dispose();
-
-                    frames.Clear();
+                    while (frames.TryPeek(out var f) && f != initial)
+                    {
+                        frames.Pop();
+                        f.Dispose();
+                    }
                     throw;
                 }
             }
@@ -166,9 +169,7 @@ namespace WaaS.Runtime
         {
             lock (locker)
             {
-                if (frames.Count >= maxStackFrames) throw new InvalidOperationException();
-                if (frames.TryPeek(out var top) && top.core is not WasmStackFrame && function is not InstanceFunction)
-                    throw new InvalidOperationException();
+                if (frames.Count >= maxStackFrames) throw new InvalidOperationException("Stack overflow.");
 
                 var frame = function.CreateFrame(this, inputValues);
                 frames.Push(frame);
@@ -192,8 +193,10 @@ namespace WaaS.Runtime
             lock (locker)
             {
                 var frame = PushFrame(function, inputValues);
+                var movingNow = moving;
+                moving = false;
                 MoveToEndOrPending(frame, out var pending);
-
+                moving = movingNow;
                 if (pending)
                 {
                     Dispose();

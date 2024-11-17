@@ -18,7 +18,7 @@ namespace WaaS.ComponentModel.Runtime
         private int typeCursor;
         private uint serializedCursor;
 
-        public IValueType GetNextType()
+        public IValueType? GetNextType()
         {
             return RootType.GetNextType(typeCursor);
         }
@@ -117,7 +117,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public bool PullBool()
         {
-            if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.Bool })
+            if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.Bool })
                 throw new InvalidOperationException();
             try
             {
@@ -134,7 +134,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public byte PullU8()
         {
-            if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.U8 })
+            if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.U8 })
                 throw new InvalidOperationException();
             try
             {
@@ -151,7 +151,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public ushort PullU16()
         {
-            if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.U16 })
+            if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.U16 })
                 throw new InvalidOperationException();
             try
             {
@@ -168,7 +168,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public uint PullU32()
         {
-            if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.U32 })
+            if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.U32 })
                 throw new InvalidOperationException();
             try
             {
@@ -185,7 +185,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public ulong PullU64()
         {
-            if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.U64 })
+            if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.U64 })
                 throw new InvalidOperationException();
             try
             {
@@ -202,7 +202,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public sbyte PullS8()
         {
-            if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S8 })
+            if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S8 })
                 throw new InvalidOperationException();
             try
             {
@@ -219,7 +219,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public short PullS16()
         {
-            if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S16 })
+            if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S16 })
                 throw new InvalidOperationException();
             try
             {
@@ -236,7 +236,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public int PullS32()
         {
-            if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S32 })
+            if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S32 })
                 throw new InvalidOperationException();
             try
             {
@@ -253,7 +253,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public long PullS64()
         {
-            if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S64 })
+            if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S64 })
                 throw new InvalidOperationException();
             try
             {
@@ -270,7 +270,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public float PullF32()
         {
-            if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.F32 })
+            if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.F32 })
                 throw new InvalidOperationException();
             try
             {
@@ -292,7 +292,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public double PullF64()
         {
-            if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.F64 })
+            if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.F64 })
                 throw new InvalidOperationException();
             try
             {
@@ -314,7 +314,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public uint PullChar()
         {
-            if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.Char })
+            if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.Char })
                 throw new InvalidOperationException();
             try
             {
@@ -325,7 +325,7 @@ namespace WaaS.ComponentModel.Runtime
                     value = LoadSerialized<uint>();
 
                 if (value is >= 0x110000 or (>= 0xD800 and <= 0xDFFF))
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException($"Invalid Unicode code point: 0x{value:X}");
 
                 return value;
             }
@@ -353,7 +353,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public StringInfo PullStringInfo()
         {
-            if (GetNextType().Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.String })
+            if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.String })
                 throw new InvalidOperationException();
 
             const uint UTF16_TAG = unchecked((uint)(1 << 31));
@@ -442,7 +442,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public ValueLifter PullList(out uint length)
         {
-            if (GetNextType().Despecialize() is not IListType listType)
+            if (GetNextType()?.Despecialize() is not IListType listType)
                 throw new InvalidOperationException();
 
             try
@@ -475,7 +475,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public ValueLifter PullRecord()
         {
-            if (GetNextType().Despecialize() is not IRecordType recordType)
+            if (GetNextType()?.Despecialize() is not IRecordType recordType)
                 throw new InvalidOperationException();
 
             try
@@ -504,7 +504,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public ValueLifter PullVariant(out uint caseIndex)
         {
-            if (GetNextType().Despecialize() is not IVariantType variantType)
+            if (GetNextType()?.Despecialize() is not IVariantType variantType)
                 throw new InvalidOperationException();
 
             try
@@ -514,7 +514,10 @@ namespace WaaS.ComponentModel.Runtime
                     // stack value type is verified by context
                     caseIndex = NextFlattenedI32();
                     var caseType = variantType.Cases.Span[checked((int)caseIndex)].Type?.Despecialize();
-                    if (caseType == null) return default;
+                    if (caseType == null)
+                    {
+                        return new ValueLifter(Context, ElementTypeSelector.FromSingle(null), Span<StackValueItem>.Empty);
+                    }
 
                     var count = checked((int)caseType.FlattenedCount);
                     var newSource = SourceFlattened[..count];
@@ -525,7 +528,10 @@ namespace WaaS.ComponentModel.Runtime
                 {
                     caseIndex = LoadSerialized<uint>();
                     var caseType = variantType.Cases.Span[checked((int)caseIndex)].Type?.Despecialize();
-                    if (caseType == null) return default;
+                    if (caseType == null)
+                    {
+                        return new ValueLifter(Context, ElementTypeSelector.FromSingle(null), Span<byte>.Empty);
+                    }
 
                     serializedCursor = Utils.ElementSizeAlignTo(serializedCursor, caseType.AlignmentRank);
                     var length = caseType.ElementSize;
@@ -542,7 +548,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public uint PullFlags()
         {
-            if (GetNextType().Despecialize() is not IFlagsType flagsType)
+            if (GetNextType()?.Despecialize() is not IFlagsType flagsType)
                 throw new InvalidOperationException();
 
             try
@@ -570,7 +576,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public Owned PullOwned()
         {
-            if (GetNextType().Despecialize() is not IOwnedType { Type: { } resourceType })
+            if (GetNextType()?.Despecialize() is not IOwnedType { Type: { } resourceType })
                 throw new InvalidOperationException();
 
             try
@@ -587,7 +593,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public Borrowed PullBorrowed()
         {
-            if (GetNextType().Despecialize() is not IBorrowedType { Type: { } resourceType })
+            if (GetNextType()?.Despecialize() is not IBorrowedType { Type: { } resourceType })
                 throw new InvalidOperationException();
 
             try

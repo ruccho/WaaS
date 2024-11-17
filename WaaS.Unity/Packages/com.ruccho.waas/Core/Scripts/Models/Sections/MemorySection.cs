@@ -45,5 +45,15 @@ namespace WaaS.Models
         {
             return Limits.GetHashCode();
         }
+
+        public static bool operator ==(MemoryType left, MemoryType right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(MemoryType left, MemoryType right)
+        {
+            return !left.Equals(right);
+        }
     }
 }

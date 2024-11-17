@@ -33,7 +33,7 @@ namespace WaaS.Models
         }
 
         public GlobalType Type { get; }
-        public ConstantExpression Expression { get; }
+        public IConstantExpression Expression { get; }
     }
 
     /// <summary>
@@ -65,6 +65,16 @@ namespace WaaS.Models
         public override int GetHashCode()
         {
             return HashCode.Combine((int)ValueType, (int)Mutability);
+        }
+
+        public static bool operator ==(GlobalType left, GlobalType right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(GlobalType left, GlobalType right)
+        {
+            return !left.Equals(right);
         }
     }
 

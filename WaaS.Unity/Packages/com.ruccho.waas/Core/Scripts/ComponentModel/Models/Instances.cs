@@ -457,6 +457,7 @@ namespace WaaS.ComponentModel.Models
         public bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace,
             out IInlineExport<ISortedExportable> result)
         {
+            if (reader.ReadUnaligned<byte>() != 0x00) throw new InvalidModuleException();
             var name = reader.ReadUtf8String();
             var sortIndex = Formatter<SortIndex>.Read(ref reader, indexSpace);
 

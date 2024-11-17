@@ -46,7 +46,8 @@ namespace WaaS.ComponentModel.Runtime
 
         public static void TransferNext(ref ValueLifter lifter, ValuePusher pusher)
         {
-            var next = lifter.GetNextType().Despecialize();
+            var next = lifter.GetNextType()?.Despecialize();
+            if (next == null) return;
             switch (next)
             {
                 case IPrimitiveValueType primitiveValueType:

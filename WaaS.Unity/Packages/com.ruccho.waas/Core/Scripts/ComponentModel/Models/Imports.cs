@@ -56,7 +56,7 @@ namespace WaaS.ComponentModel.Models
         }
     }
 
-    public interface IExport<out T> where T : ISortedExportable
+    public interface IExport<out T> : IUnresolved<T> where T : ISortedExportable
     {
         static IExport()
         {
@@ -124,6 +124,10 @@ namespace WaaS.ComponentModel.Models
         public ImportExportName Name { get; }
         public IUnresolved<T> Target { get; }
         public IExportableDescriptor<T>? Descriptor { get; }
+        public T ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return context.Resolve(Target);
+        }
     }
 
     [GenerateFormatter]

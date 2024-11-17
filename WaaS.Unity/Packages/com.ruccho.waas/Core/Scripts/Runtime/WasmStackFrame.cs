@@ -114,6 +114,18 @@ namespace WaaS.Runtime
             }
         }
 
+        public bool DoesTakeResults(ushort version)
+        {
+            ThrowIfOutdated(version);
+            return true;
+        }
+
+        public void PushResults(ushort version, Span<StackValueItem> source)
+        {
+            ThrowIfOutdated(version);
+            foreach (var value in source) Push(value.ExpectValueI32());
+        }
+
         public static WasmStackFrame Get(ExecutionContext context, InstanceFunction function,
             ReadOnlySpan<StackValueItem> inputValues)
         {
@@ -129,7 +141,8 @@ namespace WaaS.Runtime
             Context = context;
             Function = function;
 
-            var numParams = Function.function.Type.ParameterTypes.Length;
+            var parameters = Function.function.Type.ParameterTypes.Span;
+            var numParams = parameters.Length;
 
             var functionLocalTypes = Function.function.Body.Locals.Span;
 
@@ -170,6 +183,14 @@ namespace WaaS.Runtime
                     localsSpan[cursor++] = new StackValueItem(functionLocal.Type);
 
             if (inputValues.Length != numParams) throw new ArgumentException(nameof(inputValues));
+            for (var i = 0; i < inputValues.Length; i++)
+            {
+                if (!inputValues[i].IsType(parameters[i]))
+                {
+                    throw new ArgumentException($"signature mismatch. expected {function.Type} but got {inputValues[i]} at {i}");
+                }
+            }
+
             inputValues.CopyTo(localsSpan.Slice(0, numParams));
         }
 

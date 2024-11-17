@@ -39,17 +39,24 @@ namespace WaaS.ComponentModel.Runtime
             return new ElementTypeSelector(Kind.Single, single, -1);
         }
 
-        public IValueType GetNextType(int index)
+        public IValueType? GetNextType(int index)
         {
-            return kind switch
+            switch (kind)
             {
-                Kind.Record => (type as IRecordType)!.Fields.Span[index].Type,
-                Kind.List => index < listLength
-                    ? (type as IListType)!.ElementType
-                    : throw new ArgumentOutOfRangeException(),
-                Kind.Single => type != null && index == 0 ? type : throw new ArgumentOutOfRangeException(),
-                _ => throw new ArgumentOutOfRangeException()
-            };
+                case Kind.Record:
+                {
+                    var fields = (type as IRecordType)!.Fields.Span;
+                    return index < fields.Length ? fields[index].Type : null;
+                }
+                case Kind.List:
+                    return index < listLength
+                        ? (type as IListType)!.ElementType
+                        : null;
+                case Kind.Single:
+                    return type != null && index == 0 ? type : null;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
     }
 }

@@ -109,7 +109,7 @@ public class ComponentBinaryFormatterGenerator : IIncrementalGenerator
                     sourceBuilder.AppendLine(
                         /* lang=c#  */
                         $$"""
-                                      if(global::{{FormatNamespace}}.Formatter<{{variantType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>.TryRead(ref reader, indexSpace, out var f{{i}}))
+                                      if(global::{{FormatNamespace}}.Formatter<{{variantType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>.TryRead(ref reader, indexSpace, out var f{{i}}, false))
                                       {
                                           result = f{{i}};
                                           return true;
@@ -174,7 +174,9 @@ public class ComponentBinaryFormatterGenerator : IIncrementalGenerator
             sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
                         {{string.Join("\n        ", properties.Select(p => $"{p.Name} = {Utils.ToCamelCase(p.Name.AsSpan())};"))}}
+                        Validate();
                     }
+                    partial void Validate();
                 """);
         }
 

@@ -190,6 +190,7 @@ namespace WaaS.ComponentModel.Models
                 CoreSort coreSort => coreSort.Tag switch
                 {
                     CoreSortTag.Module => new Resolver<ICoreModule>(Depth, IndexSpace.Get<ICoreModule>(Index)),
+                    CoreSortTag.Type => new Resolver<ICoreType>(Depth, IndexSpace.Get<ICoreType>(Index)),
                     _ => throw new ArgumentOutOfRangeException()
                 },
                 _ => throw new ArgumentOutOfRangeException(nameof(sort))
@@ -224,8 +225,10 @@ namespace WaaS.ComponentModel.Models
 
             public T ResolveFirstTime(IInstanceResolutionContext context)
             {
+                /*
                 for (var i = 0; i < Depth; i++)
                     context = context.Parent ?? throw new InvalidModuleException("Invalid depth");
+                    */
                 return context.Resolve(Target);
             }
         }

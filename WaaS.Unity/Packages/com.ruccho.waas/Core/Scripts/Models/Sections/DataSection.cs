@@ -34,7 +34,7 @@ namespace WaaS.Models
         }
 
         public uint MemoryIndex { get; }
-        public ConstantExpression Offset { get; }
+        public IConstantExpression Offset { get; }
         public ReadOnlyMemory<byte> Payload { get; }
     }
 }

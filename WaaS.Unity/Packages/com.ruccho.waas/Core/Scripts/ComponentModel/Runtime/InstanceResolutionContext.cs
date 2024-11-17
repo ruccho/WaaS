@@ -14,11 +14,11 @@ namespace WaaS.ComponentModel.Runtime
 
     internal class InstanceResolutionContext : IInstanceResolutionContext
     {
-        private readonly IReadOnlyDictionary<string, ISortedExportable> imports;
+        private readonly IReadOnlyDictionary<string, ISortedExportable>? imports;
         private readonly Dictionary<object, ISorted> resolved = new();
         private readonly HashSet<object> resolving = new();
 
-        public InstanceResolutionContext(IReadOnlyDictionary<string, ISortedExportable> imports,
+        public InstanceResolutionContext(IReadOnlyDictionary<string, ISortedExportable>? imports,
             IInstanceResolutionContext? parent)
         {
             this.imports = imports;
@@ -45,7 +45,7 @@ namespace WaaS.ComponentModel.Runtime
 
         public T ResolveImport<T>(IImport<T> import) where T : ISortedExportable
         {
-            if (!imports.TryGetValue(import.Name.Name, out var imported)) throw new LinkException();
+            if (imports == null || !imports.TryGetValue(import.Name.Name, out var imported)) throw new LinkException();
 
             if (imported is not T importedTyped) throw new LinkException();
 

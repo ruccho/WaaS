@@ -1,11 +1,13 @@
 ﻿#nullable enable
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace WaaS.ComponentModel.Runtime
 {
     public interface IValuePusherCore : IVersionedDisposable<ushort>
     {
+        bool TryGetNextType([NotNullWhen(true)] out IValueType? type);
         void Push(bool value);
         void Push(byte value);
         void Push(sbyte value);

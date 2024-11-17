@@ -64,6 +64,13 @@ namespace WaaS.Runtime
             outputValues.Span.CopyTo(dest);
         }
 
+        public bool DoesTakeResults(ushort version) => false;
+
+        public void PushResults(ushort version, Span<StackValueItem> source)
+        {
+            throw new InvalidOperationException();
+        }
+
         public static ExternalStackFrame Get(ExecutionContext context, ExternalFunction function,
             ReadOnlySpan<StackValueItem> inputValues)
         {

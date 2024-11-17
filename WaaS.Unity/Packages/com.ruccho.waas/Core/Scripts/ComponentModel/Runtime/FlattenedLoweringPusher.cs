@@ -19,7 +19,7 @@ namespace WaaS.ComponentModel.Runtime
             if (!Pool.TryPop(out var pooled)) pooled = new FlattenedLoweringPusher();
             var dest = ArrayPool<StackValueItem>.Shared.Rent(flattenedCount);
             // for safety
-            Array.Clear(pooled.rentDestination, 0, pooled.rentDestination.Length);
+            Array.Clear(dest, 0, dest.Length);
 
             destination = pooled.Destination =
                 (pooled.rentDestination = dest)
@@ -88,6 +88,41 @@ namespace WaaS.ComponentModel.Runtime
             MoveNextType();
         }
 
+        protected override void PushS8Core(sbyte value)
+        {
+            ref var t = ref Destination.Span[destinationCursor];
+            t = t.valueType == ValueType.I64
+                ? new StackValueItem((ulong)value)
+                : new StackValueItem(value);
+
+            destinationCursor++;
+            MoveNextType();;
+        }
+
+        protected override void PushS16Core(short value)
+        {
+            ref var t = ref Destination.Span[destinationCursor];
+            t = t.valueType == ValueType.I64
+                ? new StackValueItem((ulong)value)
+                : new StackValueItem(value);
+
+            destinationCursor++;
+            MoveNextType();
+        }
+
+        protected override void PushS32Core(int value)
+        {
+            ref var t = ref Destination.Span[destinationCursor];
+            t = t.valueType == ValueType.I64
+                ? new StackValueItem((ulong)value)
+                : new StackValueItem(value);
+
+            destinationCursor++;
+            MoveNextType();
+        }
+
+        protected override void PushS64Core(long value) => PushU64Core(unchecked((ulong)value));
+
         protected override void PushF32Core(float value)
         {
             ref var t = ref Destination.Span[destinationCursor];
@@ -145,25 +180,24 @@ namespace WaaS.ComponentModel.Runtime
             Destination.Span[destinationCursor] = new StackValueItem(caseIndex);
             destinationCursor++;
 
-            if (caseType == null) return default;
+            var flattenedCaseCount = checked((int)variantType.FlattenedCount) - 1;
 
-            var count = checked((int)caseType.Despecialize().FlattenedCount);
-            var dest = Destination[..count];
-            destinationCursor += count;
+            var dest = Destination.Slice(destinationCursor, flattenedCaseCount);
+            destinationCursor += flattenedCaseCount;
 
             // pre-join type
             // NOTE: is it better to use pooled arrays for large variants?
 
-            Span<ValueType> prejoinedTypes = stackalloc ValueType[checked((int)variantType.FlattenedCount)];
+            Span<ValueType> prejoinedTypes = stackalloc ValueType[flattenedCaseCount + 1];
             variantType.Flatten(prejoinedTypes);
             prejoinedTypes = prejoinedTypes[1..];
 
-            for (var i = 0; i < count; i++)
+            for (var i = 0; i < flattenedCaseCount; i++)
                 if ((byte)dest.Span[i].valueType == 0) // not fixed yet
                     dest.Span[i] = new StackValueItem(prejoinedTypes[i]);
-
+            
             return Get(dest).Init(Context ?? throw new InvalidOperationException(),
-                ElementTypeSelector.FromSingle(caseType.Despecialize())).Wrap();
+                ElementTypeSelector.FromSingle(caseType?.Despecialize())).Wrap();
         }
     }
 }
