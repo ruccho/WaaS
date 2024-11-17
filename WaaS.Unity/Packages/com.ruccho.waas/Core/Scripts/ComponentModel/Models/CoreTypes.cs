@@ -82,6 +82,18 @@ namespace WaaS.ComponentModel.Models
             Formatter<CoreModuleType>.Default = new CoreModuleTypeFormatter();
         }
 
+        private CoreModuleType(ReadOnlyMemory<ICoreModuleDeclaration> declarations)
+        {
+            Declarations = declarations;
+        }
+
+        public ReadOnlyMemory<ICoreModuleDeclaration> Declarations { get; }
+
+        public ICoreType ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            return this;
+        }
+
         private class CoreModuleTypeFormatter : IFormatter<CoreModuleType>
         {
             public bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace, out CoreModuleType result)
@@ -94,18 +106,6 @@ namespace WaaS.ComponentModel.Models
                 );
                 return true;
             }
-        }
-
-        private CoreModuleType(ReadOnlyMemory<ICoreModuleDeclaration> declarations)
-        {
-            Declarations = declarations;
-        }
-
-        public ReadOnlyMemory<ICoreModuleDeclaration> Declarations { get; }
-
-        public ICoreType ResolveFirstTime(IInstanceResolutionContext context)
-        {
-            return this;
         }
     }
 
@@ -157,7 +157,8 @@ namespace WaaS.ComponentModel.Models
         public ImportKind Kind => Descriptor.Kind;
         public IUnresolved<ICoreType>? Type { get; }
 
-        public CoreImportDeclaration(string moduleName, string name, ImportDescriptor descriptor, IUnresolved<ICoreType>? type)
+        public CoreImportDeclaration(string moduleName, string name, ImportDescriptor descriptor,
+            IUnresolved<ICoreType>? type)
         {
             ModuleName = moduleName;
             Name = name;

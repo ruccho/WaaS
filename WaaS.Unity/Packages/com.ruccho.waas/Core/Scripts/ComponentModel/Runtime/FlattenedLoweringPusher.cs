@@ -96,7 +96,8 @@ namespace WaaS.ComponentModel.Runtime
                 : new StackValueItem(value);
 
             destinationCursor++;
-            MoveNextType();;
+            MoveNextType();
+            ;
         }
 
         protected override void PushS16Core(short value)
@@ -121,7 +122,10 @@ namespace WaaS.ComponentModel.Runtime
             MoveNextType();
         }
 
-        protected override void PushS64Core(long value) => PushU64Core(unchecked((ulong)value));
+        protected override void PushS64Core(long value)
+        {
+            PushU64Core(unchecked((ulong)value));
+        }
 
         protected override void PushF32Core(float value)
         {
@@ -195,7 +199,7 @@ namespace WaaS.ComponentModel.Runtime
             for (var i = 0; i < flattenedCaseCount; i++)
                 if ((byte)dest.Span[i].valueType == 0) // not fixed yet
                     dest.Span[i] = new StackValueItem(prejoinedTypes[i]);
-            
+
             return Get(dest).Init(Context ?? throw new InvalidOperationException(),
                 ElementTypeSelector.FromSingle(caseType?.Despecialize())).Wrap();
         }

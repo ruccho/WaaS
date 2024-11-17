@@ -83,7 +83,8 @@ namespace WaaS.ComponentModel.Models
         public static T Read(ref ModuleReader reader, IIndexSpace indexSpace, bool addToSort = true)
         {
             var pos = reader.Position;
-            if (!UnsafeGetDefault().TryRead(ref reader, indexSpace, out var read)) throw new InvalidModuleException($"Failed to read {typeof(T)} at 0x{pos:X}");
+            if (!UnsafeGetDefault().TryRead(ref reader, indexSpace, out var read))
+                throw new InvalidModuleException($"Failed to read {typeof(T)} at 0x{pos:X}");
 
             if (read is IReadCallbackReceiver<T> receiver) read = receiver.OnAfterRead(indexSpace);
 
@@ -92,7 +93,8 @@ namespace WaaS.ComponentModel.Models
             return read;
         }
 
-        public static bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace, [NotNullWhen(true)] out T? result, bool addToSort = true)
+        public static bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace, [NotNullWhen(true)] out T? result,
+            bool addToSort = true)
         {
             if (!UnsafeGetDefault().TryRead(ref reader, indexSpace, out result)) return false;
 
@@ -223,7 +225,7 @@ namespace WaaS.ComponentModel.Models
 
             public IUnresolved<T> Get(uint index)
             {
-                #if DEBUG
+#if DEBUG
                 try
                 {
                     return items[checked((int)index)];
@@ -234,9 +236,9 @@ namespace WaaS.ComponentModel.Models
                         $"Index was out of range. Sort {typeof(T)} has {items.Count} but index {index} was specified.",
                         ex);
                 }
-                #else
+#else
                 return items[checked((int)index)];
-                #endif
+#endif
             }
 
             public void Add(IUnresolved<T> value, out int index)

@@ -124,6 +124,7 @@ namespace WaaS.ComponentModel.Models
         public ImportExportName Name { get; }
         public IUnresolved<T> Target { get; }
         public IExportableDescriptor<T>? Descriptor { get; }
+
         public T ResolveFirstTime(IInstanceResolutionContext context)
         {
             return context.Resolve(Target);

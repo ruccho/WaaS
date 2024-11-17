@@ -64,7 +64,10 @@ namespace WaaS.Runtime
             outputValues.Span.CopyTo(dest);
         }
 
-        public bool DoesTakeResults(ushort version) => false;
+        public bool DoesTakeResults(ushort version)
+        {
+            return false;
+        }
 
         public void PushResults(ushort version, Span<StackValueItem> source)
         {

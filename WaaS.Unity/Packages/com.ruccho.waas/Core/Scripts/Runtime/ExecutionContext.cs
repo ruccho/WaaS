@@ -58,10 +58,8 @@ namespace WaaS.Runtime
                     var depth = frames.Count - 1;
 
                     if (isFirst)
-                    {
                         // Console.WriteLine($"{new string(' ', depth * 4)}- {current}: resume");
                         isFirst = false;
-                    }
 
                     LoopCurrent:
 
@@ -126,6 +124,7 @@ namespace WaaS.Runtime
                         frames.Pop();
                         f.Dispose();
                     }
+
                     throw;
                 }
             }

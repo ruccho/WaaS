@@ -1316,9 +1316,8 @@ namespace WaaS.ComponentModel.Models
 
             context = new InstanceResolutionContext(null, context);
             foreach (var (key, desc) in exports)
-            {
-                if (!desc.ValidateExported(context, (IInstance?)argument, key)) return false;
-            }
+                if (!desc.ValidateExported(context, (IInstance?)argument, key))
+                    return false;
 
             return true;
         }

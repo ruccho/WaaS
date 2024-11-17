@@ -17,7 +17,7 @@ namespace WaaS.ComponentModel.Runtime
             this.core = core;
             version = core.Version;
         }
-        
+
         public bool TryGetNextType(out IValueType? type)
         {
             ThrowIfDisposed();

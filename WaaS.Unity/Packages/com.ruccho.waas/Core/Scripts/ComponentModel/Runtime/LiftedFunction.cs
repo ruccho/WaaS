@@ -60,7 +60,8 @@ namespace WaaS.ComponentModel.Runtime
                 args[3] = new StackValueItem(newSize);
                 Context!.InterruptFrame(function!.ReallocFunction, args[..4], args[4..]);
                 var ptr = args[4].ExpectValueI32();
-                if(alignment != 0 && (ptr & (alignment - 1)) != 0) throw new TrapException("Realloc returned unaligned pointer");
+                if (alignment != 0 && (ptr & (alignment - 1)) != 0)
+                    throw new TrapException("Realloc returned unaligned pointer");
                 return ptr;
             }
 

@@ -54,13 +54,25 @@ namespace WaaS.ComponentModel.Runtime
             MoveNextType();
         }
 
-        protected override void PushS8Core(sbyte value) => PushU8Core(unchecked((byte)value));
+        protected override void PushS8Core(sbyte value)
+        {
+            PushU8Core(unchecked((byte)value));
+        }
 
-        protected override void PushS16Core(short value) => PushU16Core(unchecked((ushort)value));
+        protected override void PushS16Core(short value)
+        {
+            PushU16Core(unchecked((ushort)value));
+        }
 
-        protected override void PushS32Core(int value) => PushU32Core(unchecked((uint)value));
+        protected override void PushS32Core(int value)
+        {
+            PushU32Core(unchecked((uint)value));
+        }
 
-        protected override void PushS64Core(long value) => PushU64Core(unchecked((ulong)value));
+        protected override void PushS64Core(long value)
+        {
+            PushU64Core(unchecked((ulong)value));
+        }
 
         protected override void PushF32Core(float value)
         {

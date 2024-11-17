@@ -116,7 +116,10 @@ namespace WaaS.ComponentModel.Binding
             {
             }
 
-            public bool DoesTakeResults(ushort version) => false;
+            public bool DoesTakeResults(ushort version)
+            {
+                return false;
+            }
 
             public void PushResults(ushort version, Span<StackValueItem> source)
             {
@@ -172,20 +175,21 @@ namespace WaaS.ComponentModel.Binding
         public delegate STaskVoid InvokeAsyncDelegate(ExecutionContext context, PushPullAdapter adapter,
             STaskVoid frameMove,
             STask<ValuePusher> resultPusher);
-        
+
         private readonly InvokeAsyncDelegate invokeAsync;
+
+        public ExternalFunctionDelegate(IFunctionType type, InvokeAsyncDelegate invokeAsync)
+        {
+            this.invokeAsync = invokeAsync;
+            Type = type;
+        }
+
         public override IFunctionType Type { get; }
 
         protected override STaskVoid InvokeAsync(ExecutionContext context, PushPullAdapter adapter, STaskVoid frameMove,
             STask<ValuePusher> resultPusher)
         {
             return invokeAsync(context, adapter, frameMove, resultPusher);
-        }
-
-        public ExternalFunctionDelegate(IFunctionType type, InvokeAsyncDelegate invokeAsync)
-        {
-            this.invokeAsync = invokeAsync;
-            Type = type;
         }
     }
 }

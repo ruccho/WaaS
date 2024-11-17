@@ -33,8 +33,15 @@ namespace WaaS.Runtime
             core.TakeResults(version, dest);
         }
 
-        public bool DoesTakeResults() => core.DoesTakeResults(version);
-        public void PushResults(Span<StackValueItem> source) => core.PushResults(version, source);
+        public bool DoesTakeResults()
+        {
+            return core.DoesTakeResults(version);
+        }
+
+        public void PushResults(Span<StackValueItem> source)
+        {
+            core.PushResults(version, source);
+        }
 
         public bool Equals(StackFrame other)
         {

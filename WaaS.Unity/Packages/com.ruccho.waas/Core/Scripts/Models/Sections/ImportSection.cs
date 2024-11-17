@@ -68,27 +68,25 @@ namespace WaaS.Models
     [StructLayout(LayoutKind.Explicit)]
     public readonly struct ImportDescriptor : IEquatable<ImportDescriptor>
     {
-        [FieldOffset(0)] private readonly ImportKind kind;
-
         [FieldOffset(1)] private readonly uint typeIndex;
         [FieldOffset(1)] private readonly TableType tableType;
         [FieldOffset(1)] private readonly MemoryType memoryType;
         [FieldOffset(1)] private readonly GlobalType globalType;
 
-        public ImportKind Kind => kind;
+        [field: FieldOffset(0)] public ImportKind Kind { get; }
 
-        public uint? TypeIndex => kind == ImportKind.Type ? typeIndex : null;
-        public TableType? TableType => kind == ImportKind.Table ? tableType : null;
-        public MemoryType? MemoryType => kind == ImportKind.Memory ? memoryType : null;
-        public GlobalType? GlobalType => kind == ImportKind.Global ? globalType : null;
+        public uint? TypeIndex => Kind == ImportKind.Type ? typeIndex : null;
+        public TableType? TableType => Kind == ImportKind.Table ? tableType : null;
+        public MemoryType? MemoryType => Kind == ImportKind.Memory ? memoryType : null;
+        public GlobalType? GlobalType => Kind == ImportKind.Global ? globalType : null;
 
         internal ImportDescriptor(ref ModuleReader reader)
         {
             this = default;
 
-            kind = reader.ReadUnaligned<ImportKind>();
+            Kind = reader.ReadUnaligned<ImportKind>();
 
-            switch (kind)
+            switch (Kind)
             {
                 case ImportKind.Type:
                 {
@@ -117,9 +115,9 @@ namespace WaaS.Models
 
         public bool Equals(ImportDescriptor other)
         {
-            if (kind != other.kind) return false;
+            if (Kind != other.Kind) return false;
 
-            switch (kind)
+            switch (Kind)
             {
                 case ImportKind.Type:
                 {
@@ -150,9 +148,9 @@ namespace WaaS.Models
         public override int GetHashCode()
         {
             var hash = new HashCode();
-            hash.Add((int)kind);
+            hash.Add((int)Kind);
 
-            switch (kind)
+            switch (Kind)
             {
                 case ImportKind.Type:
                 {

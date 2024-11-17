@@ -11,6 +11,7 @@ namespace WaaS.Models
         StackValueItem Evaluate(GlobalInstance globalInstance);
         StackValueItem Evaluate(ReadOnlySpan<Runtime.Global> initializingGlobals);
     }
+
     public class ConstantExpression : IConstantExpression
     {
         private bool _inEvaluation;
@@ -85,6 +86,7 @@ namespace WaaS.Models
             }
         }
     }
+
     public class ConstantExpressionConstant : IConstantExpression
     {
         private readonly StackValueItem item;
@@ -94,7 +96,14 @@ namespace WaaS.Models
             this.item = item;
         }
 
-        public StackValueItem Evaluate(GlobalInstance globalInstance) => item;
-        public StackValueItem Evaluate(ReadOnlySpan<Runtime.Global> initializingGlobals) => item;
+        public StackValueItem Evaluate(GlobalInstance globalInstance)
+        {
+            return item;
+        }
+
+        public StackValueItem Evaluate(ReadOnlySpan<Runtime.Global> initializingGlobals)
+        {
+            return item;
+        }
     }
 }

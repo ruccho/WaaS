@@ -184,12 +184,9 @@ namespace WaaS.Runtime
 
             if (inputValues.Length != numParams) throw new ArgumentException(nameof(inputValues));
             for (var i = 0; i < inputValues.Length; i++)
-            {
                 if (!inputValues[i].IsType(parameters[i]))
-                {
-                    throw new ArgumentException($"signature mismatch. expected {function.Type} but got {inputValues[i]} at {i}");
-                }
-            }
+                    throw new ArgumentException(
+                        $"signature mismatch. expected {function.Type} but got {inputValues[i]} at {i}");
 
             inputValues.CopyTo(localsSpan.Slice(0, numParams));
         }

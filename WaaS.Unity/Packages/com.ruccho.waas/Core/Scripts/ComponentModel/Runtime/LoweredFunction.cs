@@ -11,6 +11,8 @@ namespace WaaS.ComponentModel.Runtime
     public class LoweredFunction : ICoreSortedExportable<IInvocableFunction>, IInvocableFunction, ICanonOptions,
         ICanonContext
     {
+        private readonly bool hasSerializedResult;
+
         public LoweredFunction(CanonOptionStringEncodingKind stringEncoding, IInvocableFunction? reallocFunction,
             Memory? memoryToRealloc, IFunction componentFunction)
         {
@@ -34,9 +36,13 @@ namespace WaaS.ComponentModel.Runtime
                 hasSerializedResult = true;
             }
             else if (resultFlattenedCount == 1)
+            {
                 resultType!.Flatten(resultTypes = new ValueType[resultFlattenedCount]);
+            }
             else
+            {
                 resultTypes = Array.Empty<ValueType>();
+            }
 
             // params
             ValueType[] paramTypes;
@@ -51,10 +57,7 @@ namespace WaaS.ComponentModel.Runtime
                 paramType.Flatten(hasSerializedResult ? paramTypes.AsSpan()[..^1] : paramTypes);
             }
 
-            if (hasSerializedResult)
-            {
-                paramTypes[^1] = ValueType.I32;
-            }
+            if (hasSerializedResult) paramTypes[^1] = ValueType.I32;
 
             Type = new FunctionType(paramTypes, resultTypes);
             this.hasSerializedResult = hasSerializedResult;
@@ -74,7 +77,6 @@ namespace WaaS.ComponentModel.Runtime
 
         public IInvocableFunction CoreExternal => this;
         public FunctionType Type { get; }
-        private readonly bool hasSerializedResult;
 
         public StackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues)
         {
@@ -106,9 +108,7 @@ namespace WaaS.ComponentModel.Runtime
                 {
                     var ptr = inputValuesParams[0].ExpectValueI32();
                     if (Utils.ElementSizeAlignTo(ptr, functionType.ParameterType.AlignmentRank) != ptr)
-                    {
                         throw new TrapException("Parameter pointer is not aligned");
-                    }
                     lifter = new ValueLifter(this, typeSelector,
                         MemoryToRealloc!.Span[checked((int)ptr)..]);
                 }
@@ -119,9 +119,7 @@ namespace WaaS.ComponentModel.Runtime
             {
                 var ptr = inputValues[^1].ExpectValueI32();
                 if (Utils.ElementSizeAlignTo(ptr, functionType.Result!.Despecialize().AlignmentRank) != ptr)
-                {
                     throw new TrapException("Result pointer is not aligned");
-                }
                 serializedResultMemory = MemoryToRealloc!.AsMemory()[(int)ptr..];
             }
 
@@ -147,13 +145,8 @@ namespace WaaS.ComponentModel.Runtime
             {
                 ThrowIfOutdated(version);
                 if (function!.hasSerializedResult)
-                {
                     return 0;
-                }
-                else
-                {
-                    return function!.ComponentFunction.Type.Result != null ? 1 : 0;
-                }
+                return function!.ComponentFunction.Type.Result != null ? 1 : 0;
             }
 
             public void Dispose(ushort version)

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.InteropServices;
 using WaaS.Runtime;
 
 namespace WaaS.Models
@@ -56,15 +55,13 @@ namespace WaaS.Models
 
                 var numElements = reader.ReadVectorSize();
                 functionIndices = new IConstantExpression[numElements];
-                for (var i = 0; i < numElements; i++)
-                {
-                    functionIndices[i] = new ConstantExpression(ref reader);
-                }
+                for (var i = 0; i < numElements; i++) functionIndices[i] = new ConstantExpression(ref reader);
             }
             else
             {
                 var elementKind = kind == 0 ? ElementKind.Function : reader.ReadUnaligned<ElementKind>();
-                if(elementKind != ElementKind.Function) throw new NotSupportedException("Only function elements are supported.");
+                if (elementKind != ElementKind.Function)
+                    throw new NotSupportedException("Only function elements are supported.");
                 var numFunctions = reader.ReadVectorSize();
                 functionIndices = new IConstantExpression[numFunctions];
                 for (var i = 0; i < functionIndices.Length; i++)

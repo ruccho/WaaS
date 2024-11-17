@@ -515,9 +515,8 @@ namespace WaaS.ComponentModel.Runtime
                     caseIndex = NextFlattenedI32();
                     var caseType = variantType.Cases.Span[checked((int)caseIndex)].Type?.Despecialize();
                     if (caseType == null)
-                    {
-                        return new ValueLifter(Context, ElementTypeSelector.FromSingle(null), Span<StackValueItem>.Empty);
-                    }
+                        return new ValueLifter(Context, ElementTypeSelector.FromSingle(null),
+                            Span<StackValueItem>.Empty);
 
                     var count = checked((int)caseType.FlattenedCount);
                     var newSource = SourceFlattened[..count];
@@ -529,9 +528,7 @@ namespace WaaS.ComponentModel.Runtime
                     caseIndex = LoadSerialized<uint>();
                     var caseType = variantType.Cases.Span[checked((int)caseIndex)].Type?.Despecialize();
                     if (caseType == null)
-                    {
                         return new ValueLifter(Context, ElementTypeSelector.FromSingle(null), Span<byte>.Empty);
-                    }
 
                     serializedCursor = Utils.ElementSizeAlignTo(serializedCursor, caseType.AlignmentRank);
                     var length = caseType.ElementSize;
