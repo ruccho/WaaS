@@ -4,14 +4,20 @@ namespace WaaS.ComponentModel
 {
     public class ResourceTable<T>
     {
+        private readonly bool reserveZero;
         private readonly object locker = new();
         private Element[] elements;
         private int head;
 
-        public ResourceTable(int capacity = 32)
+        public ResourceTable(int capacity = 32, bool reserveZero = true)
         {
+            this.reserveZero = reserveZero;
             elements = new Element[capacity];
             head = 0;
+            if (reserveZero)
+            {
+                Add(default);
+            }
         }
 
         public int Add(T value)
@@ -20,7 +26,7 @@ namespace WaaS.ComponentModel
             {
                 ref var headElement = ref elements[head];
 
-                headElement.resource = value;
+                headElement.rep = value;
                 headElement.isOccupied = true;
 
                 var next = headElement.Next;
@@ -45,44 +51,45 @@ namespace WaaS.ComponentModel
 
         public T RemoveAt(int index)
         {
+            if (reserveZero && index == 0) throw new InvalidOperationException("Cannot remove element at index 0");
             lock (locker)
             {
                 ref var element = ref elements[index];
 
                 if (!element.isOccupied) throw new InvalidOperationException("Element is already free");
 
-                var result = element.resource;
+                var result = element.rep;
 
                 element.Next = head;
-                element.resource = default;
+                element.rep = default;
                 element.isOccupied = false;
                 head = index;
-
                 return result;
             }
         }
 
         public T Get(int index)
         {
+            if (reserveZero && index == 0) throw new InvalidOperationException("Cannot get element at index 0");
             lock (locker)
             {
                 ref var element = ref elements[index];
-                if (element.isOccupied) throw new InvalidOperationException("Element is already free");
+                if (!element.isOccupied) throw new InvalidOperationException("Element is already free");
 
-                return element.resource;
+                return element.rep;
             }
         }
 
         private struct Element
         {
-            public T resource;
+            public T rep;
             private int nextPlusOne;
             public bool isOccupied;
 
             public int Next
             {
                 get => nextPlusOne - 1;
-                set => nextPlusOne = value - 1;
+                set => nextPlusOne = value + 1;
             }
         }
     }

@@ -12,6 +12,7 @@ namespace WaaS.ComponentModel.Models
     [Variant(0x01, typeof(CanonLower))]
     [Variant(0x02, typeof(CanonResourceNew))]
     [Variant(0x03, typeof(CanonResourceDrop))]
+    [Variant(0x04, typeof(CanonResourceRep))]
     // TODO: other canons
     public partial interface ICanon
     {
@@ -167,6 +168,40 @@ namespace WaaS.ComponentModel.Models
                 Span<StackValueItem> results)
             {
                 type.Drop(parameters[0].ExpectValueI32());
+            }
+        }
+    }
+
+    [GenerateFormatter]
+    public partial class CanonResourceRep : ICanon, IUnresolved<ICoreSortedExportable<IInvocableFunction>>
+    {
+        public IUnresolved<IType> ResourceType { get; }
+
+        public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            var resourceType = context.Resolve(ResourceType) as IResourceType ?? throw new InvalidModuleException();
+            return new RepFunction(resourceType);
+        }
+
+        private class RepFunction : ExternalFunction, ICoreSortedExportable<IInvocableFunction>
+        {
+            private static readonly WaaS.Models.FunctionType DropFunctionType =
+                new(new[] { ValueType.I32 }, new[] { ValueType.I32 });
+
+            private readonly IResourceType type;
+
+            public RepFunction(IResourceType type)
+            {
+                this.type = type;
+            }
+
+            public override WaaS.Models.FunctionType Type => DropFunctionType;
+            public IInvocableFunction CoreExternal => this;
+
+            public override void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
+                Span<StackValueItem> results)
+            {
+                results[0] = new StackValueItem(type.Rep(parameters[0].ExpectValueI32()));
             }
         }
     }

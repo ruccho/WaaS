@@ -174,6 +174,7 @@ namespace WaaS.ComponentModel.Runtime
     {
         uint New(uint rep);
         void Drop(uint index);
+        uint Rep(uint index);
     }
 
     public interface IFunctionType : IType

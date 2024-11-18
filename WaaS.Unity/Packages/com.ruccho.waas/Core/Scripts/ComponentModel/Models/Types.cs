@@ -905,9 +905,9 @@ namespace WaaS.ComponentModel.Models
 
         public IResourceType ResolveFirstTime(IInstanceResolutionContext context)
         {
-            if (Representation != 0)
+            if (Representation != 0x7F)
                 throw new NotSupportedException(
-                    $"This type of resource representation is not supported: {Representation}");
+                    $"This type of resource representation is not supported: 0x{Representation:X}");
             return new ResolvedResourceType(Destructor != null ? context.Resolve(Destructor).CoreExternal : null);
         }
 
@@ -929,7 +929,9 @@ namespace WaaS.ComponentModel.Models
 
             public uint New(uint rep)
             {
-                return unchecked((uint)table.Add(rep));
+                var index = unchecked((uint)table.Add(rep));
+                Console.WriteLine($"new resource {index}: {rep}");
+                return index;
             }
 
             public void Drop(uint index)
@@ -941,8 +943,16 @@ namespace WaaS.ComponentModel.Models
                     contextForDestructor.InterruptFrame(destructor, MemoryMarshal.CreateSpan(ref indexValue, 1),
                         Span<StackValueItem>.Empty);
                 }
+                Console.WriteLine($"drop resource {index}");
 
                 table.RemoveAt(unchecked((int)index));
+            }
+
+            public uint Rep(uint index)
+            {
+                var rep = table.Get(unchecked((int)index));
+                Console.WriteLine($"rep resource {index}: {rep}");
+                return rep;
             }
         }
     }
@@ -1285,6 +1295,7 @@ namespace WaaS.ComponentModel.Models
 
         public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
         {
+            // Type.ValidateArgument(context, argument);
             return argument is IType;
         }
     }
@@ -1328,6 +1339,7 @@ namespace WaaS.ComponentModel.Models
     [Variant(0x01, typeof(TypeBoundSubResource))]
     public partial interface ITypeBound : IValueTypeDefinition
     {
+        bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument);
     }
 
     [GenerateFormatter]
@@ -1344,6 +1356,14 @@ namespace WaaS.ComponentModel.Models
         {
             throw new NotImplementedException();
         }
+
+        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
+        {
+            if (argument is not IValueType typeTyped) return false;
+            
+            var type = context.Resolve(Type);
+            return Equals(type, typeTyped);
+        }
     }
 
     [GenerateFormatter]
@@ -1351,10 +1371,16 @@ namespace WaaS.ComponentModel.Models
     {
         public IType ResolveFirstTime(IInstanceResolutionContext context)
         {
+            // TODO
             throw new NotImplementedException();
         }
 
         IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
         {
             throw new NotImplementedException();
         }

@@ -33,6 +33,11 @@ namespace WaaS.ComponentModel.Binding
             resources.RemoveAt(unchecked((int)index));
         }
 
+        public uint Rep(uint index)
+        {
+            throw new InvalidOperationException("resource.rep is not supported for host resource types.");
+        }
+
         public Owned Wrap(T value)
         {
             return Ownership.GetHandle(this,
