@@ -256,6 +256,6 @@ namespace WaaS.ComponentModel.Models
 
     public interface IUnresolved<out T> where T : ISorted
     {
-        T ResolveFirstTime(IInstanceResolutionContext context);
+        T ResolveFirstTime(IInstantiationContext context);
     }
 }

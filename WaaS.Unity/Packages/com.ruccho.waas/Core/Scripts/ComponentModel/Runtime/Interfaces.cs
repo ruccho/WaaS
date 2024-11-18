@@ -32,7 +32,7 @@ namespace WaaS.ComponentModel.Runtime
     public interface ICoreModule : ICoreSorted, ISortedExportable
     {
         ICoreInstance Instantiate(IReadOnlyDictionary<string, ICoreInstance> imports);
-        bool Validate(IInstanceResolutionContext context, ICoreModuleType coreModuleType);
+        bool Validate(IInstantiationContext context, ICoreModuleType coreModuleType);
     }
 
     public interface ICoreInstance : ICoreSorted
@@ -57,8 +57,7 @@ namespace WaaS.ComponentModel.Runtime
 
     public interface IComponent : ISortedExportable
     {
-        IInstance Instantiate(IInstanceResolutionContext? context,
-            IReadOnlyDictionary<string, ISortedExportable> arguments);
+        IInstance Instantiate(IReadOnlyDictionary<string, ISortedExportable> arguments);
     }
 
     public interface IInstance : ISortedExportable

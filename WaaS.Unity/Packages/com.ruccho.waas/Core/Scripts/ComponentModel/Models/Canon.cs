@@ -26,7 +26,7 @@ namespace WaaS.ComponentModel.Models
         public ReadOnlyMemory<ICanonOption> Options { get; }
         public IUnresolved<IType> FunctionType { get; }
 
-        public IFunction ResolveFirstTime(IInstanceResolutionContext context)
+        public IFunction ResolveFirstTime(IInstantiationContext context)
         {
             var type = context.Resolve(FunctionType);
             if (type is not IFunctionType functionType)
@@ -77,7 +77,7 @@ namespace WaaS.ComponentModel.Models
         public IUnresolved<IFunction> Function { get; }
         public ReadOnlyMemory<ICanonOption> Options { get; }
 
-        public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstanceResolutionContext context)
+        public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstantiationContext context)
         {
             var componentFunction = context.Resolve(Function);
 
@@ -117,7 +117,7 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> ResourceType { get; }
 
-        public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstanceResolutionContext context)
+        public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstantiationContext context)
         {
             var resourceType = context.Resolve(ResourceType) as IResourceType ?? throw new InvalidModuleException();
             return new NewFunction(resourceType);
@@ -143,7 +143,7 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> ResourceType { get; }
 
-        public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstanceResolutionContext context)
+        public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstantiationContext context)
         {
             var resourceType = context.Resolve(ResourceType) as IResourceType ?? throw new InvalidModuleException();
             return new DropFunction(resourceType);
@@ -177,7 +177,7 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> ResourceType { get; }
 
-        public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstanceResolutionContext context)
+        public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstantiationContext context)
         {
             var resourceType = context.Resolve(ResourceType) as IResourceType ?? throw new InvalidModuleException();
             return new RepFunction(resourceType);

@@ -84,7 +84,7 @@ namespace WaaS.ComponentModel.Models
 
             private AliasTargetExport Source { get; }
 
-            public T ResolveFirstTime(IInstanceResolutionContext context)
+            public T ResolveFirstTime(IInstantiationContext context)
             {
                 var instance = context.Resolve(Source.Instance);
                 if (!instance.TryGetExport(Source.Name, out T? result)) throw new LinkException();
@@ -147,7 +147,7 @@ namespace WaaS.ComponentModel.Models
 
             private AliasTargetCoreExport Source { get; }
 
-            public ICoreSortedExportable<T> ResolveFirstTime(IInstanceResolutionContext context)
+            public ICoreSortedExportable<T> ResolveFirstTime(IInstantiationContext context)
             {
                 var coreInstance = context.Resolve(Source.CoreInstance);
                 if (!coreInstance.TryGetExport(Source.Name, out ICoreSortedExportable<T>? result))
@@ -223,12 +223,10 @@ namespace WaaS.ComponentModel.Models
             private uint Depth { get; }
             private IUnresolved<T> Target { get; }
 
-            public T ResolveFirstTime(IInstanceResolutionContext context)
+            public T ResolveFirstTime(IInstantiationContext context)
             {
-                /*
                 for (var i = 0; i < Depth; i++)
                     context = context.Parent ?? throw new InvalidModuleException("Invalid depth");
-                    */
                 return context.Resolve(Target);
             }
         }

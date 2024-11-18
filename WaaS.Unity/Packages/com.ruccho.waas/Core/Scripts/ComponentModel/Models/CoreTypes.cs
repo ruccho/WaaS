@@ -39,7 +39,7 @@ namespace WaaS.ComponentModel.Models
             Type = type;
         }
 
-        public ICoreType ResolveFirstTime(IInstanceResolutionContext context)
+        public ICoreType ResolveFirstTime(IInstantiationContext context)
         {
             return this;
         }
@@ -89,7 +89,7 @@ namespace WaaS.ComponentModel.Models
 
         public ReadOnlyMemory<ICoreModuleDeclaration> Declarations { get; }
 
-        public ICoreType ResolveFirstTime(IInstanceResolutionContext context)
+        public ICoreType ResolveFirstTime(IInstantiationContext context)
         {
             return this;
         }

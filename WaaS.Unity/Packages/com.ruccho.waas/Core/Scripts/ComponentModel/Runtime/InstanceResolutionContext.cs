@@ -5,27 +5,27 @@ using WaaS.ComponentModel.Models;
 
 namespace WaaS.ComponentModel.Runtime
 {
-    public interface IInstanceResolutionContext
+    public interface IInstantiationContext
     {
-        IInstanceResolutionContext? Parent { get; }
+        IInstantiationContext? Parent { get; }
         T Resolve<T>(IUnresolved<T> unresolved) where T : ISorted;
         T ResolveImport<T>(IImport<T> import) where T : ISortedExportable;
     }
 
-    internal class InstanceResolutionContext : IInstanceResolutionContext
+    internal class InstantiationContext : IInstantiationContext
     {
         private readonly IReadOnlyDictionary<string, ISortedExportable>? imports;
         private readonly Dictionary<object, ISorted> resolved = new();
         private readonly HashSet<object> resolving = new();
 
-        public InstanceResolutionContext(IReadOnlyDictionary<string, ISortedExportable>? imports,
-            IInstanceResolutionContext? parent)
+        public InstantiationContext(IReadOnlyDictionary<string, ISortedExportable>? imports,
+            IInstantiationContext? parent)
         {
             this.imports = imports;
             Parent = parent;
         }
 
-        public IInstanceResolutionContext? Parent { get; }
+        public IInstantiationContext? Parent { get; }
 
         public T Resolve<T>(IUnresolved<T> unresolved) where T : ISorted
         {

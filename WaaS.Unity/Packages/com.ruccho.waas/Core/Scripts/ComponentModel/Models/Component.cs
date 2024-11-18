@@ -13,7 +13,7 @@ namespace WaaS.ComponentModel.Models
     /// <summary>
     ///     Represents a WebAssembly component.
     /// </summary>
-    public class Component : IUnresolved<IComponent>, IComponent
+    public class Component : IUnresolved<IComponent>
     {
         private readonly List<CustomSection> customSections = new();
         private readonly List<IExport<ISortedExportable>> exports = new();
@@ -134,43 +134,55 @@ namespace WaaS.ComponentModel.Models
             }
         }
 
-        public IInstance Instantiate(IInstanceResolutionContext? context,
-            IReadOnlyDictionary<string, ISortedExportable> arguments)
+        public IComponent ResolveFirstTime(IInstantiationContext context)
         {
-            // validate
-            var newContext = new InstanceResolutionContext(arguments, context);
+            return new CapturedComponent(this, context);
+        }
 
-            List<IImport<ISortedExportable>>? missingImports = null;
-            foreach (var import in imports)
+        private class CapturedComponent : IComponent
+        {
+            private readonly Component source;
+            private readonly IInstantiationContext? outerContext;
+
+            public CapturedComponent(Component source, IInstantiationContext? outerContext)
             {
-                arguments.TryGetValue(import.Name.Name, out var argument);
-                if (!import.Descriptor.ValidateArgument(newContext, argument))
+                this.source = source;
+                this.outerContext = outerContext;
+            }
+
+            public IInstance Instantiate(IReadOnlyDictionary<string, ISortedExportable> arguments)
+            {
+                // validate
+                var newContext = new InstantiationContext(arguments, outerContext);
+
+                List<IImport<ISortedExportable>>? missingImports = null;
+                foreach (var import in source.imports)
                 {
-                    missingImports ??= new List<IImport<ISortedExportable>>();
-                    missingImports.Add(import);
+                    arguments.TryGetValue(import.Name.Name, out var argument);
+                    if (!import.Descriptor.ValidateArgument(newContext, argument))
+                    {
+                        missingImports ??= new List<IImport<ISortedExportable>>();
+                        missingImports.Add(import);
+                    }
                 }
+
+                if (missingImports != null)
+                    throw new LinkException(
+                        $"The import is missing or invalid: \n{string.Join("\n", missingImports.Select(i => i.Name.Name))}");
+
+                Dictionary<string, ISortedExportable> resolvedExports = new();
+                foreach (var export in source.exports) resolvedExports.Add(export.Name.Name, newContext.Resolve(export.Target));
+
+                // instantiations need to be resolved (unexposed instances may initialize other instance's state)
+                for (var i = 0; i < source.instantiations.Count; i++)
+                {
+                    var instantiation = source.instantiations[i];
+                    newContext.Resolve(instantiation);
+                }
+
+                return new Instance(resolvedExports);
             }
-
-            if (missingImports != null)
-                throw new LinkException(
-                    $"The import is missing or invalid: \n{string.Join("\n", missingImports.Select(i => i.Name.Name))}");
-
-            Dictionary<string, ISortedExportable> resolvedExports = new();
-            foreach (var export in exports) resolvedExports.Add(export.Name.Name, newContext.Resolve(export.Target));
-
-            // instantiations need to be resolved (unexposed instances may initialize other instance's state)
-            for (var i = 0; i < instantiations.Count; i++)
-            {
-                var instantiation = instantiations[i];
-                newContext.Resolve(instantiation);
-            }
-
-            return new Instance(resolvedExports);
-        }
-
-        public IComponent ResolveFirstTime(IInstanceResolutionContext context)
-        {
-            return this;
+            
         }
 
         /// <summary>
@@ -178,10 +190,10 @@ namespace WaaS.ComponentModel.Models
         /// </summary>
         /// <param name="buffer"></param>
         /// <returns></returns>
-        public static Component Create(ReadOnlySpan<byte> buffer)
+        public static IComponent Create(ReadOnlySpan<byte> buffer)
         {
             var reader = new ModuleReader(buffer);
-            return new Component(ref reader);
+            return new CapturedComponent(new Component(ref reader), null);
         }
 
         /// <summary>
@@ -189,10 +201,10 @@ namespace WaaS.ComponentModel.Models
         /// </summary>
         /// <param name="buffer"></param>
         /// <returns></returns>
-        public static Component Create(ReadOnlySequence<byte> buffer)
+        public static IComponent Create(ReadOnlySequence<byte> buffer)
         {
             var reader = new ModuleReader(buffer);
-            return new Component(ref reader);
+            return new CapturedComponent(new Component(ref reader), null);
         }
 
         private class Instance : IInstance
@@ -218,7 +230,7 @@ namespace WaaS.ComponentModel.Models
         }
     }
 
-    internal class CoreModule : IUnresolved<ICoreModule>, ICoreModule
+    internal class CoreModule : IUnresolved<ICoreModule>
     {
         public CoreModule(ref ModuleReader reader, long? moduleSize)
         {
@@ -227,17 +239,33 @@ namespace WaaS.ComponentModel.Models
 
         public Module Module { get; }
 
-        public ICoreInstance Instantiate(IReadOnlyDictionary<string, ICoreInstance> imports)
+        public ICoreModule ResolveFirstTime(IInstantiationContext context)
         {
-            Imports moduleImports = new();
-            foreach (var (key, value) in imports) moduleImports.Add(key, value.CoreExports);
-
-            return new CoreInstance(new Instance(Module, moduleImports));
+            return new CapturedModule(Module, context);
         }
 
-        public bool Validate(IInstanceResolutionContext context, ICoreModuleType coreModuleType)
+        private class CapturedModule : ICoreModule
         {
-            var importSection = Module.ImportSection;
+            private readonly Module module;
+            private readonly IInstantiationContext outerContext;
+
+            public CapturedModule(Module module, IInstantiationContext outerContext)
+            {
+                this.module = module;
+                this.outerContext = outerContext;
+            }
+
+            public ICoreInstance Instantiate(IReadOnlyDictionary<string, ICoreInstance> imports)
+            {
+                Imports moduleImports = new();
+                foreach (var (key, value) in imports) moduleImports.Add(key, value.CoreExports);
+
+                return new CoreInstance(new Instance(module, moduleImports));
+            }
+
+            public bool Validate(IInstantiationContext context, ICoreModuleType coreModuleType)
+            {
+            var importSection = module.ImportSection;
 
             foreach (var decl in coreModuleType.Declarations.Span)
             {
@@ -245,7 +273,7 @@ namespace WaaS.ComponentModel.Models
 
                 Export exported;
                 {
-                    foreach (var export in Module.ExportSection.Exports.Span)
+                    foreach (var export in module.ExportSection.Exports.Span)
                         if (export.Name == exportDecl.Name)
                         {
                             exported = export;
@@ -273,12 +301,12 @@ namespace WaaS.ComponentModel.Models
                                     if (index++ == descModuleFuncIndex)
                                     {
                                         functionType =
-                                            Module.TypeSection.FuncTypes.Span[checked((int)desc.TypeIndex!.Value)];
+                                            module.TypeSection.FuncTypes.Span[checked((int)desc.TypeIndex!.Value)];
                                         goto FOUND;
                                     }
                             }
 
-                        var functions = Module.InternalFunctions.Span;
+                        var functions = module.InternalFunctions.Span;
                         index = checked((int)providedDesc.FunctionIndex!.Value) - index;
                         if (index >= functions.Length) return false;
                         functionType = functions[index].Type;
@@ -305,7 +333,7 @@ namespace WaaS.ComponentModel.Models
                                     }
                             }
 
-                        var tables = Module.TableSection.TableTypes.Span;
+                        var tables = module.TableSection.TableTypes.Span;
                         index = checked((int)providedDesc.TableIndex!.Value) - index;
                         if (index >= tables.Length) return false;
                         providedTableType = tables[index];
@@ -336,7 +364,7 @@ namespace WaaS.ComponentModel.Models
                                     }
                             }
 
-                        var memories = Module.MemorySection.MemoryTypes.Span;
+                        var memories = module.MemorySection.MemoryTypes.Span;
                         index = checked((int)providedDesc.MemoryIndex!.Value) - index;
                         if (index >= memories.Length) return false;
                         providedType = memories[index];
@@ -365,7 +393,7 @@ namespace WaaS.ComponentModel.Models
                                     }
                             }
 
-                        var globals = Module.GlobalSection.Globals.Span;
+                        var globals = module.GlobalSection.Globals.Span;
                         index = checked((int)providedDesc.GlobalIndex!.Value) - index;
                         if (index >= globals.Length) return false;
                         providedType = globals[index].Type;
@@ -380,7 +408,7 @@ namespace WaaS.ComponentModel.Models
             }
 
             if (importSection != null)
-                foreach (var import in Module.ImportSection.Imports.Span)
+                foreach (var import in module.ImportSection.Imports.Span)
                 {
                     CoreImportDeclaration importDecl;
                     {
@@ -410,7 +438,7 @@ namespace WaaS.ComponentModel.Models
                             var t = importDecl.Type ?? throw new InvalidOperationException();
                             if (context.Resolve(t) is not CoreFunctionType coreFunctionType) return false;
                             var tModule =
-                                Module.TypeSection.FuncTypes.Span[checked((int)requestedImport.TypeIndex!.Value)];
+                                module.TypeSection.FuncTypes.Span[checked((int)requestedImport.TypeIndex!.Value)];
                             if (!coreFunctionType.Type.Match(tModule)) return false;
                             break;
                         }
@@ -444,11 +472,7 @@ namespace WaaS.ComponentModel.Models
                 }
 
             return true;
-        }
-
-        public ICoreModule ResolveFirstTime(IInstanceResolutionContext context)
-        {
-            return this;
+            }
         }
 
         private class CoreInstance : ICoreInstance, IModuleExports

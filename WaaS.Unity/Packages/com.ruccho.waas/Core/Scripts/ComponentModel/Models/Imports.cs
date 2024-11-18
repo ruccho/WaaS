@@ -50,7 +50,7 @@ namespace WaaS.ComponentModel.Models
         public ImportExportName Name { get; }
         public IExportableDescriptor<T> Descriptor { get; }
 
-        public T ResolveFirstTime(IInstanceResolutionContext context)
+        public T ResolveFirstTime(IInstantiationContext context)
         {
             return context.ResolveImport(this);
         }
@@ -125,7 +125,7 @@ namespace WaaS.ComponentModel.Models
         public IUnresolved<T> Target { get; }
         public IExportableDescriptor<T>? Descriptor { get; }
 
-        public T ResolveFirstTime(IInstanceResolutionContext context)
+        public T ResolveFirstTime(IInstantiationContext context)
         {
             return context.Resolve(Target);
         }

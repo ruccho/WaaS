@@ -64,12 +64,12 @@ namespace WaaS.ComponentModel.Models
 
         public PrimitiveValueTypeKind Kind { get; init; }
 
-        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
         {
             return GetBoxed();
         }
 
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
         {
             return GetBoxed();
         }
@@ -180,12 +180,12 @@ namespace WaaS.ComponentModel.Models
     {
         public ReadOnlyMemory<LabeledValueType> Fields { get; }
 
-        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
         {
             return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
         }
 
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
         {
             var fields = new IRecordField[Fields.Length];
             for (var i = 0; i < Fields.Span.Length; i++)
@@ -297,12 +297,12 @@ namespace WaaS.ComponentModel.Models
     {
         public ReadOnlyMemory<VariantCase> Cases { get; init; }
 
-        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
         {
             return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
         }
 
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
         {
             var cases = new IVariantCase[Cases.Length];
             for (var i = 0; i < Cases.Span.Length; i++)
@@ -463,12 +463,12 @@ namespace WaaS.ComponentModel.Models
     {
         [DontAddToSort] public IUnresolvedValueType ElementType { get; }
 
-        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
         {
             return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
         }
 
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
         {
             return new ResolvedListType(context.Resolve(ElementType));
         }
@@ -504,12 +504,12 @@ namespace WaaS.ComponentModel.Models
     {
         [DontAddToSort] public ReadOnlyMemory<IUnresolvedValueType> Type { get; }
 
-        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
         {
             return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
         }
 
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
         {
             var resolvedTypes = new IValueType[Type.Length];
             for (var i = 0; i < Type.Span.Length; i++) resolvedTypes[i] = context.Resolve(Type.Span[i]);
@@ -580,12 +580,12 @@ namespace WaaS.ComponentModel.Models
             dest[0] = ValueType.I32;
         }
 
-        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
         {
             return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
         }
 
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
         {
             return this;
         }
@@ -624,12 +624,12 @@ namespace WaaS.ComponentModel.Models
             return Despecialized;
         }
 
-        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
         {
             return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
         }
 
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
         {
             return this;
         }
@@ -645,12 +645,12 @@ namespace WaaS.ComponentModel.Models
     {
         [DontAddToSort] public IUnresolvedValueType Type { get; init; }
 
-        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
         {
             return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
         }
 
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
         {
             return new ResolvedOptionType(context.Resolve(Type));
         }
@@ -689,12 +689,12 @@ namespace WaaS.ComponentModel.Models
         [DontAddToSort] public IUnresolvedValueType? ErrorType { get; }
 
 
-        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
         {
             return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
         }
 
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
         {
             return new ResolvedResultType(Type != null ? context.Resolve(Type) : null,
                 ErrorType != null ? context.Resolve(ErrorType) : null);
@@ -734,12 +734,12 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> Type { get; }
 
-        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
         {
             return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
         }
 
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
         {
             return new ResolvedOwnedType(context.Resolve(Type) as IResourceType ?? throw new LinkException());
         }
@@ -774,12 +774,12 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> Type { get; }
 
-        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
         {
             return ((IUnresolved<IValueType>)this).ResolveFirstTime(context);
         }
 
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
         {
             return new ResolvedBorrowedType(context.Resolve(Type) as IResourceType ?? throw new LinkException());
         }
@@ -884,7 +884,7 @@ namespace WaaS.ComponentModel.Models
                 this.core = core;
             }
 
-            public IValueType ResolveFirstTime(IInstanceResolutionContext context)
+            public IValueType ResolveFirstTime(IInstantiationContext context)
             {
                 return context.Resolve(core) as IValueType ?? throw new InvalidModuleException("Expected IValueType");
             }
@@ -903,7 +903,7 @@ namespace WaaS.ComponentModel.Models
         private byte Representation { get; }
         private IUnresolved<ICoreSortedExportable<IInvocableFunction>>? Destructor { get; }
 
-        public IResourceType ResolveFirstTime(IInstanceResolutionContext context)
+        public IResourceType ResolveFirstTime(IInstantiationContext context)
         {
             if (Representation != 0x7F)
                 throw new NotSupportedException(
@@ -911,7 +911,7 @@ namespace WaaS.ComponentModel.Models
             return new ResolvedResourceType(Destructor != null ? context.Resolve(Destructor).CoreExternal : null);
         }
 
-        IType IUnresolved<IType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
         {
             return ResolveFirstTime(context);
         }
@@ -963,7 +963,7 @@ namespace WaaS.ComponentModel.Models
         public ReadOnlyMemory<LabeledValueType> Parameters { get; }
         public IResultList Result { get; }
 
-        public IType ResolveFirstTime(IInstanceResolutionContext context)
+        public IType ResolveFirstTime(IInstantiationContext context)
         {
             var parameters = new ResolvedParameter[Parameters.Length];
             for (var i = 0; i < Parameters.Span.Length; i++)
@@ -1030,7 +1030,7 @@ namespace WaaS.ComponentModel.Models
     [Variant(0x01, typeof(ResultListNone))]
     public partial interface IResultList
     {
-        IValueType? ResolveFirstTime(IInstanceResolutionContext context);
+        IValueType? ResolveFirstTime(IInstantiationContext context);
     }
 
     [GenerateFormatter]
@@ -1038,7 +1038,7 @@ namespace WaaS.ComponentModel.Models
     {
         [DontAddToSort] public IUnresolvedValueType Type { get; init; }
 
-        public IValueType? ResolveFirstTime(IInstanceResolutionContext context)
+        public IValueType? ResolveFirstTime(IInstantiationContext context)
         {
             return context.Resolve(Type);
         }
@@ -1049,7 +1049,7 @@ namespace WaaS.ComponentModel.Models
     {
         private byte Unknown0 { get; init; }
 
-        public IValueType? ResolveFirstTime(IInstanceResolutionContext context)
+        public IValueType? ResolveFirstTime(IInstantiationContext context)
         {
             return null;
         }
@@ -1072,7 +1072,7 @@ namespace WaaS.ComponentModel.Models
         public IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> Imports { get; }
         public IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> Exports { get; }
 
-        public IType ResolveFirstTime(IInstanceResolutionContext context)
+        public IType ResolveFirstTime(IInstantiationContext context)
         {
             return new ResolvedComponentType();
         }
@@ -1120,7 +1120,7 @@ namespace WaaS.ComponentModel.Models
 
         public IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> Exports { get; }
 
-        public IType ResolveFirstTime(IInstanceResolutionContext context)
+        public IType ResolveFirstTime(IInstantiationContext context)
         {
             return this;
         }
@@ -1203,13 +1203,13 @@ namespace WaaS.ComponentModel.Models
             Formatter<IExportableDescriptor<ISortedExportable>>.Default = new ExportableDescriptorFormatter();
         }
 
-        bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument);
+        bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument);
     }
 
     internal static class ExportableDescriptorExtensions
     {
         public static bool ValidateExported(this IExportableDescriptor<ISortedExportable> desc,
-            IInstanceResolutionContext context, IInstance? instance, string name)
+            IInstantiationContext context, IInstance? instance, string name)
         {
             ISortedExportable? result = null;
             instance?.TryGetExport(name, out result);
@@ -1263,7 +1263,7 @@ namespace WaaS.ComponentModel.Models
             if (Unknown0 != 0x11) throw new InvalidModuleException();
         }
 
-        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
+        public bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument)
         {
             if (argument is not ICoreModule module) return false;
             var type = context.Resolve(Type);
@@ -1277,7 +1277,7 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> Type { get; }
 
-        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
+        public bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument)
         {
             if (argument is not IFunction) return false;
             var type = context.Resolve(Type);
@@ -1293,7 +1293,7 @@ namespace WaaS.ComponentModel.Models
     {
         public ITypeBound Type { get; }
 
-        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
+        public bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument)
         {
             // Type.ValidateArgument(context, argument);
             return argument is IType;
@@ -1305,7 +1305,7 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> Type { get; }
 
-        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
+        public bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument)
         {
             return true;
         }
@@ -1316,7 +1316,7 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> Type { get; }
 
-        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
+        public bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument)
         {
             var type = context.Resolve(Type);
             if (type is not IInstanceType instanceType) return false;
@@ -1325,7 +1325,7 @@ namespace WaaS.ComponentModel.Models
 
             if (argument is not null && argument is not IInstance) return false;
 
-            context = new InstanceResolutionContext(null, context);
+            context = new InstantiationContext(null, context);
             foreach (var (key, desc) in exports)
                 if (!desc.ValidateExported(context, (IInstance?)argument, key))
                     return false;
@@ -1339,7 +1339,7 @@ namespace WaaS.ComponentModel.Models
     [Variant(0x01, typeof(TypeBoundSubResource))]
     public partial interface ITypeBound : IValueTypeDefinition
     {
-        bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument);
+        bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument);
     }
 
     [GenerateFormatter]
@@ -1347,17 +1347,17 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> Type { get; }
 
-        public IType ResolveFirstTime(IInstanceResolutionContext context)
+        public IType ResolveFirstTime(IInstantiationContext context)
         {
             throw new NotImplementedException();
         }
 
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
         {
             throw new NotImplementedException();
         }
 
-        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
+        public bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument)
         {
             if (argument is not IValueType typeTyped) return false;
             
@@ -1369,18 +1369,18 @@ namespace WaaS.ComponentModel.Models
     [GenerateFormatter]
     public readonly partial struct TypeBoundSubResource : ITypeBound
     {
-        public IType ResolveFirstTime(IInstanceResolutionContext context)
+        public IType ResolveFirstTime(IInstantiationContext context)
         {
             // TODO
             throw new NotImplementedException();
         }
 
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstanceResolutionContext context)
+        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
         {
             throw new NotImplementedException();
         }
 
-        public bool ValidateArgument(IInstanceResolutionContext context, ISortedExportable? argument)
+        public bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument)
         {
             throw new NotImplementedException();
         }

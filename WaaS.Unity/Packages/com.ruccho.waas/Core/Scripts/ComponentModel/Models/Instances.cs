@@ -23,7 +23,7 @@ namespace WaaS.ComponentModel.Models
         public IUnresolved<ICoreModule> CoreModule { get; }
         public ReadOnlyMemory<CoreInstantiationArgument> Arguments { get; }
 
-        public ICoreInstance ResolveFirstTime(IInstanceResolutionContext context)
+        public ICoreInstance ResolveFirstTime(IInstantiationContext context)
         {
             var module = context.Resolve(CoreModule);
             Dictionary<string, ICoreInstance> imports = new();
@@ -39,7 +39,7 @@ namespace WaaS.ComponentModel.Models
     {
         public ReadOnlyMemory<ICoreInlineExport<ICoreSortedExportable<IExternal>>> Exports { get; }
 
-        public ICoreInstance ResolveFirstTime(IInstanceResolutionContext context)
+        public ICoreInstance ResolveFirstTime(IInstantiationContext context)
         {
             Dictionary<string, ICoreSortedExportable<IExternal>> exports = new();
             foreach (var export in Exports.Span) exports.Add(export.Name, context.Resolve(export.Item));
@@ -242,13 +242,13 @@ namespace WaaS.ComponentModel.Models
         public IUnresolved<IComponent> Component { get; }
         public ReadOnlyMemory<IInstantiationArgument<ISortedExportable>> Arguments { get; }
 
-        public IInstance ResolveFirstTime(IInstanceResolutionContext context)
+        public IInstance ResolveFirstTime(IInstantiationContext context)
         {
             var args = new Dictionary<string, ISortedExportable>();
             foreach (var argument in Arguments.Span) args.Add(argument.Name, context.Resolve(argument.Value));
             var component = context.Resolve(Component);
 
-            return component.Instantiate(context, args);
+            return component.Instantiate(args);
         }
     }
 
@@ -257,7 +257,7 @@ namespace WaaS.ComponentModel.Models
     {
         public ReadOnlyMemory<IInlineExport<ISortedExportable>> Exports { get; }
 
-        public IInstance ResolveFirstTime(IInstanceResolutionContext context)
+        public IInstance ResolveFirstTime(IInstantiationContext context)
         {
             Dictionary<string, ISortedExportable> exports = new();
             foreach (var export in Exports.Span) exports.Add(export.ExportName, context.Resolve(export.Item));
