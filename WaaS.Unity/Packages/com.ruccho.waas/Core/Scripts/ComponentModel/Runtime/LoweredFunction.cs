@@ -13,13 +13,15 @@ namespace WaaS.ComponentModel.Runtime
     {
         private readonly bool hasSerializedResult;
 
-        public LoweredFunction(CanonOptionStringEncodingKind stringEncoding, IInvocableFunction? reallocFunction,
+        public LoweredFunction(IInstance instance, CanonOptionStringEncodingKind stringEncoding,
+            IInvocableFunction? reallocFunction,
             Memory? memoryToRealloc, IFunction componentFunction)
         {
             StringEncoding = stringEncoding;
             ReallocFunction = reallocFunction;
             MemoryToRealloc = memoryToRealloc;
             ComponentFunction = componentFunction;
+            Instance = instance;
 
             var type = componentFunction.Type;
             var paramType = type.ParameterType;
@@ -63,6 +65,7 @@ namespace WaaS.ComponentModel.Runtime
             this.hasSerializedResult = hasSerializedResult;
         }
 
+        public IInstance Instance { get; }
         public ICanonOptions Options => this;
         public IFunction ComponentFunction { get; }
 

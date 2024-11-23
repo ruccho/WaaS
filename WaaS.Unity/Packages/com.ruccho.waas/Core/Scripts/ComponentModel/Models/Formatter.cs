@@ -207,6 +207,7 @@ namespace WaaS.ComponentModel.Models
         public void Add<T>(IUnresolved<T> value, out int index) where T : ISorted
         {
             sorts.OfType<IWriteOnlySort<T>>().Single().Add(value, out index);
+            // Console.WriteLine($"Add to {typeof(T).Name} #{index}: {value}");
         }
 
         private interface IWriteOnlySort<in T> where T : ISorted

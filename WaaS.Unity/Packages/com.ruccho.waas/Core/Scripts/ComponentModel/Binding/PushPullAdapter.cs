@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using STask;
 using WaaS.ComponentModel.Runtime;
 
@@ -22,6 +23,7 @@ namespace WaaS.ComponentModel.Binding
 
         public STask<T> PullValueAsync<T>()
         {
+            RuntimeHelpers.RunClassConstructor(typeof(T).TypeHandle);
             var formatter = FormatterProvider.GetFormatter<T>();
             return formatter.PullAsync(new Pullable(this));
         }

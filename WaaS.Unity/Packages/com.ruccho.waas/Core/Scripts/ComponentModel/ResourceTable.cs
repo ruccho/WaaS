@@ -4,8 +4,8 @@ namespace WaaS.ComponentModel
 {
     public class ResourceTable<T>
     {
-        private readonly bool reserveZero;
         private readonly object locker = new();
+        private readonly bool reserveZero;
         private Element[] elements;
         private int head;
 
@@ -14,10 +14,7 @@ namespace WaaS.ComponentModel
             this.reserveZero = reserveZero;
             elements = new Element[capacity];
             head = 0;
-            if (reserveZero)
-            {
-                Add(default);
-            }
+            if (reserveZero) head = 1;
         }
 
         public int Add(T value)

@@ -9,7 +9,7 @@ namespace WaaS.ComponentModel.Binding
     ///     Base class for host-provided resource types.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public abstract class HostResourceTypeBase<T> : IHostResourceType<T> where T : class
+    public abstract class HostResourceTypeBase<T> : IHostResourceType<T>
     {
         private readonly ResourceTable<T> resources = new();
 
@@ -30,12 +30,19 @@ namespace WaaS.ComponentModel.Binding
 
         public void Drop(uint index)
         {
-            resources.RemoveAt(unchecked((int)index));
+            OnDrop(resources.RemoveAt(unchecked((int)index)));
         }
 
         public uint Rep(uint index)
         {
-            throw new InvalidOperationException("resource.rep is not supported for host resource types.");
+            return index;
+        }
+
+        public virtual IInstance? Instance => throw new InvalidOperationException();
+
+        public bool ValidateEquals(IType other)
+        {
+            return ReferenceEquals(other, this);
         }
 
         public Owned Wrap(T value)
@@ -54,6 +61,10 @@ namespace WaaS.ComponentModel.Binding
         {
             if (handle.Type != this) throw new ArgumentException(nameof(handle));
             return ToHostResource(handle.GetValue(moveOut));
+        }
+
+        protected virtual void OnDrop(T value)
+        {
         }
     }
 }

@@ -13,7 +13,7 @@ namespace WaaS.ComponentModel.Runtime
     {
         public LiftedFunction(IInvocableFunction coreFunction, IFunctionType type,
             CanonOptionStringEncodingKind stringEncoding, IInvocableFunction? reallocFunction,
-            IInvocableFunction? postReturnFunction, Memory? memoryToRealloc)
+            IInvocableFunction? postReturnFunction, Memory? memoryToRealloc, IInstance instance)
         {
             MemoryToRealloc = memoryToRealloc;
             CoreFunction = coreFunction;
@@ -21,10 +21,12 @@ namespace WaaS.ComponentModel.Runtime
             StringEncoding = stringEncoding;
             ReallocFunction = reallocFunction;
             PostReturnFunction = postReturnFunction;
+            Instance = instance;
         }
 
         public IInvocableFunction? PostReturnFunction { get; }
         public IInvocableFunction CoreFunction { get; }
+        internal IInstance Instance { get; }
 
         public CanonOptionStringEncodingKind StringEncoding { get; }
 
@@ -47,6 +49,7 @@ namespace WaaS.ComponentModel.Runtime
             private StackValueItems stackValueItems;
 
             private ExecutionContext? Context { get; set; }
+            public IInstance Instance => function?.Instance ?? throw new InvalidOperationException();
             public ICanonOptions Options => function ?? throw new InvalidOperationException();
 
             public IFunction ComponentFunction => function ?? throw new InvalidOperationException();
@@ -100,10 +103,7 @@ namespace WaaS.ComponentModel.Runtime
                     ValueLifter lifter;
                     if (flatten)
                     {
-                        unsafe
-                        {
-                            lifter = new ValueLifter(this, ElementTypeSelector.FromSingle(resultType), resultValues);
-                        }
+                        lifter = new ValueLifter(this, ElementTypeSelector.FromSingle(resultType), resultValues);
                     }
                     else
                     {

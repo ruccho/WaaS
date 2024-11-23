@@ -260,7 +260,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                             
                                 protected override async global::STask.STaskVoid InvokeAsync(
                                     global::WaaS.Runtime.ExecutionContext __context,
-                                    global::WaaS.ComponentModel.Binding.PushPullAdapter __adapter,
+                                    global::WaaS.ComponentModel.Binding.Pullable __arguments,
                                     global::STask.STaskVoid __frameMove,
                                     global::STask.STask<global::WaaS.ComponentModel.Runtime.ValuePusher> __resultPusherTask)
                                 {
@@ -269,7 +269,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                 sourceBuilder.AppendLine(
                     /* lang=c#  */
                     $$"""
-                                          var @{{parameterSymbol.Name}} = await __adapter.PullValueAsync<{{parameterSymbol.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>();
+                                          var @{{parameterSymbol.Name}} = await __arguments.PullValueAsync<{{parameterSymbol.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>();
                       """);
 
             sourceBuilder.AppendLine(

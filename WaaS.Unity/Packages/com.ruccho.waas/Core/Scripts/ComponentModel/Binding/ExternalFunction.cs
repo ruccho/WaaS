@@ -21,7 +21,7 @@ namespace WaaS.ComponentModel.Binding
             return new FunctionBinder(Binder.Get(context, this));
         }
 
-        protected abstract STaskVoid InvokeAsync(ExecutionContext context, PushPullAdapter adapter,
+        protected abstract STaskVoid InvokeAsync(ExecutionContext context, Pullable arguments,
             STaskVoid frameMove, STask<ValuePusher> resultPusher);
 
         private class Binder : IFunctionBinderCore, IStackFrameCore, ISTaskSource<ValuePusher>
@@ -75,7 +75,7 @@ namespace WaaS.ComponentModel.Binding
 
                 function.InvokeAsync(
                     context,
-                    pusher,
+                    new Pullable(pusher),
                     new STaskVoid(pooled.frameMoveSource.TaskSource),
                     new STask<ValuePusher>(new STaskSource<ValuePusher>(pooled, pooled.Version))).Forget();
 
@@ -172,7 +172,7 @@ namespace WaaS.ComponentModel.Binding
 
     public class ExternalFunctionDelegate : ExternalFunction
     {
-        public delegate STaskVoid InvokeAsyncDelegate(ExecutionContext context, PushPullAdapter adapter,
+        public delegate STaskVoid InvokeAsyncDelegate(ExecutionContext context, Pullable arguments,
             STaskVoid frameMove,
             STask<ValuePusher> resultPusher);
 
@@ -186,10 +186,10 @@ namespace WaaS.ComponentModel.Binding
 
         public override IFunctionType Type { get; }
 
-        protected override STaskVoid InvokeAsync(ExecutionContext context, PushPullAdapter adapter, STaskVoid frameMove,
+        protected override STaskVoid InvokeAsync(ExecutionContext context, Pullable arguments, STaskVoid frameMove,
             STask<ValuePusher> resultPusher)
         {
-            return invokeAsync(context, adapter, frameMove, resultPusher);
+            return invokeAsync(context, arguments, frameMove, resultPusher);
         }
     }
 }

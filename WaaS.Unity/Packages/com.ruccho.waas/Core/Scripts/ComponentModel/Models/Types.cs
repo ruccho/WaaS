@@ -89,6 +89,11 @@ namespace WaaS.ComponentModel.Models
             return (int)Kind;
         }
 
+        public bool ValidateEquals(IType other)
+        {
+            return other is PrimitiveValueType primitiveValueType && Equals(primitiveValueType);
+        }
+
         public IDespecializedValueType Despecialize()
         {
             return GetBoxed();
@@ -278,6 +283,22 @@ namespace WaaS.ComponentModel.Models
                 dest = dest[count..];
             }
         }
+
+        public bool ValidateEquals(IType other)
+        {
+            if (other is not IRecordType recordType) return false;
+            if (Fields.Length != recordType.Fields.Length) return false;
+
+            for (var i = 0; i < Fields.Length; i++)
+            {
+                var field = Fields.Span[i];
+                var otherField = recordType.Fields.Span[i];
+                if (field.Label != otherField.Label) return false;
+                if (!field.Type.ValidateEquals(otherField.Type)) return false;
+            }
+
+            return true;
+        }
     }
 
     public class ResolvedRecordField : IRecordField
@@ -456,6 +477,23 @@ namespace WaaS.ComponentModel.Models
                 }
             }
         }
+
+        public bool ValidateEquals(IType other)
+        {
+            if (other is not IVariantType variantType) return false;
+            if (Cases.Length != variantType.Cases.Length) return false;
+
+            for (var i = 0; i < Cases.Length; i++)
+            {
+                var @case = Cases.Span[i];
+                var otherCase = variantType.Cases.Span[i];
+                if (@case.Type == null && otherCase.Type == null) continue;
+                if (@case.Type == null || otherCase.Type == null) return false;
+                if (!@case.Type.ValidateEquals(otherCase.Type)) return false;
+            }
+
+            return true;
+        }
     }
 
     [GenerateFormatter]
@@ -496,6 +534,11 @@ namespace WaaS.ComponentModel.Models
         {
             dest[0] = ValueType.I32;
             dest[1] = ValueType.I32;
+        }
+
+        public bool ValidateEquals(IType other)
+        {
+            return other is IListType listType && ElementType.ValidateEquals(listType.ElementType);
         }
     }
 
@@ -545,6 +588,21 @@ namespace WaaS.ComponentModel.Models
 
             return Despecialized;
         }
+
+        public bool ValidateEquals(IType other)
+        {
+            if (other is not ITupleType tupleType) return false;
+            if (Cases.Length != tupleType.Cases.Length) return false;
+
+            for (var i = 0; i < Cases.Length; i++)
+            {
+                var @case = Cases.Span[i];
+                var otherCase = tupleType.Cases.Span[i];
+                if (!@case.ValidateEquals(otherCase)) return false;
+            }
+
+            return true;
+        }
     }
 
     [GenerateFormatter]
@@ -578,6 +636,11 @@ namespace WaaS.ComponentModel.Models
         public void Flatten(Span<ValueType> dest)
         {
             dest[0] = ValueType.I32;
+        }
+
+        public bool ValidateEquals(IType other)
+        {
+            return other is IFlagsType flags && flags.Labels.Length == Labels.Length;
         }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
@@ -622,6 +685,11 @@ namespace WaaS.ComponentModel.Models
             }
 
             return Despecialized;
+        }
+
+        public bool ValidateEquals(IType other)
+        {
+            return other is IEnumType @enum && @enum.Labels.Length == Labels.Length;
         }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
@@ -680,6 +748,11 @@ namespace WaaS.ComponentModel.Models
 
             return Despecialized;
         }
+
+        public bool ValidateEquals(IType other)
+        {
+            return other is IOptionType optionType && Type.ValidateEquals(optionType.Type);
+        }
     }
 
     [GenerateFormatter]
@@ -727,6 +800,17 @@ namespace WaaS.ComponentModel.Models
 
             return Despecialized;
         }
+
+        public bool ValidateEquals(IType other)
+        {
+            return other is IResultType resultType &&
+                   ((Type == null && resultType.Type == null) ||
+                    (Type != null && resultType.Type != null &&
+                     Type.ValidateEquals(resultType.Type) &&
+                     ((ErrorType == null && resultType.ErrorType == null) ||
+                      (ErrorType != null && resultType.ErrorType != null &&
+                       ErrorType.ValidateEquals(resultType.ErrorType)))));
+        }
     }
 
     [GenerateFormatter]
@@ -767,6 +851,11 @@ namespace WaaS.ComponentModel.Models
         {
             dest[0] = ValueType.I32;
         }
+
+        public bool ValidateEquals(IType other)
+        {
+            return other is IOwnedType ownedType && Type.ValidateEquals(ownedType.Type);
+        }
     }
 
     [GenerateFormatter]
@@ -806,6 +895,11 @@ namespace WaaS.ComponentModel.Models
         public void Flatten(Span<ValueType> dest)
         {
             dest[0] = ValueType.I32;
+        }
+
+        public bool ValidateEquals(IType other)
+        {
+            return other is IBorrowedType borrowedType && Type.ValidateEquals(borrowedType.Type);
         }
     }
 
@@ -908,7 +1002,8 @@ namespace WaaS.ComponentModel.Models
             if (Representation != 0x7F)
                 throw new NotSupportedException(
                     $"This type of resource representation is not supported: 0x{Representation:X}");
-            return new ResolvedResourceType(Destructor != null ? context.Resolve(Destructor).CoreExternal : null);
+            return new ResolvedResourceType(Destructor != null ? context.Resolve(Destructor).CoreExternal : null,
+                context.Instance ?? throw new InvalidOperationException());
         }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
@@ -922,37 +1017,46 @@ namespace WaaS.ComponentModel.Models
             private readonly IInvocableFunction? destructor;
             private readonly ResourceTable<uint> table = new();
 
-            public ResolvedResourceType(IInvocableFunction? destructor)
+            public ResolvedResourceType(IInvocableFunction? destructor, IInstance instance)
             {
                 this.destructor = destructor;
+                Instance = instance;
             }
 
             public uint New(uint rep)
             {
                 var index = unchecked((uint)table.Add(rep));
-                Console.WriteLine($"new resource {index}: {rep}");
+                // Console.WriteLine($"new resource {index}: {rep}");
                 return index;
             }
 
             public void Drop(uint index)
             {
+                var rep = table.RemoveAt(unchecked((int)index));
+
                 if (destructor != null)
                 {
-                    var indexValue = new StackValueItem(index);
+                    var repValue = new StackValueItem(rep);
                     contextForDestructor ??= new ExecutionContext();
-                    contextForDestructor.InterruptFrame(destructor, MemoryMarshal.CreateSpan(ref indexValue, 1),
+                    contextForDestructor.InterruptFrame(destructor, MemoryMarshal.CreateSpan(ref repValue, 1),
                         Span<StackValueItem>.Empty);
                 }
-                Console.WriteLine($"drop resource {index}");
 
-                table.RemoveAt(unchecked((int)index));
+                // Console.WriteLine($"drop resource {index}: {rep}");
             }
 
             public uint Rep(uint index)
             {
                 var rep = table.Get(unchecked((int)index));
-                Console.WriteLine($"rep resource {index}: {rep}");
+                // Console.WriteLine($"rep resource {index}: {rep}");
                 return rep;
+            }
+
+            public IInstance? Instance { get; }
+
+            public bool ValidateEquals(IType other)
+            {
+                return other is IResourceType resourceType && ReferenceEquals(this, resourceType);
             }
         }
     }
@@ -1023,6 +1127,23 @@ namespace WaaS.ComponentModel.Models
                 return parameterType;
             }
         }
+
+        public bool ValidateEquals(IType other)
+        {
+            if (other is not IFunctionType functionType) return false;
+            if (Parameters.Length != functionType.Parameters.Length) return false;
+
+            for (var i = 0; i < Parameters.Length; i++)
+            {
+                var parameter = Parameters.Span[i];
+                var otherParameter = functionType.Parameters.Span[i];
+                if (!parameter.Type.ValidateEquals(otherParameter.Type)) return false;
+            }
+
+            if (Result == null && functionType.Result == null) return true;
+            if (Result == null || functionType.Result == null) return false;
+            return Result.ValidateEquals(functionType.Result);
+        }
     }
 
     [GenerateFormatter]
@@ -1089,10 +1210,10 @@ namespace WaaS.ComponentModel.Models
                 {
                     var decl = Formatter<IComponentDeclarator>.Read(ref reader, newIndexSpace);
 
-                    if (decl is ImportDeclarator importDeclaration)
+                    if (decl is IImportDeclarator<ISortedExportable> importDeclaration)
                         imports.Add(importDeclaration.ImportName.Name, importDeclaration.Descriptor);
-                    else if (decl is ExportDeclarator exportDeclaration)
-                        exports.Add(exportDeclaration.ExportName.Name, exportDeclaration.Descriptor);
+                    else if (decl is IExportDeclarator<ISortedExportable> exportDeclaration)
+                        exports.Add(exportDeclaration.ImportName.Name, exportDeclaration.Descriptor);
                 }
 
                 result = new ComponentType(imports, exports);
@@ -1103,6 +1224,10 @@ namespace WaaS.ComponentModel.Models
         private class ResolvedComponentType : IComponentType
         {
             // TODO
+            public bool ValidateEquals(IType other)
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 
@@ -1120,6 +1245,11 @@ namespace WaaS.ComponentModel.Models
 
         public IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> Exports { get; }
 
+        public bool ValidateEquals(IType other)
+        {
+            throw new NotImplementedException();
+        }
+
         public IType ResolveFirstTime(IInstantiationContext context)
         {
             return this;
@@ -1136,8 +1266,8 @@ namespace WaaS.ComponentModel.Models
                 {
                     var decl = Formatter<IInstanceDeclarator>.Read(ref reader, newIndexSpace);
 
-                    if (decl is ExportDeclarator exportDeclaration)
-                        exports.Add(exportDeclaration.ExportName.Name, exportDeclaration.Descriptor);
+                    if (decl is IExportDeclarator<ISortedExportable> exportDeclaration)
+                        exports.Add(exportDeclaration.ImportName.Name, exportDeclaration.Descriptor);
                 }
 
                 result = new InstanceType(exports);
@@ -1147,7 +1277,7 @@ namespace WaaS.ComponentModel.Models
     }
 
     [GenerateFormatter]
-    [Variant(0x03, typeof(ImportDeclarator))]
+    [Variant(0x03, typeof(IImportDeclarator<ISortedExportable>))]
     [VariantFallback(typeof(IInstanceDeclarator))]
     public partial interface IComponentDeclarator
     {
@@ -1157,7 +1287,7 @@ namespace WaaS.ComponentModel.Models
     [Variant(0x00, typeof(InstanceDeclaratorCoreType))]
     [Variant(0x01, typeof(InstanceDeclaratorType))]
     [Variant(0x02, typeof(InstanceDeclaratorAlias))]
-    [Variant(0x04, typeof(ExportDeclarator))]
+    [Variant(0x04, typeof(IExportDeclarator<ISortedExportable>))]
     public partial interface IInstanceDeclarator : IComponentDeclarator
     {
     }
@@ -1181,19 +1311,102 @@ namespace WaaS.ComponentModel.Models
         private Alias Alias { get; }
     }
 
-
-    [GenerateFormatter]
-    public readonly partial struct ImportDeclarator : IComponentDeclarator
+    public interface IImportDeclarator<out T> : IComponentDeclarator, IUnresolved<T> where T : ISortedExportable
     {
-        public ImportExportName ImportName { get; }
-        public IExportableDescriptor<ISortedExportable> Descriptor { get; init; }
+        static IImportDeclarator()
+        {
+            Formatter<IImportDeclarator<ISortedExportable>>.Default = new ImportDeclaratorFormatter();
+        }
+
+        ImportExportName ImportName { get; }
+        IExportableDescriptor<T> Descriptor { get; }
     }
 
-    [GenerateFormatter]
-    public readonly partial struct ExportDeclarator : IInstanceDeclarator
+    public readonly struct ImportDeclarator<T> : IImportDeclarator<T> where T : ISortedExportable
     {
-        public ImportExportName ExportName { get; }
-        public IExportableDescriptor<ISortedExportable> Descriptor { get; init; }
+        public ImportExportName ImportName { get; }
+        public IExportableDescriptor<T> Descriptor { get; init; }
+
+        internal ImportDeclarator(ImportExportName exportName, IExportableDescriptor<T> descriptor)
+        {
+            ImportName = exportName;
+            Descriptor = descriptor;
+        }
+
+        public T ResolveFirstTime(IInstantiationContext context)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    internal class ImportDeclaratorFormatter : IFormatter<IImportDeclarator<ISortedExportable>>
+    {
+        public bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace,
+            out IImportDeclarator<ISortedExportable> result)
+        {
+            var name = Formatter<ImportExportName>.Read(ref reader, indexSpace);
+            var desc = Formatter<IExportableDescriptor<ISortedExportable>>.Read(ref reader, indexSpace);
+            result = desc switch
+            {
+                IExportableDescriptor<ICoreModule> descTyped => new ImportDeclarator<ICoreModule>(name, descTyped),
+                IExportableDescriptor<ICoreType> descTyped => new ImportDeclarator<ICoreType>(name, descTyped),
+                IExportableDescriptor<IType> descTyped => new ImportDeclarator<IType>(name, descTyped),
+                IExportableDescriptor<IFunction> descTyped => new ImportDeclarator<IFunction>(name, descTyped),
+                IExportableDescriptor<IComponent> descTyped => new ImportDeclarator<IComponent>(name, descTyped),
+                IExportableDescriptor<IInstance> descTyped => new ImportDeclarator<IInstance>(name, descTyped),
+                _ => throw new InvalidOperationException()
+            };
+            return true;
+        }
+    }
+
+    public interface IExportDeclarator<out T> : IInstanceDeclarator, IUnresolved<T> where T : ISortedExportable
+    {
+        static IExportDeclarator()
+        {
+            Formatter<IExportDeclarator<ISortedExportable>>.Default = new ExportDeclaratorFormatter();
+        }
+
+        ImportExportName ImportName { get; }
+        IExportableDescriptor<T> Descriptor { get; }
+    }
+
+    internal class ExportDeclaratorFormatter : IFormatter<IExportDeclarator<ISortedExportable>>
+    {
+        public bool TryRead(ref ModuleReader reader, IIndexSpace indexSpace,
+            out IExportDeclarator<ISortedExportable> result)
+        {
+            var name = Formatter<ImportExportName>.Read(ref reader, indexSpace);
+            var desc = Formatter<IExportableDescriptor<ISortedExportable>>.Read(ref reader, indexSpace);
+            result = desc switch
+            {
+                IExportableDescriptor<ICoreModule> descTyped => new ExportDeclarator<ICoreModule>(name, descTyped),
+                IExportableDescriptor<ICoreType> descTyped => new ExportDeclarator<ICoreType>(name, descTyped),
+                IExportableDescriptor<IType> descTyped => new ExportDeclarator<IType>(name, descTyped),
+                IExportableDescriptor<IFunction> descTyped => new ExportDeclarator<IFunction>(name, descTyped),
+                IExportableDescriptor<IComponent> descTyped => new ExportDeclarator<IComponent>(name, descTyped),
+                IExportableDescriptor<IInstance> descTyped => new ExportDeclarator<IInstance>(name, descTyped),
+                _ => throw new InvalidOperationException()
+            };
+            return true;
+        }
+    }
+
+    public readonly struct ExportDeclarator<T> : IExportDeclarator<T> where T : ISortedExportable
+    {
+        public ImportExportName ImportName { get; }
+        public IExportableDescriptor<T> Descriptor { get; init; }
+
+        internal ExportDeclarator(ImportExportName exportName, IExportableDescriptor<T> descriptor)
+        {
+            ImportName = exportName;
+            Descriptor = descriptor;
+        }
+
+        public T ResolveFirstTime(IInstantiationContext context)
+        {
+            return context.ResolveExport(this);
+        }
     }
 
     public interface IExportableDescriptor<out T> where T : ISortedExportable
@@ -1279,24 +1492,20 @@ namespace WaaS.ComponentModel.Models
 
         public bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument)
         {
-            if (argument is not IFunction) return false;
+            if (argument is not IFunction typeTyped) return false;
             var type = context.Resolve(Type);
-            if (type is not IFunctionType functionType) return false;
-
-            // TODO
-            return true;
+            return type.ValidateEquals(typeTyped.Type);
         }
     }
 
     [GenerateFormatter]
     public readonly partial struct ExportableDescriptorType : IExportableDescriptor<IType>
     {
-        public ITypeBound Type { get; }
+        [DontAddToSort] public ITypeBound Type { get; }
 
         public bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument)
         {
-            // Type.ValidateArgument(context, argument);
-            return argument is IType;
+            return argument is IType type && Type.ValidateBound(context, type);
         }
     }
 
@@ -1324,8 +1533,9 @@ namespace WaaS.ComponentModel.Models
             if (!exports.Any() && argument is null) return true;
 
             if (argument is not null && argument is not IInstance) return false;
+            var instance = argument as IInstance;
 
-            context = new InstantiationContext(null, context);
+            context = new InstantiationContext(null, context, null, instance);
             foreach (var (key, desc) in exports)
                 if (!desc.ValidateExported(context, (IInstance?)argument, key))
                     return false;
@@ -1337,9 +1547,9 @@ namespace WaaS.ComponentModel.Models
     [GenerateFormatter]
     [Variant(0x00, typeof(TypeBoundEquals))]
     [Variant(0x01, typeof(TypeBoundSubResource))]
-    public partial interface ITypeBound : IValueTypeDefinition
+    public partial interface ITypeBound
     {
-        bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument);
+        bool ValidateBound(IInstantiationContext context, IType type);
     }
 
     [GenerateFormatter]
@@ -1347,42 +1557,19 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> Type { get; }
 
-        public IType ResolveFirstTime(IInstantiationContext context)
+        public bool ValidateBound(IInstantiationContext context, IType type)
         {
-            throw new NotImplementedException();
-        }
-
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument)
-        {
-            if (argument is not IValueType typeTyped) return false;
-            
-            var type = context.Resolve(Type);
-            return Equals(type, typeTyped);
+            var resolved = context.Resolve(Type);
+            return resolved.ValidateEquals(type);
         }
     }
 
     [GenerateFormatter]
     public readonly partial struct TypeBoundSubResource : ITypeBound
     {
-        public IType ResolveFirstTime(IInstantiationContext context)
+        public bool ValidateBound(IInstantiationContext context, IType? type)
         {
-            // TODO
-            throw new NotImplementedException();
-        }
-
-        IValueType IUnresolved<IValueType>.ResolveFirstTime(IInstantiationContext context)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument)
-        {
-            throw new NotImplementedException();
+            return type is IResourceType;
         }
     }
 }

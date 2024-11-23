@@ -66,7 +66,7 @@ namespace WaaS.ComponentModel.Models
 
             return new LiftedFunction(context.Resolve(CoreFunction).CoreExternal, functionType, stringEncoding.Value,
                 realloc,
-                postReturn, memory);
+                postReturn, memory, context.Instance ?? throw new InvalidOperationException());
         }
     }
 
@@ -108,7 +108,8 @@ namespace WaaS.ComponentModel.Models
 
             stringEncoding ??= CanonOptionStringEncodingKind.Utf8;
 
-            return new LoweredFunction(stringEncoding.Value, realloc, memory, componentFunction);
+            return new LoweredFunction(context.Instance ?? throw new InvalidOperationException(), stringEncoding.Value,
+                realloc, memory, componentFunction);
         }
     }
 

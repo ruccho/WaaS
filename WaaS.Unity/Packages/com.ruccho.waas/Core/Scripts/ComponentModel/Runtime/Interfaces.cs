@@ -25,7 +25,7 @@ namespace WaaS.ComponentModel.Runtime
     {
     }
 
-    public interface ICoreType : ICoreSorted
+    public interface ICoreType : ICoreSorted, ISortedExportable
     {
     }
 
@@ -53,6 +53,7 @@ namespace WaaS.ComponentModel.Runtime
 
     public interface IType : ISortedExportable
     {
+        bool ValidateEquals(IType other);
     }
 
     public interface IComponent : ISortedExportable
@@ -171,6 +172,7 @@ namespace WaaS.ComponentModel.Runtime
 
     public interface IResourceType : IType
     {
+        IInstance? Instance { get; }
         uint New(uint rep);
         void Drop(uint index);
         uint Rep(uint index);

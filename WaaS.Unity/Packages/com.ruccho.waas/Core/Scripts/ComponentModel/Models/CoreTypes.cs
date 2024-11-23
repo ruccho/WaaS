@@ -185,17 +185,19 @@ namespace WaaS.ComponentModel.Models
 
         public CoreAliasDeclaration OnAfterRead(IIndexSpace indexSpace)
         {
-            for (var i = 0; i < Depth; i++) indexSpace = indexSpace.Parent ?? throw new InvalidOperationException();
+            var targetIndexSpace = indexSpace;
+            for (var i = 0; i < Depth; i++)
+                targetIndexSpace = targetIndexSpace.Parent ?? throw new InvalidOperationException();
 
             IUnresolved<ICoreSorted> target = Sort switch
             {
-                CoreSortTag.Function => indexSpace.Get<ICoreSortedExportable<IInvocableFunction>>(Index),
-                CoreSortTag.Table => indexSpace.Get<ICoreSortedExportable<Table>>(Index),
-                CoreSortTag.Memory => indexSpace.Get<ICoreSortedExportable<Memory>>(Index),
-                CoreSortTag.Global => indexSpace.Get<ICoreSortedExportable<Global>>(Index),
-                CoreSortTag.Type => indexSpace.Get<ICoreType>(Index),
-                CoreSortTag.Module => indexSpace.Get<ICoreModule>(Index),
-                CoreSortTag.Instance => indexSpace.Get<ICoreInstance>(Index),
+                CoreSortTag.Function => targetIndexSpace.Get<ICoreSortedExportable<IInvocableFunction>>(Index),
+                CoreSortTag.Table => targetIndexSpace.Get<ICoreSortedExportable<Table>>(Index),
+                CoreSortTag.Memory => targetIndexSpace.Get<ICoreSortedExportable<Memory>>(Index),
+                CoreSortTag.Global => targetIndexSpace.Get<ICoreSortedExportable<Global>>(Index),
+                CoreSortTag.Type => targetIndexSpace.Get<ICoreType>(Index),
+                CoreSortTag.Module => targetIndexSpace.Get<ICoreModule>(Index),
+                CoreSortTag.Instance => targetIndexSpace.Get<ICoreInstance>(Index),
                 _ => throw new ArgumentOutOfRangeException()
             };
 

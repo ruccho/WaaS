@@ -102,6 +102,11 @@ namespace WaaS.ComponentModel.Binding
             }
 
             public ReadOnlyMemory<string> Labels { get; }
+
+            public bool ValidateEquals(IType other)
+            {
+                return other is IFlagsType flags && flags.Labels.Length == Labels.Length;
+            }
         }
     }
 }

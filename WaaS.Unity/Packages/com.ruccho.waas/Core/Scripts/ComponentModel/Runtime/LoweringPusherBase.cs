@@ -162,7 +162,10 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType() is not IBorrowedType borrowed) throw new InvalidOperationException();
             if (borrowed.Type != handle.Type) throw new InvalidOperationException();
-            PushU32Core(handle.GetValue());
+            if (handle.Type.Instance == Context!.Instance)
+                PushU32Core(handle.Type.Rep(handle.GetValue()));
+            else
+                PushU32Core(handle.GetValue());
         }
 
         public void Push(ReadOnlySpan<char> value)
