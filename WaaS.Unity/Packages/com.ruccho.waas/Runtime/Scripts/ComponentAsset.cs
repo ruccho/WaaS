@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using UnityEngine;
+using WaaS.ComponentModel.Runtime;
 using WaaS.Models;
 
 namespace WaaS.Unity
@@ -9,7 +10,7 @@ namespace WaaS.Unity
     {
         [SerializeField] private bool deserializeOnLoad;
         [SerializeField, HideInInspector] private byte[] data;
-        [NonSerialized] private Lazy<ComponentModel.Models.Component> component;
+        [NonSerialized] private Lazy<IComponent> component;
 
         private void OnEnable()
         {
@@ -26,13 +27,13 @@ namespace WaaS.Unity
             component = null;
         }
 
-        public async ValueTask<ComponentModel.Models.Component> LoadComponentAsync()
+        public async ValueTask<IComponent> LoadComponentAsync()
         {
             if (component.IsValueCreated) return component.Value;
             return await Task.Run(() => component.Value);
         }
 
-        public ComponentModel.Models.Component LoadComponent()
+        public IComponent LoadComponent()
         {
             return component.Value;
         }

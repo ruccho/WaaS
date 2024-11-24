@@ -90,7 +90,8 @@ namespace WaaS.ComponentModel.Runtime
             public unsafe void TakeResults(ValuePusher resultValuePusher)
             {
                 var coreResultTypes = function!.CoreFunction.Type.ResultTypes;
-                Span<StackValueItem> resultValues = stackalloc StackValueItem[frame.ResultLength];
+                StackValueItem* resultValuesPtr = stackalloc StackValueItem[frame.ResultLength];
+                Span<StackValueItem> resultValues = new(resultValuesPtr, frame.ResultLength);
                 frame.TakeResults(resultValues);
                 frame.Dispose();
                 frame = default;

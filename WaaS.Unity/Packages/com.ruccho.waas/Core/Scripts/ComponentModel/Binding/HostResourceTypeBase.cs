@@ -11,7 +11,7 @@ namespace WaaS.ComponentModel.Binding
     /// <typeparam name="T"></typeparam>
     public abstract class HostResourceTypeBase<T> : IHostResourceType<T>
     {
-        private readonly ResourceTable<T> resources = new();
+        private ResourceTable<T> resources = new();
 
         public T ToHostResource(uint resourceId)
         {
@@ -65,6 +65,11 @@ namespace WaaS.ComponentModel.Binding
 
         protected virtual void OnDrop(T value)
         {
+        }
+
+        public void Reset()
+        {
+            resources = new();
         }
     }
 }
