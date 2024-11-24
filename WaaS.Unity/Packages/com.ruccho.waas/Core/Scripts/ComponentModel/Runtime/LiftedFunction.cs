@@ -87,7 +87,7 @@ namespace WaaS.ComponentModel.Runtime
                 return frame = function!.CoreFunction.CreateFrame(Context, stackValueItems.UnsafeItems);
             }
 
-            public void TakeResults(ValuePusher resultValuePusher)
+            public unsafe void TakeResults(ValuePusher resultValuePusher)
             {
                 var coreResultTypes = function!.CoreFunction.Type.ResultTypes;
                 Span<StackValueItem> resultValues = stackalloc StackValueItem[frame.ResultLength];
