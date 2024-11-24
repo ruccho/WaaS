@@ -27,7 +27,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           editUrl:
-            'https://github.com/ruccho/WaaS/tree/main/',
+            'https://github.com/ruccho/WaaS/tree/main/docs',
           routeBasePath: '/'
         },
         theme: {
