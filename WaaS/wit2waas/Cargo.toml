@@ -2,6 +2,11 @@
 name = "wit2waas"
 version = "0.1.0"
 edition = "2021"
+authors = ["ruccho"]
+repository = "https://github.com/ruccho/WaaS"
+license = "MIT"
+readme = "README.md"
+description = "CLI tool to generate bindings for WaaS from WIT"
 
 [dependencies]
 anyhow = "1.0.89"
