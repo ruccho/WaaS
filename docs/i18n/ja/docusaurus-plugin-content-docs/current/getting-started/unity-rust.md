@@ -3,7 +3,9 @@ title: Unity と Rust ではじめる
 sidebar_position: 2
 ---
 
-Rust を WebAssembly にコンパイルして Unity で動かします。
+このチュートリアルでは、Rust を WebAssembly にコンパイルして Unity で動かします。
+
+WaaS では WebAssembly モジュールをインポートできますが、Rust ファイルを直接インポートしてその場で WebAssembly モジュールにコンパイルすることもでき、今回はこの方法を使用します。この方法では`cargo` による依存クレートの管理等は行えません。
 
 #### 1. [Rust ツールチェイン](https://www.rust-lang.org/ja/learn/get-started)をインストールし、`wasm32-unknown-unknown`ターゲットを追加します。
 
