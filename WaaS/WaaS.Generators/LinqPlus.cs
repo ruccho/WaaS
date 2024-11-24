@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace WaaS.Generators;
 
-internal static class LinqPlus
+public static class LinqPlus
 {
     public static IEnumerable<T> WhereNotNull<T>(this IEnumerable<T?> source)
     {

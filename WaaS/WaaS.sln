@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wasi", "wasi\wasi.csproj", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WaaS", "WaaS\WaaS.csproj", "{ADA99136-8D23-4943-98B8-59F3DF01D8CD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WaaS.Generator.Development", "WaaS.Generator.Development\WaaS.Generator.Development.csproj", "{077139F3-E023-4A9E-B281-3FC08888A3B6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,5 +44,9 @@ Global
 		{ADA99136-8D23-4943-98B8-59F3DF01D8CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ADA99136-8D23-4943-98B8-59F3DF01D8CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ADA99136-8D23-4943-98B8-59F3DF01D8CD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{077139F3-E023-4A9E-B281-3FC08888A3B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{077139F3-E023-4A9E-B281-3FC08888A3B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{077139F3-E023-4A9E-B281-3FC08888A3B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{077139F3-E023-4A9E-B281-3FC08888A3B6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

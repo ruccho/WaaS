@@ -26,6 +26,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\WaaS.Generator.Development\WaaS.Generator.Development.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
         <ProjectReference Include="..\WaaS.Generators\WaaS.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
     </ItemGroup>
 
