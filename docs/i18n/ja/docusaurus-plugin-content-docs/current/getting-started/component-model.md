@@ -44,7 +44,7 @@ cargo component new hello-world --lib
 
 先ほどの WIT を `wit/world.wit` に置いておきます。
 
-以下は、Rust 用に生成されたバインディングを利用して書かれたスクリプトの例です。`env` に定義した関数を呼び出しています。
+以下は、Rust 用に生成されたバインディングを利用して書かれたスクリプトの例です。`interface env` に定義した関数を呼び出しています。
 
 ```rust
 #[allow(warnings)]

@@ -50,19 +50,10 @@ public class Test : MonoBehaviour
         // ExecutionContext の作成
         using var context = new ExecutionContext();
 
-        // 引数
-        Span<StackValueItem> arguments = stackalloc StackValueItem[2];
-        arguments[0] = new StackValueItem(1);
-        arguments[1] = new StackValueItem(2);
-        
-        // 実行
-        context.Invoke(function, arguments);
-        
-        // 戻り値の取得
-        Span<StackValueItem> results = stackalloc StackValueItem[1];
-        context.TakeResults(results);
+        // 呼び出し
+        var result = CoreBinder.Instance.Invoke<int>(function, 1, 2);
 
-        Debug.Log($"Completed: 1 + 2 = {results[0].ExpectValueI32()}"); // Completed: 1 + 2 = 3
+        Debug.Log($"Completed: 1 + 2 = {result}"); // Completed: 1 + 2 = 3
     }
 }
 ```

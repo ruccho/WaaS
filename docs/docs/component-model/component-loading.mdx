@@ -1,4 +1,50 @@
 ---
 title: Loading a Component
-sidebar_position: 3
+sidebar_position: 1
 ---
+
+import Badge from '@site/src/components/Badge';
+
+## Basic
+
+Use `Component.Create()`.  
+You can load from `ReadOnlySpan<byte>` or `ReadOnlySequence<byte>`.
+
+```csharp
+using WaaS.ComponentModel.Models;
+
+Span<byte> bytes = System.IO.File.LoadAllBytes("foo.wasm");
+var component = Component.Create(bytes);
+```
+
+## Streaming
+
+Not supported at the moment.
+
+## Loading as an Asset <Badge>Unity</Badge>
+
+When you import a file with the extension `*.wasm` into a Unity project, it is automatically loaded as a `WaaS.Unity.ComponentAsset`.
+
+:::info
+Both modules and components have the extension `*.wasm`, but they are automatically distinguished upon import.
+:::
+
+Modules can be assigned as `[SerializeField]` and loaded with `ComponentAsset.LoadComponent()` or `ComponentAsset.LoadComponentAsync()`.
+
+```csharp
+using UnityEngine;
+using WaaS.Unity;
+
+[SerializeField] private ComponentAsset componentAsset;
+
+// synchronous
+var component = componentAsset.LoadComponent();
+
+// asynchronous
+var component = await componentAsset.LoadComponentAsync();
+```
+
+By enabling `Deserialize On Load` in the settings of `ComponentAsset`, the module is preloaded synchronously when the asset is loaded.  
+This reduces the waiting time for `ComponentAsset.LoadComponent()`.
+
+

@@ -3,25 +3,19 @@ title: Unity and Rust Tutorial
 sidebar_position: 2
 ---
 
-# Getting Started
+In this tutorial, we will compile Rust to WebAssembly and run it in Unity.
 
-Rust を WebAssembly にコンパイルして Unity で動かします。
+WaaS can import WebAssembly modules, but you can also import Rust files directly and compile them into WebAssembly modules on the spot. This method does not allow you to manage dependencies with `cargo`.
 
-1. [Rust ツールチェイン](https://www.rust-lang.org/ja/learn/get-started)をインストールし、`wasm32-unknown-unknown`ターゲットを追加します。
+#### 1. Install [Rust toolchain](https://www.rust-lang.org/ja/learn/get-started) and add the `wasm32-unknown-unknown` target.
 
-```
+```sh
 rustup target add wasm32-unknown-unknown
 ```
 
-2. Unity プロジェクトに WaaS をインストールします。
+#### 2. [Install WaaS](./installation.md) in your Unity project.
 
-Package Manager から以下の git URL を追加します。
-
-```
-https://github.com/ruccho/WaaS.git?path=/Waas.Unity/Packages/com.ruccho.waas
-```
-
-3. Unity プロジェクトに `main.rs` を作成します：
+#### 3. Create `main.rs` in your Unity project:
 
 ```rust
 #[no_mangle]
@@ -30,7 +24,7 @@ pub extern "C" fn add(a: i32, b: i32) {
 }
 ```
 
-4. C# スクリプトから `add()` 関数を実行します：
+#### 4. Create a C# script `Test.cs` that runs the `add()` function:
 
 ```csharp
 using System;
@@ -44,31 +38,29 @@ public class Test : MonoBehaviour
 
     private void Start()
     {
-        // モジュールのロード
+        // Load the module
         var module = moduleAsset.LoadModule();
 
-        // インスタンス化
+        // Instantiation
         var instance = new Instance(module, new Imports());
 
-        // エクスポートされた関数の取得
+        // Get the exported function
         var function = instance.ExportInstance.Items["add"] as IInvocableFunction;
 
-        // ExecutionContext の作成
+        // Create ExecutionContext
         using var context = new ExecutionContext();
 
-        // 引数
-        Span<StackValueItem> arguments = stackalloc StackValueItem[2];
-        arguments[0] = new StackValueItem(1);
-        arguments[1] = new StackValueItem(2);
-        
-        // 実行
-        context.Invoke(function, arguments);
-        
-        // 戻り値の取得
-        Span<StackValueItem> results = stackalloc StackValueItem[1];
-        context.TakeResults(results);
+        // Invocation
+        var result = CoreBinder.Instance.Invoke<int>(function, 1, 2);
 
-        Debug.Log($"Completed: 1 + 2 = {results[0].ExpectValueI32()}"); // Completed: 1 + 2 = 3
+        Debug.Log($"Completed: 1 + 2 = {result}"); // Completed: 1 + 2 = 3
     }
 }
 ```
+
+#### 5. Attach `Test.cs` to a GameObject in your scene and assign `ModuleAsset` to the script.
+
+```
+> Completed: 1 + 2 = 3
+```
+

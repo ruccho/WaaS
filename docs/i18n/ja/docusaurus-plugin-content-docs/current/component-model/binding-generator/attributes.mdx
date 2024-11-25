@@ -273,7 +273,7 @@ public partial interface IEnv
 
 ```
 
-- `[ComponentInterface]` を付与したインターフェースのメンバとして、`[ComponentResource]` 属性を付与したインターフェースを定義します。
+- `[ComponentInterface]` を付与したインターフェースのメンバとして、`[ComponentResource]` 属性を付与した `partial` なインターフェースを定義します。
 - インターフェースは、`IResourceImpl` を継承します。
 
 引数や戻り値でリソース型を使用する場合は `Owned<ISomeResourceImpl>` 、借用する場合は `Borrowed<ISomeResourceImpl>` を使用します。

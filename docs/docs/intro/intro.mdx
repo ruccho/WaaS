@@ -1,50 +1,53 @@
 ---
+title: About WaaS
 sidebar_position: 1
 slug: /
+hide_title: true
 ---
 
-# WaaS
+import SocialImage from '@site/static/img/social-t.svg'
 
+<SocialImage />
 
+WaaS is a script engine for Unity / .NET.
 
-Let's discover **Docusaurus in less than 5 minutes**.
+WaaS stands for **WebAssembly as a Script**, which adopts WebAssembly as a script execution format.
 
-## Getting Started
+This has the following benefits:
 
-Get started by **creating a new site**.
+#### Language independence
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+> Various languages that [support output to WebAssembly](https://github.com/appcypher/awesome-wasm-langs) such as Rust, C/C++, Java, and Go can be used, allowing you to choose the language that best suits your needs.
 
-### What you'll need
+#### Security
 
-- [Node.js](https://nodejs.org/en/download/) version 18.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+> Without explicit permission, WebAssembly code cannot access the host environment's memory or functions.
+> You can also run untrusted scripts safely.
 
-## Generate a new site
+#### Portability
 
-Generate a new Docusaurus site using the **classic template**.
+> It is a full Pure C# implementation and can run anywhere Unity or .NET supports.
 
-The classic template will automatically be added to your project after you run the command:
+#### Interpreter
 
-```bash
-npm init docusaurus@latest my-website classic
-```
+> It does not require JIT or AOT compilation of WebAssembly itself.
+> You can run scripts obtained at runtime even on platforms where JIT is prohibited, such as iOS.
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
+#### Binding
 
-The command also installs all necessary dependencies you need to run Docusaurus.
+> It supports the [Component Model](https://component-model.bytecodealliance.org/) and allows you to perform practical bindings.
 
-## Start your site
+### Use cases
 
-Run the development server:
+#### As a simple script in a game
 
-```bash
-cd my-website
-npm run start
-```
+> It can be used as a script to describe events and AI in a game.
+> By creating scripts in small units, you can achieve fast hot reloads.
 
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
+#### As user-created content
 
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
+> It can be used as a script to give complex behavior to user-created content.
 
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+#### As a plugin system
+
+> It can be used as a script to add plugins to applications created with Unity or .NET.
