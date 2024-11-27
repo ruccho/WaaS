@@ -1,0 +1,19 @@
+name: Publish Crates
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  publish-nuget:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: WaaS/wit2waas
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to crates.io
+        run: cargo login ${{ secrets.CARGO_TOKEN }}
+      - name: Publish
+        run: cargo publish
