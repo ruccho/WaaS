@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Custom section in a WebAssembly module.
+    /// </summary>
     public class CustomSection : Section
     {
         internal CustomSection(ref ModuleReader reader, uint size)

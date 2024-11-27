@@ -4,10 +4,23 @@ using System.Collections.Generic;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Represents a core WebAssembly module.
+    /// </summary>
     public class Module
     {
-        private Module(ref ModuleReader reader)
+        internal Module(ref ModuleReader reader, long? size = null)
         {
+            long rest = 0;
+            if (size.HasValue)
+                checked
+                {
+                    rest = reader.Available - size.Value;
+                }
+
+            if (rest < 0) throw new ArgumentException(nameof(size));
+
+
             var preamble = reader.ReadUnaligned<Preamble>();
 
             if (!preamble.IsValid())
@@ -19,7 +32,8 @@ namespace WaaS.Models
             FunctionSection functionSection = null;
             TypeSection typeSection = null;
             CodeSection codeSection = null;
-            while (reader.Available > 0)
+
+            while (reader.Available > rest)
             {
                 var section = Section.Read(ref reader);
                 sections.Add(section);
@@ -102,7 +116,7 @@ namespace WaaS.Models
                 var typeIndex = typeIndices[i];
                 var functionType = types[checked((int)typeIndex)];
 
-                functionInstances[i] = new Function(functionType, function, typeIndex);
+                functionInstances[i] = new Function(functionType, function, typeIndex, i);
             }
 
             InternalFunctions = functionInstances;
@@ -123,6 +137,8 @@ namespace WaaS.Models
         public StartSection StartSection { get; }
         public ExportSection ExportSection { get; }
         public TypeSection TypeSection { get; }
+
+        public string SourceDescription { get; set; }
 
         public static Module Create(ReadOnlySpan<byte> buffer)
         {

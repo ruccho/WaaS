@@ -3,6 +3,9 @@ using WaaS.Runtime;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Represents "blocktype".
+    /// </summary>
     public readonly struct BlockType : IEquatable<BlockType>
     {
         public ValueType? Type { get; }
@@ -40,6 +43,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "unreachable" instruction.
+    /// </summary>
     [OpCode(0x00)]
     public partial class Unreachable : Instruction
     {
@@ -58,6 +64,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "nop" instruction.
+    /// </summary>
     [OpCode(0x01)]
     public partial class Nop : Instruction
     {
@@ -75,6 +84,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Base of block instructions.
+    /// </summary>
     public abstract partial class BlockInstruction : Instruction
     {
         [Operand(0)] public BlockType BlockType { get; }
@@ -113,6 +125,9 @@ namespace WaaS.Models
         // internal ValueType[] EvaluatedResultTypes { get; set; }
     }
 
+    /// <summary>
+    ///     Represents "block" instruction.
+    /// </summary>
     [OpCode(0x02)]
     public partial class Block : BlockInstruction
     {
@@ -124,6 +139,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "loop" instruction.
+    /// </summary>
     [OpCode(0x03)]
     public partial class Loop : BlockInstruction
     {
@@ -135,6 +153,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "if" instruction.
+    /// </summary>
     [OpCode(0x04)]
     public partial class If : BlockInstruction
     {
@@ -172,6 +193,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Base of block delimiter instructions.
+    /// </summary>
     public abstract class BlockDelimiterInstruction : Instruction
     {
         protected BlockDelimiterInstruction(uint index) : base(index)
@@ -179,6 +203,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "else" instruction.
+    /// </summary>
     [OpCode(0x05)]
     public partial class Else : BlockDelimiterInstruction
     {
@@ -197,6 +224,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "end" instruction.
+    /// </summary>
     [OpCode(0x0B)]
     public partial class End : BlockDelimiterInstruction
     {
@@ -215,6 +245,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "br" instruction.
+    /// </summary>
     [OpCode(0x0C)]
     public partial class Br : Instruction
     {
@@ -235,6 +268,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "br_if" instruction.
+    /// </summary>
     [OpCode(0x0D)]
     public partial class BrIf : Instruction
     {
@@ -258,6 +294,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "br_table" instruction.
+    /// </summary>
     [OpCode(0x0E)]
     public partial class BrTable : Instruction
     {
@@ -285,6 +324,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "return" instruction.
+    /// </summary>
     [OpCode(0x0F)]
     public partial class Return : Instruction
     {
@@ -303,6 +345,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "call" instruction.
+    /// </summary>
     [OpCode(0x10)]
     public partial class Call : Instruction
     {
@@ -350,11 +395,17 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "call_indirect" instruction.
+    /// </summary>
     [OpCode(0x11)]
     public partial class CallIndirect : Instruction
     {
         [Operand(0)] public uint FunctionTypeIndex { get; }
-        [Operand(1)] public byte Reserved { get; }
+
+        // NOTE: Rust 1.82 and later don't emit 1-byte fixed 0x00 defined in wasm 1.0 but LEB128 32-bit number.  
+        // https://blog.rust-lang.org/2024/09/24/webassembly-targets-change-in-default-target-features.html
+        [Operand(1)] public uint TableIndex { get; }
 
         public override void Execute(WasmStackFrame current)
         {
@@ -365,9 +416,11 @@ namespace WaaS.Models
             var functionType = current.Instance.Module.TypeSection.FuncTypes.Span[checked((int)FunctionTypeIndex)];
 
             var function = table.Elements[checked((int)functionIndex)];
-            if (function == null) throw new TrapException();
+            if (function == null)
+                throw new TrapException($"[{nameof(CallIndirect)}] Function is null. index: {functionIndex}");
 
-            if (!function.Type.Match(functionType)) throw new TrapException();
+            if (!function.Type.Match(functionType))
+                throw new TrapException($"[{nameof(CallIndirect)}] Function type mismatch.");
 
             var paramTypes = function.Type.ParameterTypes.Span;
 
@@ -387,7 +440,8 @@ namespace WaaS.Models
         public override void Validate(in ValidationContext context)
         {
             base.Validate(context);
-            if (Reserved != 0) throw new InvalidModuleException();
+            if (TableIndex != 0)
+                throw new InvalidModuleException("Non-zero table index for call_indirect is not supported.");
         }
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)

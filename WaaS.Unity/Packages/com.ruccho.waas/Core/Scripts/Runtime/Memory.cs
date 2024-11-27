@@ -4,7 +4,10 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
-    public class Memory : IDisposable, IImportItem, IExportItem
+    /// <summary>
+    ///     Represents an instance of a linear memory.
+    /// </summary>
+    public class Memory : IDisposable, IExternal
     {
         public const int PageSizeRank = 16; // 64KiB
 
@@ -22,7 +25,6 @@ namespace WaaS.Runtime
         }
 
         public Limits PageLimits { get; }
-
         public Span<byte> Span => buffer.AsSpan()[..Length];
 
         public int Length { get; private set; }
@@ -32,6 +34,11 @@ namespace WaaS.Runtime
         {
             GC.SuppressFinalize(this);
             DisposeCore();
+        }
+
+        public Memory<byte> AsMemory()
+        {
+            return buffer.AsMemory()[..Length];
         }
 
         ~Memory()

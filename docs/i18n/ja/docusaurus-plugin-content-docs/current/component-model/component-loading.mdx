@@ -1,0 +1,48 @@
+---
+title: コンポーネントのロード
+sidebar_position: 1
+---
+
+import Badge from '@site/src/components/Badge';
+
+## 基本
+
+`Component.Create()` を使用します。  
+`ReadOnlySpan<byte>` または `ReadOnlySequence<byte>` からのロードが可能です。
+
+```csharp
+using WaaS.ComponentModel.Models;
+
+Span<byte> bytes = System.IO.File.LoadAllBytes("foo.wasm");
+var component = Component.Create(bytes);
+```
+
+## ストリーミング
+
+現時点では未対応です。
+
+## アセットとしてのロード <Badge>Unity</Badge>
+
+拡張子 `*.wasm` をもつファイルを Unity プロジェクトにインポートすると、自動的に `WaaS.Unity.ComponentAsset` としてロードされます。
+
+:::info
+モジュールとコンポーネントの拡張子はどちらも `*.wasm` ですが、インポート時に自動的に判別されます。
+:::
+
+モジュールは `[SerializeField]` としてアサインでき、`ComponentAsset.LoadComponent()` または `ComponentAsset.LoadComponentAsync()` でロードできます。
+
+```csharp
+using UnityEngine;
+using WaaS.Unity;
+
+[SerializeField] private ComponentAsset componentAsset;
+
+// 同期
+var component = componentAsset.LoadComponent();
+
+// 非同期
+var component = await componentAsset.LoadComponentAsync();
+```
+
+`ComponentAsset` の設定で `Deserialize On Load`を有効化すると、アセットのロード時に同期的にモジュールをプリロードします。  
+これによって、`ComponentAsset.LoadComponent()` の待ち時間を減らすことができます。

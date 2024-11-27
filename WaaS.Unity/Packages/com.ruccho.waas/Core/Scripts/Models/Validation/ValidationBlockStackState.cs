@@ -3,6 +3,9 @@ using WaaS.Runtime;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Represents the state of the stack within a block during validation.
+    /// </summary>
     public ref struct ValidationBlockStackState
     {
         private readonly Span<ValueType> stack;
@@ -35,7 +38,7 @@ namespace WaaS.Models
             return stack[--Depth];
         }
 
-        public void ValidateResults(in ValidationContext context, BlockResultType blockResultType, bool exact)
+        internal void ValidateResults(in ValidationContext context, BlockResultType blockResultType, bool exact)
         {
             var arity = blockResultType.GetArity(context);
 

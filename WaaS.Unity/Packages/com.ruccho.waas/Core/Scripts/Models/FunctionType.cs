@@ -3,6 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Represents types of parameters and results of a function.
+    /// </summary>
     public class FunctionType
     {
         internal FunctionType(ref ModuleReader reader)
@@ -50,6 +53,11 @@ namespace WaaS.Models
                        .SequenceEqual(MemoryMarshal.AsBytes(other.ParameterTypes.Span)) &&
                    MemoryMarshal.AsBytes(ResultTypes.Span)
                        .SequenceEqual(MemoryMarshal.AsBytes(other.ResultTypes.Span));
+        }
+
+        public override string ToString()
+        {
+            return $"({string.Join(", ", ParameterTypes.ToArray())}) -> ({string.Join(", ", ResultTypes.ToArray())})";
         }
     }
 }

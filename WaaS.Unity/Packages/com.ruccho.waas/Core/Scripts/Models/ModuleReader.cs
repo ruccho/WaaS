@@ -130,6 +130,26 @@ namespace WaaS.Models
             return ReadUnalignedLeb128U32();
         }
 
+        public delegate T ReadElementDelegate<out T, in TState>(ref ModuleReader reader, TState state);
+
+        public T[] ReadVector<T, TState>(ReadElementDelegate<T, TState> reader, TState state)
+        {
+            var result = new T[ReadVectorSize()];
+            for (var i = 0; i < result.Length; i++) result[i] = reader(ref this, state);
+
+            return result;
+        }
+#nullable enable
+        public T? ReadOptional<T, TState>(ReadElementDelegate<T?, TState> reader, TState state)
+        {
+            var notNull = ReadUnaligned<byte>();
+            if (notNull == 0) return default;
+            if (notNull != 1) throw new InvalidModuleException();
+            return reader(ref this, state);
+        }
+#nullable restore
+
+
         public uint ReadUnalignedLeb128U32()
         {
             const int maxNumSrcBytes = 5; // ceil(32 / 7)

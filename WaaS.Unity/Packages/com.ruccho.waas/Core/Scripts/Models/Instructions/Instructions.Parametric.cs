@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Represents "drop" instruction.
+    /// </summary>
     [OpCode(0x1A)]
     public partial class Drop : Instruction
     {
@@ -21,6 +24,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "select" instruction.
+    /// </summary>
     [OpCode(0x1B)]
     public partial class Select : Instruction
     {

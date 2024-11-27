@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Limits for a resizable WebAssembly memory or table.
+    /// </summary>
     public readonly struct Limits : IEquatable<Limits>
     {
         public uint Min { get; }
@@ -46,7 +49,7 @@ namespace WaaS.Models
             }
         }
 
-        public Limits(uint min, uint max)
+        public Limits(uint min, uint? max = null)
         {
             Min = min;
             Max = max;

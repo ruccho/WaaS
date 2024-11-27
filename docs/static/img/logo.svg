@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <path d="M13,3L2,3L2,2L3,2L3,1L14,1L14,2L13,2L13,3Z" style="fill:rgb(119,130,246);"/>
+    <path d="M12,15L12,3L13,3L13,2L14,2L14,1L15,1L15,13L14,13L14,14L13,14L13,15L12,15Z" style="fill:rgb(90,54,216);"/>
+    <path d="M1,9L1,3L12,3L12,15L2,15L2,13L4,13L4,10L3,10L3,9L1,9ZM3,8L5,8L5,6L3,6L3,8Z" style="fill:rgb(101,79,240);"/>
+    <rect x="3" y="6" width="1" height="1" style="fill:rgb(225,227,255);"/>
+    <path d="M5,8L3,8L3,7L4,7L4,6L5,6L5,8Z" style="fill:rgb(16,22,83);"/>
+    <path d="M3,13L1,13L1,12L2,12L2,11L4,11L4,12L3,12L3,13Z" style="fill:rgb(219,62,159);"/>
+    <rect x="3" y="12" width="1" height="1" style="fill:rgb(90,54,216);"/>
+</svg>

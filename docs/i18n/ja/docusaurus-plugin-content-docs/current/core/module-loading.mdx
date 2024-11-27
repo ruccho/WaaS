@@ -1,0 +1,45 @@
+---
+title: モジュールのロード
+sidebar_position: 1
+---
+
+import Badge from '@site/src/components/Badge';
+
+## 基本
+
+`Module.Create()` を使用します。  
+`ReadOnlySpan<byte>` または `ReadOnlySequence<byte>` からのロードが可能です。
+
+```csharp
+using WaaS.Runtime;
+
+Span<byte> bytes = System.IO.File.LoadAllBytes("foo.wasm");
+var module = Module.Create(bytes);
+```
+
+## ストリーミング
+
+現時点では未対応です。
+
+## アセットとしてのロード <Badge>Unity</Badge>
+
+拡張子 `*.wasm` をもつファイルを Unity プロジェクトにインポートすると、自動的に `WaaS.Unity.ModuleAsset` としてロードされます。
+
+モジュールは `[SerializeField]` としてアサインでき、`ModuleAsset.LoadModule()` または `ModuleAsset.LoadModuleAsync()` でロードできます。
+
+```csharp
+using UnityEngine;
+using WaaS.Runtime;
+using WaaS.Unity;
+
+[SerializeField] private ModuleAsset moduleAsset;
+
+// 同期
+var module = moduleAsset.LoadModule();
+
+// 非同期
+var module = await ModuleAsset.LoadModuleAsync();
+```
+
+`ModuleAsset` の設定で `Deserialize On Load`を有効化すると、アセットのロード時に同期的にモジュールをプリロードします。  
+これによって、`ModuleAsset.LoadModule()` の待ち時間を減らすことができます。

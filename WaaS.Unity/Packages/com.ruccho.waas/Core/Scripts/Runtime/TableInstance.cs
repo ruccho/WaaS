@@ -3,10 +3,14 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     A collection of tables in a WebAssembly instance.
+    /// </summary>
     public class TableInstance
     {
-        public TableInstance(GlobalInstance globals,
-            ImportSection importSection, TableSection tableSection, ElementSection elementSection, Imports importObject)
+        public TableInstance(GlobalInstance globals, FunctionInstance functions,
+            ImportSection importSection, TableSection tableSection, ElementSection elementSection,
+            IImports importObject)
         {
             var numTables = tableSection?.TableTypes.Length ?? 0;
             var imports = importSection != null ? importSection.Imports.Span : Span<Import>.Empty;
@@ -26,7 +30,8 @@ namespace WaaS.Runtime
                 {
                     var t = tableType.Value;
 
-                    if (importObject[import.ModuleName][import.Name] is not Table<IInvocableFunction> externalTable)
+                    if (!importObject.TryGetImportable(import.ModuleName, import.Name,
+                            out Table<IInvocableFunction> externalTable))
                         throw new InvalidOperationException();
 
                     if (!externalTable.Limits.IsImportable(t.Limits))
@@ -84,7 +89,7 @@ namespace WaaS.Runtime
 
                 for (var i = 0; i < initialization.Length; i++)
                 {
-                    var element = initialization[i];
+                    var element = initialization[i].Evaluate(globals).ExpectValueI32();
                     var function = functionInstance.Functions.Span[checked((int)element)];
                     funcTable.Elements[checked((int)(offset + i))] = function;
                 }

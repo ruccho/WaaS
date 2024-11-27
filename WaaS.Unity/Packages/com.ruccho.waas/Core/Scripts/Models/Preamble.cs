@@ -3,6 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Represents the preamble of a WebAssembly module.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public readonly struct Preamble : IEquatable<Preamble>
     {

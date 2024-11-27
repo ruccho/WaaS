@@ -1,0 +1,64 @@
+---
+title: Using wit2waas
+sidebar_position: 2
+---
+
+# Using `wit2waas`
+
+`wit2waas` is a CLI tool that converts interfaces defined in WIT to C# interface definitions.  
+By combining it with [Binding Generator](./binding-generator/), you can easily handle interfaces written in WIT on C#.
+
+### Installation
+
+Install `wit2waas` with the following command after installing [Rust toolchain](https://www.rust-lang.org/tools/install).
+
+```sh
+cargo install wit2waas
+```
+
+### Usage
+
+#### Configuration of WIT
+
+Save WIT in the following directory structure in advance.
+
+```
+- wit
+  - <your wit>.wit
+  - <your wit>.wit
+  - <your wit>.wit
+  - deps
+    - <dependency package>
+      - <dependency>.wit
+      - <dependency>.wit
+    - <dependency package>
+    - <dependency package>
+```
+
+:::info
+You can configure package dependencies from package registries, etc. using tools such as [`wit-deps`](https://github.com/bytecodealliance/wit-deps).
+:::
+
+#### Running `wit2waas`
+
+Next, run `wit2waas` in a directory containing the `wit` folder.
+
+```sh
+wit2waas
+```
+
+The result will be output to the `out` folder. Place `*.cs` contained in it in your C# project.
+
+### Options
+
+```sh
+$ wit2waas --help
+Usage: wit2waas [OPTIONS]
+
+Options:
+  -w, --wit-dir <WIT_DIR>  [default: wit]
+  -o, --out <OUT>          [default: out]
+  -h, --help               Print help
+  -V, --version            Print version
+```
+

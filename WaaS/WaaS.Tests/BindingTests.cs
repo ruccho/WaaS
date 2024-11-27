@@ -9,7 +9,6 @@ namespace WaaS.Tests;
 
 public class BindingTests
 {
-    private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
 
     [SetUp]
     public void Setup()
@@ -19,7 +18,7 @@ public class BindingTests
     [Test]
     public void TestExportCore()
     {
-        var function = GetInstance("""
+        var function = Utils.GetInstance("""
                                    (module
                                         (func $add (param $lhs i32) (param $rhs i32) (result i32)
                                            local.get $lhs
@@ -29,8 +28,7 @@ public class BindingTests
                                    )
                                    """, new Imports()).ExportInstance.Items["add"] as IInvocableFunction;
 
-        var binder = new CoreBinder();
-        var result = binder.Invoke<int>(new ExecutionContext(), function, 1, 2);
+        var result = CoreBinder.Instance.Invoke<int>(new ExecutionContext(), function, 1, 2);
 
         Assert.That(result, Is.EqualTo(3));
     }
@@ -38,20 +36,18 @@ public class BindingTests
     [Test]
     public void TestImportCore()
     {
-        var binder = new CoreBinder();
-
-        var externalFunc = binder.ToExternalFunction((int a, int b) => a + b);
+        var externalFunc = CoreBinder.Instance.ToExternalFunction((int a, int b) => a + b);
         var imports = new Imports
         {
             {
-                "waas", new ModuleImports
+                "waas", new ModuleExports
                 {
                     { "add", externalFunc }
                 }
             }
         };
 
-        var function = GetInstance(
+        var function = Utils.GetInstance(
 /*    */"""
         (module
             (import "waas" "add" (func $add (param i32) (param i32) (result i32)))
@@ -63,7 +59,7 @@ public class BindingTests
         )
         """, imports).ExportInstance.Items["main"] as IInvocableFunction;
 
-        var result = binder.Invoke<int>(new ExecutionContext(), function, 1, 2);
+        var result = CoreBinder.Instance.Invoke<int>(new ExecutionContext(), function, 1, 2);
 
         Assert.That(result, Is.EqualTo(3));
     }
@@ -71,20 +67,18 @@ public class BindingTests
     [Test]
     public async ValueTask TestImportAsyncCore()
     {
-        var binder = new CoreBinder();
-
-        var externalFunc = binder.ToAsyncExternalFunction(async (int a, int b) => a + b);
+        var externalFunc = CoreBinder.Instance.ToAsyncExternalFunction(async (int a, int b) => a + b);
         var imports = new Imports
         {
             {
-                "waas", new ModuleImports
+                "waas", new ModuleExports
                 {
                     { "add", externalFunc }
                 }
             }
         };
 
-        var function = GetInstance(
+        var function = Utils.GetInstance(
 /*    */"""
         (module
             (import "waas" "add" (func $add (param i32) (param i32) (result i32)))
@@ -96,7 +90,7 @@ public class BindingTests
         )
         """, imports).ExportInstance.Items["main"] as IInvocableFunction;
 
-        var result = await binder.InvokeAsync<int>(new ExecutionContext(), function, 1, 2);
+        var result = await CoreBinder.Instance.InvokeAsync<int>(new ExecutionContext(), function, 1, 2);
 
         Assert.That(result, Is.EqualTo(3));
     }
@@ -104,20 +98,18 @@ public class BindingTests
     [Test]
     public async ValueTask TestImportAsyncCoreNoReturn()
     {
-        var binder = new CoreBinder();
-
-        var externalFunc = binder.ToAsyncExternalFunction(async (int a, int b) => { Console.WriteLine(a + b); });
+        var externalFunc = CoreBinder.Instance.ToAsyncExternalFunction(async (int a, int b) => { Console.WriteLine(a + b); });
         var imports = new Imports
         {
             {
-                "waas", new ModuleImports
+                "waas", new ModuleExports
                 {
                     { "add", externalFunc }
                 }
             }
         };
 
-        var function = GetInstance(
+        var function = Utils.GetInstance(
 /*    */"""
         (module
             (import "waas" "add" (func $add (param i32) (param i32)))
@@ -129,15 +121,13 @@ public class BindingTests
         )
         """, imports).ExportInstance.Items["main"] as IInvocableFunction;
 
-        await binder.InvokeAsync(new ExecutionContext(), function, 1, 2);
+        await CoreBinder.Instance.InvokeAsync(new ExecutionContext(), function, 1, 2);
     }
 
     [Test]
     public async ValueTask TestImportAsyncCoreDelayed()
     {
-        var binder = new CoreBinder();
-
-        var externalFunc = binder.ToAsyncExternalFunction(async (int a, int b) =>
+        var externalFunc = CoreBinder.Instance.ToAsyncExternalFunction(async (int a, int b) =>
         {
             await Task.Delay(1000);
             return a + b;
@@ -145,14 +135,14 @@ public class BindingTests
         var imports = new Imports
         {
             {
-                "waas", new ModuleImports
+                "waas", new ModuleExports
                 {
                     { "add", externalFunc }
                 }
             }
         };
 
-        var function = GetInstance(
+        var function = Utils.GetInstance(
 /*    */"""
         (module
             (import "waas" "add" (func $add (param i32) (param i32) (result i32)))
@@ -164,41 +154,8 @@ public class BindingTests
         )
         """, imports).ExportInstance.Items["main"] as IInvocableFunction;
 
-        var result = await binder.InvokeAsync<int>(new ExecutionContext(), function, 1, 2);
+        var result = await CoreBinder.Instance.InvokeAsync<int>(new ExecutionContext(), function, 1, 2);
 
         Assert.That(result, Is.EqualTo(3));
-    }
-
-    private static Instance GetInstance(string wat, Imports imports)
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "WaaS.Tests");
-        var watPath = Path.Combine(dir, "temp.wat");
-        var wasmPath = Path.Combine(dir, "temp.wasm");
-
-        File.WriteAllText(watPath, wat, Utf8NoBom);
-
-        var psi = new ProcessStartInfo("wat2wasm", watPath)
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            WorkingDirectory = dir
-        };
-
-        using var wat2wasm = new Process();
-
-        wat2wasm.StartInfo = psi;
-
-        wat2wasm.OutputDataReceived += (sender, args) => { Console.WriteLine(args.Data); };
-        wat2wasm.ErrorDataReceived += (sender, args) => { Console.WriteLine(args.Data); };
-
-        wat2wasm.Start();
-        wat2wasm.BeginErrorReadLine();
-        wat2wasm.BeginOutputReadLine();
-
-        wat2wasm.WaitForExit();
-
-        var module = Module.Create(File.ReadAllBytes(wasmPath));
-        return new Instance(module, imports);
     }
 }

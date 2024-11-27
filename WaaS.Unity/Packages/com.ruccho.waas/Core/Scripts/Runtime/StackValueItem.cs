@@ -3,6 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents a value on the stack.
+    /// </summary>
     [StructLayout(LayoutKind.Explicit, Size = 16)]
     public struct StackValueItem : IEquatable<StackValueItem>
     {
@@ -28,7 +31,7 @@ namespace WaaS.Runtime
                 ValueType.I64 => valueI64.ToString(),
                 ValueType.F32 => valueF32.ToString(),
                 ValueType.F64 => valueF64.ToString(),
-                _ => throw new ArgumentOutOfRangeException()
+                _ => "(unknown)"
             };
         }
 
@@ -50,11 +53,19 @@ namespace WaaS.Runtime
             valueType = type;
         }
 
+        public StackValueItem(int value) : this(unchecked((uint)value))
+        {
+        }
+
         public StackValueItem(uint value)
         {
             this = default;
             valueType = ValueType.I32;
             valueI32 = value;
+        }
+
+        public StackValueItem(long value) : this(unchecked((ulong)value))
+        {
         }
 
         public StackValueItem(ulong value)

@@ -4,12 +4,25 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents a function that can be invoked from a WebAssembly module.
+    /// </summary>
     public abstract class ExternalFunction : IInvocableFunction
     {
         public abstract FunctionType Type { get; }
-        public abstract void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results);
+
+        public StackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues)
+        {
+            return new StackFrame(ExternalStackFrame.Get(context, this, inputValues));
+        }
+
+        public abstract void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
+            Span<StackValueItem> results);
     }
 
+    /// <summary>
+    ///     Represents an external function that can be created from a function pointer.
+    /// </summary>
     public unsafe class ExternalFunctionPointer : ExternalFunction
     {
         private readonly delegate*<object /*state*/, ReadOnlySpan<StackValueItem> /*parameters*/
@@ -28,12 +41,16 @@ namespace WaaS.Runtime
 
         public override FunctionType Type { get; }
 
-        public override void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results)
+        public override void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
+            Span<StackValueItem> results)
         {
             invoke(state, parameters, results);
         }
     }
 
+    /// <summary>
+    ///     Represents an external function that can be created from a delegate.
+    /// </summary>
     public class ExternalFunctionDelegate : ExternalFunction
     {
         public delegate void InvokeDelegate(object state, ReadOnlySpan<StackValueItem> parameters,
@@ -54,12 +71,17 @@ namespace WaaS.Runtime
 
         public override FunctionType Type { get; }
 
-        public override void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results)
+        public override void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
+            Span<StackValueItem> results)
         {
             invoke?.Invoke(state, parameters, results);
         }
     }
 
+    /// <summary>
+    ///     Represents an external function that can be created from a delegate.
+    ///     It uses dynamic invocation of the delegate.
+    /// </summary>
     public class ExternalFunctionCoreBoxedDelegate : ExternalFunction
     {
         public ExternalFunctionCoreBoxedDelegate(Delegate @delegate)
@@ -86,7 +108,8 @@ namespace WaaS.Runtime
 
         public override FunctionType Type { get; }
 
-        public override void Invoke(ReadOnlySpan<StackValueItem> parameters, Span<StackValueItem> results)
+        public override void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
+            Span<StackValueItem> results)
         {
             var method = Delegate.Method;
 

@@ -1,0 +1,66 @@
+---
+title: Unity and Rust Tutorial
+sidebar_position: 2
+---
+
+In this tutorial, we will compile Rust to WebAssembly and run it in Unity.
+
+WaaS can import WebAssembly modules, but you can also import Rust files directly and compile them into WebAssembly modules on the spot. This method does not allow you to manage dependencies with `cargo`.
+
+#### 1. Install [Rust toolchain](https://www.rust-lang.org/ja/learn/get-started) and add the `wasm32-unknown-unknown` target.
+
+```sh
+rustup target add wasm32-unknown-unknown
+```
+
+#### 2. [Install WaaS](./installation.md) in your Unity project.
+
+#### 3. Create `main.rs` in your Unity project:
+
+```rust
+#[no_mangle]
+pub extern "C" fn add(a: i32, b: i32) {
+    a + b
+}
+```
+
+#### 4. Create a C# script `Test.cs` that runs the `add()` function:
+
+```csharp
+using System;
+using UnityEngine;
+using WaaS.Runtime;
+using WaaS.Unity;
+
+public class Test : MonoBehaviour
+{
+    [SerializeField] private ModuleAsset moduleAsset; // imported main.rs
+
+    private void Start()
+    {
+        // Load the module
+        var module = moduleAsset.LoadModule();
+
+        // Instantiation
+        var instance = new Instance(module, new Imports());
+
+        // Get the exported function
+        var function = instance.ExportInstance.Items["add"] as IInvocableFunction;
+
+        // Create ExecutionContext
+        using var context = new ExecutionContext();
+
+        // Invocation
+        var result = CoreBinder.Instance.Invoke<int>(function, 1, 2);
+
+        Debug.Log($"Completed: 1 + 2 = {result}"); // Completed: 1 + 2 = 3
+    }
+}
+```
+
+#### 5. Attach `Test.cs` to a GameObject in your scene and assign `ModuleAsset` to the script.
+
+```
+> Completed: 1 + 2 = 3
+```
+

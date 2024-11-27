@@ -3,9 +3,12 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents a global instance.
+    /// </summary>
     public class GlobalInstance
     {
-        internal GlobalInstance(ImportSection importSection, GlobalSection globalSection, Imports importObject)
+        internal GlobalInstance(ImportSection importSection, GlobalSection globalSection, IImports importObject)
         {
             // starts import first, next global
             var imports = importSection != null ? importSection.Imports.Span : Span<Import>.Empty;
@@ -24,7 +27,7 @@ namespace WaaS.Runtime
                 var globalType = import.Description.GlobalType;
                 if (!globalType.HasValue) continue;
 
-                if (!importObject.TryGetValue(import.ModuleName, import.Name, out Global global) ||
+                if (!importObject.TryGetImportable(import.ModuleName, import.Name, out Global global) ||
                     global.Mutability != globalType.Value.Mutability || global.ValueType != globalType.Value.ValueType)
                     throw new ArgumentException(
                         $"Failed to import global in module: {import.ModuleName}, name: {import.Name}");

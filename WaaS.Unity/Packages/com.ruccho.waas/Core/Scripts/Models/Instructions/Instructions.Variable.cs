@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Represents "local.get" instruction.
+    /// </summary>
     [OpCode(0x20)]
     public partial class LocalGet : Instruction
     {
@@ -29,6 +32,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "local.set" instruction.
+    /// </summary>
     [OpCode(0x21)]
     public partial class LocalSet : Instruction
     {
@@ -55,6 +61,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "local.tee" instruction.
+    /// </summary>
     [OpCode(0x22)]
     public partial class LocalTee : Instruction
     {
@@ -85,6 +94,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "global.get" instruction.
+    /// </summary>
     [OpCode(0x23)]
     public partial class GlobalGet : Instruction
     {
@@ -112,6 +124,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "global.set" instruction.
+    /// </summary>
     [OpCode(0x24)]
     public partial class GlobalSet : Instruction
     {

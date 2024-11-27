@@ -3,7 +3,10 @@ using WaaS.Runtime;
 
 namespace WaaS.Models
 {
-    public readonly struct BlockResultType
+    /// <summary>
+    ///     Used to validate the result type of a block.
+    /// </summary>
+    internal readonly struct BlockResultType
     {
         public readonly bool IsLoop;
         private readonly bool useTypeIndex;
@@ -63,16 +66,21 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents a function in the WebAssembly module.
+    /// </summary>
     public class Function
     {
-        public Function(FunctionType type, FunctionBody function, uint typeIndex)
+        public Function(FunctionType type, FunctionBody function, uint typeIndex, int functionIndex)
         {
             Type = type;
             Body = function;
             TypeIndex = typeIndex;
+            FunctionIndex = functionIndex;
         }
 
         private uint TypeIndex { get; }
+        public int FunctionIndex { get; }
         public FunctionType Type { get; }
         public FunctionBody Body { get; }
         public uint? MaxStackDepth { get; private set; }
@@ -88,8 +96,9 @@ namespace WaaS.Models
                     var instructions = Body.Instructions.Span;
                     var maxBlockDepth = 1;
                     var blockDepth = 1;
-                    foreach (var instr in instructions)
+                    for (var i = 0; i < instructions.Length; i++)
                     {
+                        var instr = instructions[i];
                         instr.Validate(context);
 
                         if (instr is BlockInstruction)

@@ -1,37 +1,64 @@
 ﻿using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 #pragma warning disable CS4014
 
 namespace WaaS.Runtime
 {
-    public class AsyncExternalStackFrame : StackFrame
+    /// <summary>
+    ///     Represents a stack frame used to invoke an asynchronous external function.
+    /// </summary>
+    public class AsyncExternalStackFrame : IStackFrameCore
     {
-        private readonly AsyncExternalFunction function;
-        private readonly Memory<StackValueItem> inputValues;
-        private readonly Memory<StackValueItem> outputValues;
+        [ThreadStatic] private static Stack<AsyncExternalStackFrame> pool;
+
+        private AsyncExternalFunction function;
+        private Memory<StackValueItem> inputValues;
         private StackValueItem[] inputValuesArray;
+        private Memory<StackValueItem> outputValues;
         private StackValueItem[] outputValuesArray;
         private StackFrameState state = StackFrameState.Ready;
 
-        internal AsyncExternalStackFrame(AsyncExternalFunction function, ReadOnlySpan<StackValueItem> inputValues)
+        public void Dispose(ushort version)
         {
-            this.function = function;
-            var type = function.Type;
-            inputValuesArray = ArrayPool<StackValueItem>.Shared.Rent(type.ParameterTypes.Length);
-            outputValuesArray = ArrayPool<StackValueItem>.Shared.Rent(type.ResultTypes.Length);
+            if (version != Version) return;
+            if (inputValuesArray != null)
+            {
+                ArrayPool<StackValueItem>.Shared.Return(inputValuesArray);
+                inputValuesArray = null;
+            }
 
-            this.inputValues = inputValuesArray.AsMemory().Slice(0, type.ParameterTypes.Length);
-            outputValues = outputValuesArray.AsMemory().Slice(0, type.ResultTypes.Length);
+            if (outputValuesArray != null)
+            {
+                ArrayPool<StackValueItem>.Shared.Return(outputValuesArray);
+                outputValuesArray = null;
+            }
 
-            inputValues.CopyTo(this.inputValues.Span);
+            function = default;
+            inputValues = default;
+            outputValues = default;
+            inputValuesArray = default;
+            outputValuesArray = default;
+            state = default;
+
+            if (++Version != ushort.MaxValue)
+            {
+                pool ??= new Stack<AsyncExternalStackFrame>();
+                pool.Push(this);
+            }
         }
 
-        public override int ResultLength => function.Type.ResultTypes.Length;
-
-        public override StackFrameState MoveNext(Waker waker)
+        public int GetResultLength(ushort version)
         {
+            ThrowIfOutdated(version);
+            return function.Type.ResultTypes.Length;
+        }
+
+        public StackFrameState MoveNext(ushort version, Waker waker)
+        {
+            ThrowIfOutdated(version);
             if (state == StackFrameState.Ready)
             {
                 state = StackFrameState.Pending;
@@ -40,6 +67,49 @@ namespace WaaS.Runtime
             }
 
             return state;
+        }
+
+        public void TakeResults(ushort version, Span<StackValueItem> dest)
+        {
+            ThrowIfOutdated(version);
+            outputValues.Span.CopyTo(dest);
+        }
+
+        public bool DoesTakeResults(ushort version)
+        {
+            return false;
+        }
+
+        public void PushResults(ushort version, Span<StackValueItem> source)
+        {
+            throw new InvalidOperationException();
+        }
+
+        public ushort Version { get; private set; }
+
+        public static AsyncExternalStackFrame Get(AsyncExternalFunction function,
+            ReadOnlySpan<StackValueItem> inputValues)
+        {
+            pool ??= new Stack<AsyncExternalStackFrame>();
+            if (!pool.TryPop(out var pooled)) pooled = new AsyncExternalStackFrame();
+            pooled.Reset(function, inputValues);
+            return pooled;
+        }
+
+        private void Reset(AsyncExternalFunction function, ReadOnlySpan<StackValueItem> inputValues)
+        {
+            this.function = function;
+            var type = function.Type;
+            inputValuesArray = ArrayPool<StackValueItem>.Shared.Rent(type.ParameterTypes.Length);
+            outputValuesArray = ArrayPool<StackValueItem>.Shared.Rent(type.ResultTypes.Length);
+            Array.Clear(inputValuesArray, 0, inputValuesArray.Length);
+            Array.Clear(outputValuesArray, 0, outputValuesArray.Length);
+
+            this.inputValues = inputValuesArray.AsMemory().Slice(0, type.ParameterTypes.Length);
+            outputValues = outputValuesArray.AsMemory().Slice(0, type.ResultTypes.Length);
+
+            inputValues.CopyTo(this.inputValues.Span);
+            state = StackFrameState.Ready;
         }
 
         private async ValueTask InvokeAsync(Waker waker)
@@ -60,24 +130,9 @@ namespace WaaS.Runtime
             waker.Wake();
         }
 
-        public override void TakeResults(Span<StackValueItem> dest)
+        private void ThrowIfOutdated(ushort version)
         {
-            outputValues.Span.CopyTo(dest);
-        }
-
-        public override void Dispose()
-        {
-            if (inputValuesArray != null)
-            {
-                ArrayPool<StackValueItem>.Shared.Return(inputValuesArray);
-                inputValuesArray = null;
-            }
-
-            if (outputValuesArray != null)
-            {
-                ArrayPool<StackValueItem>.Shared.Return(outputValuesArray);
-                outputValuesArray = null;
-            }
+            if (version != Version) throw new InvalidOperationException();
         }
     }
 }

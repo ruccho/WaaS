@@ -88,19 +88,4 @@ namespace WaaS
             frame.Push(value);
         }
     }
-
-    public interface IBitWidth
-    {
-        int Value { get; }
-    }
-
-    public struct BitWidth8 : IBitWidth
-    {
-        public int Value => 8;
-    }
-
-    public struct BitWidth16 : IBitWidth
-    {
-        public int Value => 16;
-    }
 }

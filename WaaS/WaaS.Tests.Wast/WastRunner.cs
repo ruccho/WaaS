@@ -49,9 +49,9 @@ public class WastRunner : IDisposable
 
     public void Register(Instance instance, string name)
     {
-        var imports = new ModuleImports();
+        var imports = new ModuleExports();
         foreach (var (key, value) in instance.ExportInstance.Items)
-            if (value is IImportItem importValue)
+            if (value is IExternal importValue)
                 imports[key] = importValue;
             else
                 throw new InvalidOperationException($"item {key} of type {value.GetType()} is not importable.");

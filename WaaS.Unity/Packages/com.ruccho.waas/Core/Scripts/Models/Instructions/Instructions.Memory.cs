@@ -7,6 +7,12 @@ namespace WaaS.Models
 {
     #region Load
 
+    /// <summary>
+    ///     Base class for load instructions.
+    /// </summary>
+    /// <typeparam name="TValue"></typeparam>
+    /// <typeparam name="TValueType"></typeparam>
+    /// <typeparam name="TReadValue"></typeparam>
     public abstract partial class Load<TValue, TValueType, TReadValue> : Instruction
         where TValue : unmanaged
         where TValueType : struct, IValueType<TValue>
@@ -73,6 +79,11 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Base class for load instructions with the same read and write types.
+    /// </summary>
+    /// <typeparam name="TValue"></typeparam>
+    /// <typeparam name="TValueType"></typeparam>
     public abstract partial class Load<TValue, TValueType> : Load<TValue, TValueType, TValue>
         where TValue : unmanaged
         where TValueType : struct, IValueType<TValue>
@@ -84,26 +95,41 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i32.load" instruction.
+    /// </summary>
     [OpCode(0x28)]
     public partial class LoadI32 : Load<uint, ValueTypeI32>
     {
     }
 
+    /// <summary>
+    ///     Represents "i64.load" instruction.
+    /// </summary>
     [OpCode(0x29)]
     public partial class LoadI64 : Load<ulong, ValueTypeI64>
     {
     }
 
+    /// <summary>
+    ///     Represents "f32.load" instruction.
+    /// </summary>
     [OpCode(0x2A)]
     public partial class LoadF32 : Load<float, ValueTypeF32>
     {
     }
 
+    /// <summary>
+    ///     Represents "f64.load" instruction.
+    /// </summary>
     [OpCode(0x2B)]
     public partial class LoadF64 : Load<double, ValueTypeF64>
     {
     }
 
+    /// <summary>
+    ///     Represents "i32.load8_s" instruction.
+    /// </summary>
     [OpCode(0x2C)]
     public partial class LoadI8AsI32 : Load<uint, ValueTypeI32, sbyte>
     {
@@ -114,6 +140,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i32.load8_u" instruction.
+    /// </summary>
     [OpCode(0x2D)]
     public partial class LoadU8AsI32 : Load<uint, ValueTypeI32, byte>
     {
@@ -124,6 +153,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i32.load16_s" instruction.
+    /// </summary>
     [OpCode(0x2E)]
     public partial class LoadI16AsI32 : Load<uint, ValueTypeI32, short>
     {
@@ -134,6 +166,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i32.load16_u" instruction.
+    /// </summary>
     [OpCode(0x2F)]
     public partial class LoadU16AsI32 : Load<uint, ValueTypeI32, ushort>
     {
@@ -144,6 +179,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i64.load8_s" instruction.
+    /// </summary>
     [OpCode(0x30)]
     public partial class LoadI8AsI64 : Load<ulong, ValueTypeI64, sbyte>
     {
@@ -154,6 +192,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i64.load8_u" instruction.
+    /// </summary>
     [OpCode(0x31)]
     public partial class LoadU8AsI64 : Load<ulong, ValueTypeI64, byte>
     {
@@ -164,6 +205,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i64.load16_s" instruction.
+    /// </summary>
     [OpCode(0x32)]
     public partial class LoadI16AsI64 : Load<ulong, ValueTypeI64, short>
     {
@@ -174,6 +218,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i64.load16_u" instruction.
+    /// </summary>
     [OpCode(0x33)]
     public partial class LoadU16AsI64 : Load<ulong, ValueTypeI64, ushort>
     {
@@ -184,6 +231,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i64.load32_s" instruction.
+    /// </summary>
     [OpCode(0x34)]
     public partial class LoadI32AsI64 : Load<ulong, ValueTypeI64, int>
     {
@@ -194,6 +244,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i64.load32_u" instruction.
+    /// </summary>
     [OpCode(0x35)]
     public partial class LoadU32AsI64 : Load<ulong, ValueTypeI64, uint>
     {
@@ -208,6 +261,12 @@ namespace WaaS.Models
 
     #region Store
 
+    /// <summary>
+    ///     Base class for store instructions.
+    /// </summary>
+    /// <typeparam name="TValue"></typeparam>
+    /// <typeparam name="TValueType"></typeparam>
+    /// <typeparam name="TWriteValue"></typeparam>
     public abstract partial class Store<TValue, TValueType, TWriteValue> : Instruction
         where TValue : unmanaged
         where TValueType : struct, IValueType<TValue>
@@ -266,7 +325,11 @@ namespace WaaS.Models
         }
     }
 
-
+    /// <summary>
+    ///     Base class for store instructions with the same read and write types.
+    /// </summary>
+    /// <typeparam name="TValue"></typeparam>
+    /// <typeparam name="TValueType"></typeparam>
     public abstract partial class Store<TValue, TValueType> : Store<TValue, TValueType, TValue>
         where TValue : unmanaged
         where TValueType : struct, IValueType<TValue>
@@ -278,26 +341,41 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i32.store" instruction.
+    /// </summary>
     [OpCode(0x36)]
     public partial class StoreI32 : Store<uint, ValueTypeI32>
     {
     }
 
+    /// <summary>
+    ///     Represents "i64.store" instruction.
+    /// </summary>
     [OpCode(0x37)]
     public partial class StoreI64 : Store<ulong, ValueTypeI64>
     {
     }
 
+    /// <summary>
+    ///     Represents "f32.store" instruction.
+    /// </summary>
     [OpCode(0x38)]
     public partial class StoreF32 : Store<float, ValueTypeF32>
     {
     }
 
+    /// <summary>
+    ///     Represents "f64.store" instruction.
+    /// </summary>
     [OpCode(0x39)]
     public partial class StoreF64 : Store<double, ValueTypeF64>
     {
     }
 
+    /// <summary>
+    ///     Represents "i32.store8" instruction.
+    /// </summary>
     [OpCode(0x3A)]
     public partial class StoreI32AsU8 : Store<uint, ValueTypeI32, byte>
     {
@@ -308,6 +386,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i32.store16" instruction.
+    /// </summary>
     [OpCode(0x3B)]
     public partial class StoreI32AsU16 : Store<uint, ValueTypeI32, ushort>
     {
@@ -318,6 +399,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i64.store8" instruction.
+    /// </summary>
     [OpCode(0x3C)]
     public partial class StoreI64AsU8 : Store<ulong, ValueTypeI64, byte>
     {
@@ -328,6 +412,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i64.store16" instruction.
+    /// </summary>
     [OpCode(0x3D)]
     public partial class StoreI64AsU16 : Store<ulong, ValueTypeI64, ushort>
     {
@@ -338,6 +425,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "i64.store32" instruction.
+    /// </summary>
     [OpCode(0x3E)]
     public partial class StoreI64AsU32 : Store<ulong, ValueTypeI64, uint>
     {
@@ -352,6 +442,9 @@ namespace WaaS.Models
 
     #region Memory
 
+    /// <summary>
+    ///     Represents "memory.size" instruction.
+    /// </summary>
     [OpCode(0x3F)]
     public partial class MemorySize : Instruction
     {
@@ -380,6 +473,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "memory.grow" instruction.
+    /// </summary>
     [OpCode(0x40)]
     public partial class MemoryGrow : Instruction
     {
@@ -413,7 +509,9 @@ namespace WaaS.Models
         }
     }
 
-
+    /// <summary>
+    ///     Represents "memory.init" instruction.
+    /// </summary>
     [OpCode(0xFC, 0x0A)]
     public partial class MemoryCopy : Instruction
     {
@@ -461,7 +559,9 @@ namespace WaaS.Models
         }
     }
 
-
+    /// <summary>
+    ///     Represents "memory.fill" instruction.
+    /// </summary>
     [OpCode(0xFC, 0x0B)]
     public partial class MemoryFill : Instruction
     {

@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Data section in a WebAssembly module.
+    /// </summary>
     public class DataSection : Section
     {
         internal DataSection(ref ModuleReader reader)
@@ -17,6 +20,9 @@ namespace WaaS.Models
         public ReadOnlyMemory<Data> Data { get; }
     }
 
+    /// <summary>
+    ///     Represents a single data segment in a data section.
+    /// </summary>
     public class Data
     {
         internal Data(ref ModuleReader reader)
@@ -28,7 +34,7 @@ namespace WaaS.Models
         }
 
         public uint MemoryIndex { get; }
-        public ConstantExpression Offset { get; }
+        public IConstantExpression Offset { get; }
         public ReadOnlyMemory<byte> Payload { get; }
     }
 }

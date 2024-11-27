@@ -3,6 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Import section in a WebAssembly module.
+    /// </summary>
     public class ImportSection : Section
     {
         internal ImportSection(ref ModuleReader reader)
@@ -17,6 +20,9 @@ namespace WaaS.Models
         public ReadOnlyMemory<Import> Imports { get; }
     }
 
+    /// <summary>
+    ///     Single import entry in an import section.
+    /// </summary>
     public readonly struct Import : IEquatable<Import>
     {
         public string ModuleName { get; }
@@ -56,28 +62,31 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Descriptor of an import entry.
+    /// </summary>
     [StructLayout(LayoutKind.Explicit)]
     public readonly struct ImportDescriptor : IEquatable<ImportDescriptor>
     {
-        [FieldOffset(0)] private readonly ImportKind kind;
-
         [FieldOffset(1)] private readonly uint typeIndex;
         [FieldOffset(1)] private readonly TableType tableType;
         [FieldOffset(1)] private readonly MemoryType memoryType;
         [FieldOffset(1)] private readonly GlobalType globalType;
 
-        public uint? TypeIndex => kind == ImportKind.Type ? typeIndex : null;
-        public TableType? TableType => kind == ImportKind.Table ? tableType : null;
-        public MemoryType? MemoryType => kind == ImportKind.Memory ? memoryType : null;
-        public GlobalType? GlobalType => kind == ImportKind.Global ? globalType : null;
+        [field: FieldOffset(0)] public ImportKind Kind { get; }
+
+        public uint? TypeIndex => Kind == ImportKind.Type ? typeIndex : null;
+        public TableType? TableType => Kind == ImportKind.Table ? tableType : null;
+        public MemoryType? MemoryType => Kind == ImportKind.Memory ? memoryType : null;
+        public GlobalType? GlobalType => Kind == ImportKind.Global ? globalType : null;
 
         internal ImportDescriptor(ref ModuleReader reader)
         {
             this = default;
 
-            kind = reader.ReadUnaligned<ImportKind>();
+            Kind = reader.ReadUnaligned<ImportKind>();
 
-            switch (kind)
+            switch (Kind)
             {
                 case ImportKind.Type:
                 {
@@ -106,9 +115,9 @@ namespace WaaS.Models
 
         public bool Equals(ImportDescriptor other)
         {
-            if (kind != other.kind) return false;
+            if (Kind != other.Kind) return false;
 
-            switch (kind)
+            switch (Kind)
             {
                 case ImportKind.Type:
                 {
@@ -139,9 +148,9 @@ namespace WaaS.Models
         public override int GetHashCode()
         {
             var hash = new HashCode();
-            hash.Add((int)kind);
+            hash.Add((int)Kind);
 
-            switch (kind)
+            switch (Kind)
             {
                 case ImportKind.Type:
                 {
@@ -172,6 +181,9 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Kind of an import entry.
+    /// </summary>
     public enum ImportKind : byte
     {
         Type = 0,
@@ -180,6 +192,9 @@ namespace WaaS.Models
         Global = 3
     }
 
+    /// <summary>
+    ///     Type of table element.
+    /// </summary>
     public enum ElementType : byte
     {
         FuncRef = 0x70

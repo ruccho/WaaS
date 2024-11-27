@@ -1,0 +1,45 @@
+---
+title: Loading a Module
+sidebar_position: 1
+---
+
+import Badge from '@site/src/components/Badge';
+
+## Basics
+
+Use `Module.Create()`.  
+You can load from `ReadOnlySpan<byte>` or `ReadOnlySequence<byte>`.
+
+```csharp
+using WaaS.Runtime;
+
+Span<byte> bytes = System.IO.File.LoadAllBytes("foo.wasm");
+var module = Module.Create(bytes);
+```
+
+## Streaming
+
+Not supported at the moment.
+
+## Loading as an Asset <Badge>Unity</Badge>
+
+When you import a file with the extension `*.wasm` into a Unity project, it is automatically loaded as a `WaaS.Unity.ModuleAsset`.
+
+Modules can be assigned as `[SerializeField]` and loaded with `ModuleAsset.LoadModule()` or `ModuleAsset.LoadModuleAsync()`.
+
+```csharp
+using UnityEngine;
+using WaaS.Runtime;
+using WaaS.Unity;
+
+[SerializeField] private ModuleAsset moduleAsset;
+
+// synchronous
+var module = moduleAsset.LoadModule();
+
+// asynchronous
+var module = await ModuleAsset.LoadModuleAsync();
+```
+
+By enabling `Deserialize On Load` in the settings of `ModuleAsset`, the module is preloaded synchronously when the asset is loaded.  
+This reduces the waiting time for `ModuleAsset.LoadModule()`.

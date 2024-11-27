@@ -2,6 +2,9 @@
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Function section in a WebAssembly module.
+    /// </summary>
     public class FunctionSection : Section
     {
         internal FunctionSection(ref ModuleReader reader)

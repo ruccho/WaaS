@@ -2,15 +2,16 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <IsPackable>false</IsPackable>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
-
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <IsRoslynComponent>true</IsRoslynComponent>
-
         <RootNamespace>WaaS.Generators</RootNamespace>
-        <PackageId>WaaS.Generators</PackageId>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <DevelopmentDependency>true</DevelopmentDependency>
+        <IncludeSymbols>false</IncludeSymbols>
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+        <IsPackable>true</IsPackable>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -26,9 +27,12 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.3.0"/>
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.3.0"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.3.0" PrivateAssets="true"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.3.0" PrivateAssets="true"/>
     </ItemGroup>
-
+    
+    <ItemGroup>
+        <None Include="..\..\WaaS.Unity\Packages\com.ruccho.waas\Core\Generators\netstandard2.0\WaaS.Generators.dll" Pack="true" PackagePath="analyzers\dotnet\cs\" />
+    </ItemGroup>
 
 </Project>

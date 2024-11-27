@@ -4,13 +4,24 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
+    /// <summary>
+    ///     Represents an asynchronous function that can be invoked from a WebAssembly module.
+    /// </summary>
     public abstract class AsyncExternalFunction : IInvocableFunction
     {
         public abstract FunctionType Type { get; }
+
+        public StackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues)
+        {
+            return new StackFrame(AsyncExternalStackFrame.Get(this, inputValues));
+        }
+
         public abstract ValueTask InvokeAsync(ReadOnlySpan<StackValueItem> parameters, Memory<StackValueItem> results);
     }
 
-
+    /// <summary>
+    ///     Represents an asynchronous external function that can be created from a function pointer.
+    /// </summary>
     public unsafe class AsyncExternalFunctionPointer : AsyncExternalFunction
     {
         private readonly delegate*<object /*state*/, ReadOnlySpan<StackValueItem> /*parameters*/
@@ -35,6 +46,9 @@ namespace WaaS.Runtime
         }
     }
 
+    /// <summary>
+    ///     Represents an asynchronous external function that can be created from a delegate.
+    /// </summary>
     public class AsyncExternalFunctionDelegate : AsyncExternalFunction
     {
         public delegate ValueTask InvokeDelegate(object state, ReadOnlySpan<StackValueItem> parameters,

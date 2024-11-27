@@ -1,23 +1,14 @@
-﻿using WaaS.Models;
+﻿using System;
+using WaaS.Models;
 
 namespace WaaS.Runtime
 {
-    public interface IInvocableFunction : IExportItem, IImportItem
+    /// <summary>
+    ///     Represents a function that can be invoked from a WebAssembly module.
+    /// </summary>
+    public interface IInvocableFunction : IExternal
     {
         FunctionType Type { get; }
-    }
-
-    public class InstanceFunction : IInvocableFunction
-    {
-        public readonly Function function;
-        public readonly Instance instance;
-
-        public InstanceFunction(Instance instance, Function function)
-        {
-            this.instance = instance;
-            this.function = function;
-        }
-
-        public FunctionType Type => function.Type;
+        StackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues);
     }
 }

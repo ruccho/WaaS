@@ -1,0 +1,53 @@
+---
+title: About WaaS
+sidebar_position: 1
+slug: /
+hide_title: true
+---
+
+import SocialImage from '@site/static/img/social-t.svg'
+
+<SocialImage />
+
+WaaS is a script engine for Unity / .NET.
+
+WaaS stands for **WebAssembly as a Script**, which adopts WebAssembly as a script execution format.
+
+This has the following benefits:
+
+#### Language independence
+
+> Various languages that [support output to WebAssembly](https://github.com/appcypher/awesome-wasm-langs) such as Rust, C/C++, Java, and Go can be used, allowing you to choose the language that best suits your needs.
+
+#### Security
+
+> Without explicit permission, WebAssembly code cannot access the host environment's memory or functions.
+> You can also run untrusted scripts safely.
+
+#### Portability
+
+> It is a full Pure C# implementation and can run anywhere Unity or .NET supports.
+
+#### Interpreter
+
+> It does not require JIT or AOT compilation of WebAssembly itself.
+> You can run scripts obtained at runtime even on platforms where JIT is prohibited, such as iOS.
+
+#### Binding
+
+> It supports the [Component Model](https://component-model.bytecodealliance.org/) and allows you to perform practical bindings.
+
+### Use cases
+
+#### As a simple script in a game
+
+> It can be used as a script to describe events and AI in a game.
+> By creating scripts in small units, you can achieve fast hot reloads.
+
+#### As user-created content
+
+> It can be used as a script to give complex behavior to user-created content.
+
+#### As a plugin system
+
+> It can be used as a script to add plugins to applications created with Unity or .NET.

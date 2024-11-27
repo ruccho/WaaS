@@ -1,0 +1,64 @@
+---
+title: wit2waas の使用
+sidebar_position: 2
+---
+
+# `wit2waas` の使用
+
+`wit2waas` は、WIT で記述されたインターフェース等を C# のインターフェース定義に変換するスタンドアロンツールです。  
+[Binding Generator](./binding-generator/) と組み合わせることで、WIT で記述されたインターフェースを C# 上で簡単に扱うことができます。
+
+### インストール
+
+[Rustのツールチェインをインストール](https://www.rust-lang.org/ja/tools/install)してから、次のコマンドで `wit2waas` をインストールします。
+
+```sh
+cargo install wit2waas
+```
+
+### 使い方
+
+#### WIT の構成
+
+あらかじめ、次のようなディレクトリ構成で WIT を保存します。
+
+```
+- wit
+  - <your wit>.wit
+  - <your wit>.wit
+  - <your wit>.wit
+  - deps
+    - <dependency package>
+      - <dependency>.wit
+      - <dependency>.wit
+    - <dependency package>
+    - <dependency package>
+```
+
+:::info
+[`wit-deps`](https://github.com/bytecodealliance/wit-deps) などのツールを使用すると、パッケージレジストリ等からパッケージの依存関係を構成することができます。
+:::
+
+#### `wit2waas` の実行
+
+次に、`wit` フォルダを含むディレクトリで `wit2waas` を実行します。
+
+```sh
+wit2waas
+```
+
+結果が `out` フォルダに出力されます。この中に含まれる `*.cs` を C# プロジェクトに配置してください。
+
+### オプション
+
+```sh
+$ wit2waas --help
+Usage: wit2waas [OPTIONS]
+
+Options:
+  -w, --wit-dir <WIT_DIR>  [default: wit]
+  -o, --out <OUT>          [default: out]
+  -h, --help               Print help
+  -V, --version            Print version
+```
+

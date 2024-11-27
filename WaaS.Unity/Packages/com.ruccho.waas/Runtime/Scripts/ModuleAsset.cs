@@ -1,7 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using WaaS.Models;
@@ -13,13 +10,15 @@ namespace WaaS.Unity
         [SerializeField] private bool deserializeOnLoad;
         [SerializeField, HideInInspector] private byte[] data;
         [NonSerialized] private Lazy<Module> module;
-        [NonSerialized] private SynchronizationContext unityMain;
 
         private void OnEnable()
         {
-            unityMain = SynchronizationContext.Current;
-            
-            module = new(() => Module.Create(data), true);
+            module = new(() =>
+            {
+                var module = Module.Create(data);
+                module.SourceDescription = name;
+                return module;
+            }, true);
             
             if (deserializeOnLoad && data != null)
             {

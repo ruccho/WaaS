@@ -4,6 +4,8 @@ namespace WaaS.Runtime.Bindings
 {
     public class CoreBinder : Binder
     {
+        public static readonly CoreBinder Instance = new();
+
         [ThreadStatic] private static SharedBox<BinderContext> pooledBinderContext;
 
         static unsafe CoreBinder()
@@ -41,6 +43,10 @@ namespace WaaS.Runtime.Bindings
                 ValueType.F64,
                 &MarshalF64,
                 &UnmarshalF64);
+        }
+
+        private CoreBinder()
+        {
         }
 
         private static void MarshalI32(uint source, out StackValueItem stackValue)

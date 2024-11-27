@@ -9,9 +9,9 @@ public static class SpecTest
     public static Imports CreateImports()
     {
         var imports = new Imports();
-        var binder = new CoreBinder();
+        var binder = CoreBinder.Instance;
 
-        imports["spectest"] = new ModuleImports
+        imports["spectest"] = new ModuleExports
         {
             { "print", binder.ToExternalFunction(() => { Console.WriteLine("<spectest> print"); }) },
             {

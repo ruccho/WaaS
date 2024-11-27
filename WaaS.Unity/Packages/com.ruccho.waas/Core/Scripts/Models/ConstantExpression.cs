@@ -3,7 +3,16 @@ using WaaS.Runtime;
 
 namespace WaaS.Models
 {
-    public class ConstantExpression
+    /// <summary>
+    ///     Constant expression in a WebAssembly module.
+    /// </summary>
+    public interface IConstantExpression
+    {
+        StackValueItem Evaluate(GlobalInstance globalInstance);
+        StackValueItem Evaluate(ReadOnlySpan<Runtime.Global> initializingGlobals);
+    }
+
+    public class ConstantExpression : IConstantExpression
     {
         private bool _inEvaluation;
 
@@ -75,6 +84,26 @@ namespace WaaS.Models
             {
                 _inEvaluation = false;
             }
+        }
+    }
+
+    public class ConstantExpressionConstant : IConstantExpression
+    {
+        private readonly StackValueItem item;
+
+        internal ConstantExpressionConstant(StackValueItem item)
+        {
+            this.item = item;
+        }
+
+        public StackValueItem Evaluate(GlobalInstance globalInstance)
+        {
+            return item;
+        }
+
+        public StackValueItem Evaluate(ReadOnlySpan<Runtime.Global> initializingGlobals)
+        {
+            return item;
         }
     }
 }

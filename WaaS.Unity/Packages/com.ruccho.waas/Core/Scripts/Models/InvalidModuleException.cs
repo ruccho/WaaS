@@ -1,15 +1,13 @@
 ﻿using System;
-using System.Runtime.Serialization;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     Exception to be thrown when the module is invalid or unsupported.
+    /// </summary>
     public class InvalidModuleException : Exception
     {
         public InvalidModuleException()
-        {
-        }
-
-        protected InvalidModuleException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
 

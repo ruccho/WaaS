@@ -3,11 +3,14 @@ using WaaS.Models;
 
 namespace WaaS.Runtime
 {
-    public class Instance : IDisposable
+    /// <summary>
+    ///     An instance of a WebAssembly module.
+    /// </summary>
+    public class Instance : IDisposable, IModuleExports
     {
         private bool isDisposed;
 
-        public Instance(Module module, Imports importObject)
+        public Instance(Module module, IImports importObject)
         {
             var importSection = module.ImportSection;
             var globalSection = module.GlobalSection;
@@ -28,7 +31,7 @@ namespace WaaS.Runtime
 
             FunctionInstance = new FunctionInstance(this, importSection, importObject);
 
-            TableInstance = new TableInstance(GlobalInstance, importSection, tableSection,
+            TableInstance = new TableInstance(GlobalInstance, FunctionInstance, importSection, tableSection,
                 elementSection, importObject);
 
             ExportInstance =
@@ -60,6 +63,18 @@ namespace WaaS.Runtime
         {
             DisposeCore();
             GC.SuppressFinalize(this);
+        }
+
+        public bool TryGetExport<T>(string name, out T value) where T : IExternal
+        {
+            if (ExportInstance.Items.TryGetValue(name, out var item) && item is T valueTyped)
+            {
+                value = valueTyped;
+                return true;
+            }
+
+            value = default;
+            return false;
         }
 
         public Span<byte> GetMemory(uint index)
