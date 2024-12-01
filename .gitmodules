@@ -25,3 +25,6 @@
 [submodule "WaaS/DocFxMarkdownGen"]
 	path = WaaS/DocFxMarkdownGen
 	url = https://github.com/ruccho/DocFxMarkdownGen.git
+[submodule "WaaS/Cdp.Generator/devtools-protocol"]
+	path = WaaS/Cdp.Generator/devtools-protocol
+	url = https://github.com/ChromeDevTools/devtools-protocol.git
