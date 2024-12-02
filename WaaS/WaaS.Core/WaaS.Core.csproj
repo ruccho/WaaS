@@ -5,6 +5,7 @@
         <LangVersion>9</LangVersion>
         <PackageIconUrl>logo_1024.png</PackageIconUrl>
         <IsPackable>true</IsPackable>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
