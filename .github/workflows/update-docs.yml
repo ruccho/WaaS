@@ -19,6 +19,7 @@ jobs:
         with:
           node-version: 18
           cache: yarn
+          cache-dependency-path: ./docs/yarn.lock
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
