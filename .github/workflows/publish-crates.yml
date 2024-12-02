@@ -6,7 +6,7 @@ on:
     types: [published]
 
 jobs:
-  publish-nuget:
+  publish-crates:
     runs-on: ubuntu-latest
     defaults:
       run:
