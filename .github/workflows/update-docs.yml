@@ -6,7 +6,7 @@ on:
     types: [published]
 
 jobs:
-  update-docs:
+  build:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -15,6 +15,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Update submodules
         run: git submodule update --init --recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: yarn
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
@@ -25,8 +29,30 @@ jobs:
       - name: Generate markdown
         run: dotnet run --project DocFxMarkdownGen/DocFxMarkdownGen.csproj
       - name: Restore packages
-        run: yarn install
+        run: yarn install --frozen-lockfile
         working-directory: docs
       - name: Deploy
-        run: GIT_USER=ruccho yarn deploy
+        run: yarn build
         working-directory: docs
+      - name: Upload Build Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/build
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
