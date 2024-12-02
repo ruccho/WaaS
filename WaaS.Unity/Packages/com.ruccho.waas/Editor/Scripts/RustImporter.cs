@@ -17,7 +17,7 @@ namespace WaaS.Unity.Editor
 
             var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.wasm");
 
-            var process = Process.Start(new ProcessStartInfo(@$"rustc.exe",
+            var process = Process.Start(new ProcessStartInfo(@$"rustc",
                     $@"""{ctx.assetPath}"" --target wasm32-unknown-unknown --crate-type cdylib -o ""{path}"" -C opt-level=z -C lto")
                 {
                     UseShellExecute = false,
@@ -26,7 +26,7 @@ namespace WaaS.Unity.Editor
                     RedirectStandardError = true
                 }
             );
-            process.WaitForExit();
+            process!.WaitForExit();
 
             var error = process.StandardError.ReadToEnd();
 
@@ -35,12 +35,12 @@ namespace WaaS.Unity.Editor
                 throw new Exception(error);
             }
 
-
             module.SetData(File.ReadAllBytes(path));
 
             ctx.AddObjectToAsset("module", module);
 
             ctx.SetMainObject(module);
+            File.Delete(path);
         }
     }
 }

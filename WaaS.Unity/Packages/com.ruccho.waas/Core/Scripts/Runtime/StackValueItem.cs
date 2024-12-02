@@ -40,14 +40,14 @@ namespace WaaS.Runtime
             return valueType == type;
         }
 
-        public StackValueItem(Label label)
+        internal StackValueItem(Label label)
         {
             this = default;
             valueType = (ValueType)0xFF;
             this.label = label;
         }
 
-        public StackValueItem(ValueType type)
+        internal StackValueItem(ValueType type)
         {
             this = default;
             valueType = type;
