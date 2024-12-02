@@ -23,4 +23,4 @@ jobs:
       - name: Build
         run: dotnet build -c Release -p:Version=${{ env.VERSION }} --no-restore -o ./publish
       - name: Publish
-        run: dotnet nuget push ./WaaS*.${{ env.VERSION }}.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
+        run: dotnet nuget push ./publish/WaaS*.${{ env.VERSION }}.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
