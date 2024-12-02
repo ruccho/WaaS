@@ -1,0 +1,30 @@
+name: Update docs
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  publish-nuget:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: WaaS
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore tools
+        run: dotnet tool restore
+      - name: Run docfx
+        run: dotnet docfx
+      - name: Generate markdown
+        run: dotnet dfmg
+      - name: Restore packages
+        run: yarn install
+        working-directory: docs
+      - name: Deploy
+        run: GIT_USER=ruccho yarn deploy
+        working-directory: docs
