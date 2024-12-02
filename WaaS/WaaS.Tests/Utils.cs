@@ -60,6 +60,6 @@ internal static class Utils
         var path = ParseWat(wat);
         Console.WriteLine($"output: {path}");
         var component = Component.Create(File.ReadAllBytes(path));
-        return component.Instantiate(null, imports);
+        return component.Instantiate(imports);
     }
 }

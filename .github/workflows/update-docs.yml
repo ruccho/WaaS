@@ -6,7 +6,7 @@ on:
     types: [published]
 
 jobs:
-  publish-nuget:
+  update-docs:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,7 +21,7 @@ jobs:
       - name: Run docfx
         run: dotnet docfx
       - name: Generate markdown
-        run: dotnet dfmg
+        run: dotnet run --project DocFxMarkdownGen/DocFxMarkdownGen.csproj
       - name: Restore packages
         run: yarn install
         working-directory: docs
