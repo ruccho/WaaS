@@ -15,33 +15,41 @@ Stands for <i>WebAssembly as a Script</i>, <br>a language-independent scripting 
 
 </div>
 
-### Features
+### Language independent
 
-#### Language-independent
+Various languages that [support output to WebAssembly](https://github.com/appcypher/awesome-wasm-langs) such as Rust, Go, MoonBit and C/C++ can be used, allowing you to choose the language that best suits your needs.
 
-WaaS is an interpreter of [WebAssembly](https://webassembly.org/), which is a portable binary instruction format. [Find your favorite language](https://github.com/appcypher/awesome-wasm-langs) that supports WebAssembly output.
+### Component Model supported
 
-#### AOT safe
+WaaS supports the [Component Model](https://component-model.bytecodealliance.org/) and allows you to perform practical bindings.
 
-WaaS engine doesn't emit any native code at runtime. We can load and run wasm modules dynamically on AOT platform.
+### Safe
 
-#### Coroutines
+Without explicit permission, WebAssembly code cannot access the host environment's memory or functions.
+You can also run untrusted scripts safely.
 
-WaaS can import external asynchronous functions into a wasm module as synchronous functions. We can write asynchronous procedures with blocking style.
+### IL2CPP / NativeAOT compatible
 
-#### Interoperability
+WaaS is an interpreter fully implemented in C# and does not require JIT or AOT compilation of WebAssembly itself. It can run anywhere Unity or .NET supports including platforms where JIT is prohibited, such as iOS.
 
-WaaS supports [WebAssembly Component Model](https://component-model.bytecodealliance.org/).  
-Component Model allows C#-WASM FFI with rich type expressions such as records, lists and resources. 
+## Use cases
+
+### As a simple script in a game
+
+It can be used as a script to describe events and AI in a game.
+By creating scripts in small units, you can achieve fast hot reloads.
+
+### As a user-created script
+
+It can be used as a script to give complex behavior to user-created contents.
+
+### As a plugin system
+
+It can be used as a script to add plugins to applications created with Unity or .NET.
 
 > [!NOTE]
 > WaaS is currently **very experimental** and breaking changes can be made.
 
-## Documentation
+# Documentation
 
-[Official Documentation is here.](https://ruccho.com/WaaS)
-
-## LICENSE
-
-MIT
-
+### See the [documentation](https://ruccho.com/WaaS) for installation and usage.
