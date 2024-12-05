@@ -13,8 +13,8 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <IsPackable>false</IsPackable>
     </PropertyGroup>
-    <ItemGroup>
+    <ItemGroup Condition="'$(IsPackable)' == 'True'">
         <None Include="$(MSBuildThisFileDirectory)\WaaS\logo_1024.png" Pack="true" PackagePath="\"/>
-        <None Include="$(MSBuildThisFileDirectory)\..\README.md" Pack="true" PackagePath="\"/>
+        <None Include="$(MSBuildThisFileDirectory)\WaaS\README.md" Pack="true" PackagePath="\"/>
     </ItemGroup>
 </Project>

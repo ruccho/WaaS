@@ -29,10 +29,10 @@ jobs:
         run: dotnet docfx
       - name: Generate markdown
         run: dotnet run --project DocFxMarkdownGen/DocFxMarkdownGen.csproj
-      - name: Restore packages
+      - name: Install dependencies
         run: yarn install --frozen-lockfile
         working-directory: docs
-      - name: Deploy
+      - name: Build website
         run: yarn build
         working-directory: docs
       - name: Upload Build Artifact
