@@ -119,10 +119,11 @@ namespace WaaS.Runtime
                 }
                 catch
                 {
-                    while (frames.TryPeek(out var f) && f != initial)
+                    while (frames.TryPeek(out var f))
                     {
                         frames.Pop();
                         f.Dispose();
+                        if (f == initial) break;
                     }
 
                     throw;

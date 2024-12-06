@@ -123,7 +123,7 @@ namespace WaaS.Runtime
         public void PushResults(ushort version, Span<StackValueItem> source)
         {
             ThrowIfOutdated(version);
-            foreach (var value in source) Push(value.ExpectValueI32());
+            foreach (var value in source) Push(value);
         }
 
         public static WasmStackFrame Get(ExecutionContext context, InstanceFunction function,
