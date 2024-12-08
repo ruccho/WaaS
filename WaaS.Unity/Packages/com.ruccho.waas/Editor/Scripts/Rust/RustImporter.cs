@@ -1,4 +1,5 @@
 #if !WAAS_DISABLE_RUST_IMPORTER
+#nullable enable
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -16,8 +17,8 @@ namespace WaaS.Unity.Editor.Rust
     public class RustImporter : ScriptedImporter
     {
         [SerializeField] private bool crateRoot = true;
-        [SerializeField] private RustImporterPreset preset;
-        [SerializeField] private RustImporterSettings settings;
+        [SerializeField] private RustImporterPreset? preset;
+        [SerializeField] private RustImporterSettings? settings;
 
         public override void OnImportAsset(AssetImportContext ctx)
         {
@@ -44,13 +45,13 @@ namespace WaaS.Unity.Editor.Rust
             RustImporterSettings settings;
             if (preset)
             {
-                settings = preset.settings;
+                settings = preset!.settings;
                 var presetPath = AssetDatabase.GetAssetPath(preset);
                 if (!string.IsNullOrEmpty(presetPath)) ctx.DependsOnArtifact(presetPath);
             }
             else
             {
-                settings = this.settings;
+                settings = this.settings ?? new RustImporterSettings();
             }
 
             foreach (var dependency in settings.Dependencies)
@@ -176,7 +177,7 @@ namespace WaaS.Unity.Editor.Rust
             {
                 while (!process.HasExited)
                 {
-                    string message = null;
+                    string? message = null;
                     while (messageQueue.TryDequeue(out var dequeued)) message = dequeued;
 
                     if (message != null) EditorUtility.DisplayProgressBar(title, message, 0f);
