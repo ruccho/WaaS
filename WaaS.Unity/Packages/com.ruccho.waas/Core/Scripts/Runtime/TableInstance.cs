@@ -15,7 +15,7 @@ namespace WaaS.Runtime
             var numTables = tableSection?.TableTypes.Length ?? 0;
             var imports = importSection != null ? importSection.Imports.Span : Span<Import>.Empty;
             foreach (var import in imports)
-                if (import.Description.TableType != null)
+                if (import.Descriptor.TableType != null)
                     numTables++;
 
             if (numTables > 1) throw new InvalidModuleException("multiple tables");
@@ -25,7 +25,7 @@ namespace WaaS.Runtime
             var cursor = 0;
             foreach (var import in imports)
             {
-                var tableType = import.Description.TableType;
+                var tableType = import.Descriptor.TableType;
                 if (tableType.HasValue)
                 {
                     var t = tableType.Value;

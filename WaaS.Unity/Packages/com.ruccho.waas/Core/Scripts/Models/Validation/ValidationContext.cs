@@ -26,7 +26,7 @@ namespace WaaS.Models
                 var i = 0;
                 foreach (var import in imports)
                 {
-                    var t = import.Description.TypeIndex;
+                    var t = import.Descriptor.TypeIndex;
                     if (!t.HasValue) continue;
 
                     if (i == runtimeFunctionIndex) return Module.TypeSection.FuncTypes.Span[(int)t.Value];
@@ -68,7 +68,7 @@ namespace WaaS.Models
                 var i = 0;
                 foreach (var import in imports)
                 {
-                    var t = import.Description.GlobalType;
+                    var t = import.Descriptor.GlobalType;
                     if (!t.HasValue) continue;
 
                     if (i == index) return t.Value;
@@ -90,7 +90,7 @@ namespace WaaS.Models
                 var i = 0;
                 foreach (var import in imports)
                 {
-                    var t = import.Description.TableType;
+                    var t = import.Descriptor.TableType;
                     if (!t.HasValue) continue;
 
                     if (i == index) return t.Value;
@@ -112,7 +112,7 @@ namespace WaaS.Models
                 var i = 0;
                 foreach (var import in imports)
                 {
-                    var t = import.Description.MemoryType;
+                    var t = import.Descriptor.MemoryType;
                     if (!t.HasValue) continue;
 
                     if (i == index) return t.Value;
