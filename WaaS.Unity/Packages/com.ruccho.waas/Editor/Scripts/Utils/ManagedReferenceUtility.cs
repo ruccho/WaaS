@@ -86,19 +86,6 @@ namespace WaaS.Unity.Editor
                 else
                     sequence = sequence[endBrackets..];
 
-                /*
-                Span<char> typeNameSpan = stackalloc char[typeName.Length];
-                typeName.CopyTo(typeNameSpan);
-                // Mukuro.Edge Mukuro.Edge.ITransitionParameter`1[[Mukuro.Edge.ITransitionClass/In, Mukuro.Edge, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]
-
-                for (int i = 0; i < typeNameSpan.Length; i++)
-                {
-                    // TODO: escape
-                    if (typeNameSpan[i] is '/') typeNameSpan[i] = '.';
-                    if (typeNameSpan[i] is '+') typeNameSpan[i] = '.';
-                }
-                */
-
                 var type = matchedAssembly.GetType(typeName.ToString());
                 if (typeArguments is { Length: > 0 }) return type.MakeGenericType(typeArguments);
 
