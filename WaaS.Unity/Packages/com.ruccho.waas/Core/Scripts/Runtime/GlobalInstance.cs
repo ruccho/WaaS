@@ -14,7 +14,7 @@ namespace WaaS.Runtime
             var imports = importSection != null ? importSection.Imports.Span : Span<Import>.Empty;
             var numGlobals = 0;
             foreach (var import in imports)
-                if (import.Description.GlobalType.HasValue)
+                if (import.Descriptor.GlobalType.HasValue)
                     numGlobals++;
 
             numGlobals += globalSection?.Globals.Length ?? 0;
@@ -24,7 +24,7 @@ namespace WaaS.Runtime
             var cursor = 0;
             foreach (var import in imports)
             {
-                var globalType = import.Description.GlobalType;
+                var globalType = import.Descriptor.GlobalType;
                 if (!globalType.HasValue) continue;
 
                 if (!importObject.TryGetImportable(import.ModuleName, import.Name, out Global global) ||

@@ -15,7 +15,7 @@ namespace WaaS.Runtime
             var numMemories = internalMemoryTypes.Length;
             var importItems = importSection != null ? importSection.Imports.Span : Span<Import>.Empty;
             foreach (var import in importItems)
-                if (import.Description.MemoryType.HasValue)
+                if (import.Descriptor.MemoryType.HasValue)
                     numMemories++;
 
             if (numMemories > 1) throw new InvalidModuleException("multiple memories");
@@ -25,7 +25,7 @@ namespace WaaS.Runtime
 
             foreach (var import in importItems)
             {
-                var t = import.Description.MemoryType;
+                var t = import.Descriptor.MemoryType;
 
                 if (t.HasValue)
                 {

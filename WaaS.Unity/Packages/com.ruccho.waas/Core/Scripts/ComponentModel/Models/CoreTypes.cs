@@ -131,11 +131,11 @@ namespace WaaS.ComponentModel.Models
             {
                 var import = new Import(ref reader);
                 IUnresolved<ICoreType>? type = null;
-                switch (import.Description.Kind)
+                switch (import.Descriptor.Kind)
                 {
                     case ImportKind.Type:
                     {
-                        type = indexSpace.Get<ICoreType>(import.Description.TypeIndex!.Value);
+                        type = indexSpace.Get<ICoreType>(import.Descriptor.TypeIndex!.Value);
                         break;
                     }
                     case ImportKind.Table:
@@ -146,7 +146,7 @@ namespace WaaS.ComponentModel.Models
                         throw new ArgumentOutOfRangeException();
                 }
 
-                result = new CoreImportDeclaration(import.ModuleName, import.Name, import.Description, type);
+                result = new CoreImportDeclaration(import.ModuleName, import.Name, import.Descriptor, type);
                 return true;
             }
         }

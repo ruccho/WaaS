@@ -17,7 +17,7 @@ namespace WaaS.Runtime
             var numFunctions = moduleFunctions.Length;
             foreach (var import in imports)
             {
-                var t = import.Description.TypeIndex;
+                var t = import.Descriptor.TypeIndex;
                 if (!t.HasValue) continue;
 
                 numFunctions++;
@@ -27,7 +27,7 @@ namespace WaaS.Runtime
             var cursor = 0;
             foreach (var import in imports)
             {
-                var t = import.Description.TypeIndex;
+                var t = import.Descriptor.TypeIndex;
                 if (!t.HasValue) continue;
 
                 if (!importObject.TryGetImportable(import.ModuleName, import.Name,
