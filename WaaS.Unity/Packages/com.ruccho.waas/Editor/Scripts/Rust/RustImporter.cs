@@ -139,15 +139,23 @@ namespace WaaS.Unity.Editor.Rust
                 cargoTomlBuilder.ToString(),
                 Encoding.UTF8);
 
-            var process = Process.Start(new ProcessStartInfo(@"cargo",
-                    $@"build -p ""waas_{hash}"" --target wasm32-unknown-unknown --release --target-dir Library/com.ruccho.waas/rust/target --config ""build.dep-info-basedir=\"".\""""")
-                {
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                }
-            );
+            var args =
+                $@"build -p ""waas_{hash}"" --target wasm32-unknown-unknown --release --target-dir Library/com.ruccho.waas/rust/target --config ""build.dep-info-basedir=\"".\""""";
+            var psi = new ProcessStartInfo(
+#if UNITY_EDITOR_WIN
+                "cargo", args
+#else // in macOS, we need to run bash gracefully in order to set the PATH correctly
+                "/bin/bash", $"-cl 'cargo {args}'"
+#endif
+            )
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            var process = Process.Start(psi);
 
             var messageQueue = new ConcurrentQueue<string>();
 
