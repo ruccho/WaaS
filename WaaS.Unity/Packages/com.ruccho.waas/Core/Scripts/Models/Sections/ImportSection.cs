@@ -27,18 +27,18 @@ namespace WaaS.Models
     {
         public string ModuleName { get; }
         public string Name { get; }
-        public ImportDescriptor Description { get; }
+        public ImportDescriptor Descriptor { get; }
 
         internal Import(ref ModuleReader reader)
         {
             ModuleName = reader.ReadUtf8String();
             Name = reader.ReadUtf8String();
-            Description = new ImportDescriptor(ref reader);
+            Descriptor = new ImportDescriptor(ref reader);
         }
 
         public bool Equals(Import other)
         {
-            return ModuleName == other.ModuleName && Name == other.Name && Description.Equals(other.Description);
+            return ModuleName == other.ModuleName && Name == other.Name && Descriptor.Equals(other.Descriptor);
         }
 
         public override bool Equals(object obj)
@@ -48,7 +48,7 @@ namespace WaaS.Models
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(ModuleName, Name, Description);
+            return HashCode.Combine(ModuleName, Name, Descriptor);
         }
 
         public static bool operator ==(Import left, Import right)

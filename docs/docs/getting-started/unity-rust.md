@@ -7,7 +7,7 @@ In this tutorial, we will compile Rust to WebAssembly and run it in Unity.
 
 WaaS can import WebAssembly modules, but you can also import Rust files directly and compile them into WebAssembly modules on the spot. This method does not allow you to manage dependencies with `cargo`.
 
-#### 1. Install [Rust toolchain](https://www.rust-lang.org/ja/learn/get-started) and add the `wasm32-unknown-unknown` target.
+#### 1. Install [Rust toolchain](https://www.rust-lang.org/learn/get-started) and add the `wasm32-unknown-unknown` target.
 
 ```sh
 rustup target add wasm32-unknown-unknown

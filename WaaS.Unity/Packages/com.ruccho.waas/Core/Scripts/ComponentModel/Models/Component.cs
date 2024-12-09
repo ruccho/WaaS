@@ -287,7 +287,7 @@ namespace WaaS.ComponentModel.Models
                         if (importSection != null)
                             foreach (var import in importSection.Imports.Span)
                             {
-                                var desc = import.Description;
+                                var desc = import.Descriptor;
                                 if (desc.Kind == ImportKind.Type)
                                     if (index++ == descModuleFuncIndex)
                                     {
@@ -315,11 +315,11 @@ namespace WaaS.ComponentModel.Models
                         if (importSection != null)
                             foreach (var import in importSection.Imports.Span)
                             {
-                                var desc = import.Description;
+                                var desc = import.Descriptor;
                                 if (desc.Kind == ImportKind.Table)
                                     if (index++ == providedDesc.TableIndex)
                                     {
-                                        providedTableType = import.Description.TableType!.Value;
+                                        providedTableType = import.Descriptor.TableType!.Value;
                                         goto FOUND;
                                     }
                             }
@@ -346,11 +346,11 @@ namespace WaaS.ComponentModel.Models
                         if (importSection != null)
                             foreach (var import in importSection.Imports.Span)
                             {
-                                var desc = import.Description;
+                                var desc = import.Descriptor;
                                 if (desc.Kind == ImportKind.Memory)
                                     if (index++ == providedDesc.MemoryIndex)
                                     {
-                                        providedType = import.Description.MemoryType!.Value;
+                                        providedType = import.Descriptor.MemoryType!.Value;
                                         goto FOUND;
                                     }
                             }
@@ -375,11 +375,11 @@ namespace WaaS.ComponentModel.Models
                         if (importSection != null)
                             foreach (var import in importSection.Imports.Span)
                             {
-                                var desc = import.Description;
+                                var desc = import.Descriptor;
                                 if (desc.Kind == ImportKind.Global)
                                     if (index++ == providedDesc.GlobalIndex)
                                     {
-                                        providedType = import.Description.GlobalType!.Value;
+                                        providedType = import.Descriptor.GlobalType!.Value;
                                         goto FOUND;
                                     }
                             }
@@ -409,7 +409,7 @@ namespace WaaS.ComponentModel.Models
 
                             if (coreImportDecl.ModuleName == import.ModuleName &&
                                 coreImportDecl.Name == import.Name &&
-                                coreImportDecl.Kind == import.Description.Kind)
+                                coreImportDecl.Kind == import.Descriptor.Kind)
                             {
                                 importDecl = coreImportDecl;
                                 goto FOUND;
@@ -421,7 +421,7 @@ namespace WaaS.ComponentModel.Models
                         FOUND: ;
                     }
 
-                    var requestedImport = import.Description;
+                    var requestedImport = import.Descriptor;
                     switch (requestedImport.Kind)
                     {
                         case ImportKind.Type:
