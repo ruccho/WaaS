@@ -6,7 +6,13 @@ namespace WaaS.Unity.Editor
 {
     internal unsafe class NativeMethods
     {
-        private const string DllName = "waas_unity_native_editor";
+        private const string DllName =
+#if UNITY_EDITOR_WIN
+                "waas_unity_native_editor"
+#else
+                "libwaas_unity_native_editor"
+#endif
+            ;
 
         private static nint? onSuccess;
         private static nint? onError;
