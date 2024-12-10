@@ -1,25 +1,24 @@
 ﻿using System;
 using System.Threading.Tasks;
 using UnityEngine;
+using WaaS.ComponentModel.Models;
 using WaaS.ComponentModel.Runtime;
-using WaaS.Models;
 
 namespace WaaS.Unity
 {
     public class ComponentAsset : ScriptableObject
     {
         [SerializeField] private bool deserializeOnLoad;
-        [SerializeField, HideInInspector] private byte[] data;
+        [SerializeField] [HideInInspector] private byte[] data;
         [NonSerialized] private Lazy<IComponent> component;
+
+        internal ulong Size => (ulong)(data?.Length ?? 0);
 
         private void OnEnable()
         {
-            component = new(() => ComponentModel.Models.Component.Create(data), true);
-            
-            if (deserializeOnLoad && data != null)
-            {
-                LoadComponent();
-            }
+            component = new Lazy<IComponent>(() => UnresolvedComponent.Create(data), true);
+
+            if (deserializeOnLoad && data != null) LoadComponent();
         }
 
         private void OnDisable()

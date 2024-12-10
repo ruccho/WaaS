@@ -11,6 +11,8 @@ namespace WaaS.Unity
         [SerializeField, HideInInspector] private byte[] data;
         [NonSerialized] private Lazy<Module> module;
 
+        internal ulong Size => (ulong)(data?.Length ?? 0);
+
         private void OnEnable()
         {
             module = new(() =>

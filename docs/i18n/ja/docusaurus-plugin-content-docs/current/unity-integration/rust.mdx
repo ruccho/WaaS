@@ -1,0 +1,122 @@
+---
+title: Rust Importer の使用
+sidebar_position: 1
+---
+
+import Badge from '@site/src/components/Badge';
+import rustImporterImage from '@site/static/img/rust-importer.png';
+
+# Rust Importer の使用
+
+WaaS では、`*.rs` ファイルをアセットとしてインポートすることで直接 WebAssembly にコンパイルすることができます。
+
+:::info
+Rust Importer を利用するには [Rust ツールチェイン](https://www.rust-lang.org/ja/tools/install) と [`wasm32-unknown-unknown`](https://doc.rust-lang.org/rustc/platform-support/wasm32-unknown-unknown.html#building-rust-programs) ターゲットが必要です。
+:::
+
+## インポート設定
+
+<center>
+    <img src={rustImporterImage} width="400" />
+</center>
+
+- **Create Root**: ソースファイルをクレートのルートとして扱うかを指定します。チェックを外すと、ソースファイルは直接 WebAssembly にコンパイルされませんが、ほかのソースファイルからモジュールとして参照できます。
+- **Dependencies**: 依存するパッケージを指定します。
+  - **via Registry**: パッケージレジストリからパッケージをインストールします。
+  - **via Git**: Git リポジトリからパッケージをインストールします。
+- **Componentize**: WebAssembly モジュールをコンポーネントに変換します。詳しくは [コンポーネント化](#コンポーネント化) を参照してください。
+
+### Dependency
+
+- **Name**: パッケージ名を指定します。
+- **Version Requirements**: バージョンを指定します。詳しくは [The Cargo Book](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html) を参照してください。
+- **Features**: 有効化する feature を指定します。
+
+#### via Registry 固有の項目
+
+- **Registry** (optional): パッケージを取得するレジストリを指定します。詳しくは [The Cargo Book](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-dependencies-from-other-registries) を参照してください。
+
+#### via Git 固有の項目
+
+- **Git Url**: Git リポジトリの URL を指定します。
+- **Branch** (optional): ブランチ名を指定します。
+- **Tag** (optional): タグ名またはコミットハッシュを指定します。
+- **Rev** (optional): コミットハッシュを指定します。
+
+
+:::warning
+Rust Importer はソースファイルの変更を検知して自動的に再コンパイルを行います。ただし、次の場合は変更が検知されません。
+
+- 依存先のソースファイルが Unity の管理外にある場合
+- 依存先のソースファイルが存在しないためコンパイルエラーになった後、該当するソースファイルが作成・変更された場合
+- `.rs` 以外のファイルに依存している場合
+
+これらの場合は、対象のソースファイルを右クリックして `Reimport` を行うことで再コンパイルされます。  
+また、`Assets` > `Recompile Rust scripts for WaaS` を選択すると、プロジェクト内のすべての Rust ソースファイルを再コンパイルします。
+:::
+
+### プリセットの利用
+
+上記の設定を**プリセット アセット**として保存することで再利用できます。
+
+`Create` > `WaaS` > `Rust Importer Preset` からプリセットを作成し、Rust Importer の Inspector の **Preset** 欄にセットしてください。
+
+## IDE 機能の利用
+
+Rust に対応する IDE で **Unity プロジェクトのルート**をワークスペースとして開くと、IDE による補完等の機能を利用しながら Rust ソースファイルを編集できます。  
+
+これは、Rust Importer が Unity プロジェクトのルートに `Cargo.toml` を作成することによって実現しています：
+
+```toml
+[workspace]
+members = ["Library/com.ruccho.waas/rust/crates/*"] # Used by WaaS
+resolver = "2" # Used by WaaS
+
+```
+
+内部的には `Library/com.ruccho.waas/rust/crates/*` に **Create Root** として指定された各 `*.rs` をルートとするクレート群が自動生成されます。これらクレートの `Cargo.toml` は Rust Importer が自動的に上書きするので、手動での編集はできません。
+
+## Rust Importer の無効化
+
+Define Symbol として `WAAS_DISABLE_RUST_IMPORTER` を指定すると、Rust Importer が無効化されます。
+
+## コンポーネント化
+
+:::info
+コンポーネント化については [Component Model ではじめる](../getting-started/component-model) を参照してください。
+:::
+
+## ベストプラクティス
+
+### バージョン管理
+
+Unity プロジェクトのルートに作成された `Cargo.toml` および `Cargo.lock` をバージョン管理に追加することをお勧めします。
+
+### wee_alloc の使用
+
+[wee_alloc](https://github.com/rustwasm/wee_alloc) は、コードサイズの削減を目的とした WebAssembly 向けのアロケータです。
+
+依存関係に `wee_alloc` を追加し、次のコードを追加します。
+
+```rust
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+```
+
+### ビルド設定
+
+Unity プロジェクトのルートに生成された `Cargo.toml` を編集して、コードサイズ最適化のためのオプションを追加できます。
+
+```toml
+## ...
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "z"
+```
+
+:::info
+現在、Rust Importer は常に `--release` プロファイルでビルドします。
+:::
+

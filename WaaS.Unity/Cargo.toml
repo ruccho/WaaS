@@ -1,0 +1,3 @@
+﻿[workspace]
+members = ["Library/com.ruccho.waas/rust/crates/*"] # Used by WaaS
+resolver = "2" # Used by WaaS

@@ -1,0 +1,123 @@
+---
+title: Rust
+sidebar_position: 1
+---
+
+import Badge from '@site/src/components/Badge';
+import rustImporterImage from '@site/static/img/rust-importer.png';
+
+# Using Rust Importer
+
+WaaS allows you to directly compile `*.rs` files to WebAssembly by importing them as assets.
+
+:::info
+To use Rust Importer, you need the [Rust toolchain](https://www.rust-lang.org/tools/install) and the [`wasm32-unknown-unknown`](https://doc.rust-lang.org/rustc/platform-support/wasm32-unknown-unknown.html#building-rust-programs) target.
+:::
+
+## Import Settings
+
+<center>
+    <img src={rustImporterImage} width="400" />
+</center>
+
+- **Create Root**: Specify whether to treat the source file as the root of the crate. If unchecked, the source file will not be compiled directly to WebAssembly, but can be referenced as a module from other source files.
+- **Dependencies**: Specify the packages to depend on.
+  - **via Registry**: Install packages from the package registry.
+  - **via Git**: Install packages from a Git repository.
+- **Componentize**: Convert the WebAssembly module to a component. See [Componentization](#componentization) for details.
+
+### Dependency
+
+- **Name**: Specify the package name.
+- **Version Requirements**: Specify the version. See [The Cargo Book](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html) for details.
+
+### via Registry Specific Items
+
+- **Registry** (optional): Specify the registry to get the package from. See [The Cargo Book](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-dependencies-from-other-registries) for details.
+
+### via Git Specific Items
+
+- **Git Url**: Specify the URL of the Git repository.
+- **Branch** (optional): Specify the branch name.
+- **Tag** (optional): Specify the tag name or commit hash.
+- **Rev** (optional): Specify the commit hash.
+
+:::warning
+Rust Importer automatically recompiles when it detects changes in the source file. However, changes are not detected in the following cases:
+
+- When the dependent source file is outside of Unity's management
+- When dependent source file does not exist, and the corresponding source file is created or modified after a compilation error
+- When it depends on files other than `.rs`
+
+In these cases, right-click the target source file and select `Reimport` to recompile it.  
+Also, selecting `Assets` > `Recompile Rust scripts for WaaS` recompiles all Rust source files in the project.
+:::
+
+### Using Presets
+
+You can save the above settings as a **Preset Asset** for reuse.
+
+Crate a preset asset with `Create` > `WaaS` > `Rust Importer Preset` then set it to the **Preset** field in the Rust Importer settings.
+
+## Using IDE functionality
+
+Open the root folder of the project as a workspace with the IDE which supports Rust, and you can use the IDE's features such as code completion and syntax highlighting.
+
+WaaS acomplishes this by generating a `Cargo.toml` file in the project root directory:
+
+```toml
+[workspace]
+members = ["Library/com.ruccho.waas/rust/crates/*"] # Used by WaaS
+resolver = "2" # Used by WaaS
+
+```
+
+Internally, Rust Importer generates crates under `Library/com.ruccho.waas/rust/crates/*` for each source file with **Crate Root** checked. `Cargo.toml` files generated for each crate cannot be modified by hand because they are overwritten when the Rust Importer settings are changed.
+
+## Disabling Rust Importer
+
+To disable Rust Importer, use `WAAS_DISABLE_RUST_IMPORTER` define symbol.
+
+## Componentization
+
+:::info
+Refer to [Component Model Tutorial](../getting-started/component-model) for more information on componentization.
+:::
+
+## Best Practices
+
+### Version Control
+
+It is recommended to add `Cargo.toml` and `Cargo.lock` at the root of the project to version control.
+
+### Using wee_alloc
+
+[wee_alloc](https://github.com/rustwasm/wee_alloc) is an allocator for WebAssembly with small code size.
+
+Add `wee_alloc` to the dependencies and write the following:
+
+```rust
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+```
+
+### Build Settings
+
+We can add options to optimize the code size to `Cargo.toml` at the root of the project:
+
+```toml
+## ...
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "z"
+```
+
+:::info
+Currently, Rust Importer always uses `--release` profile to compile.
+:::
+
+
+
+
