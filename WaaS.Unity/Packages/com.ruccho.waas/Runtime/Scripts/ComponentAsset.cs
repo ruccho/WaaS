@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
 using UnityEngine;
-using WaaS.ComponentModel.Models;
 using WaaS.ComponentModel.Runtime;
+using Component = WaaS.ComponentModel.Models.Component;
 
 namespace WaaS.Unity
 {
@@ -16,7 +16,7 @@ namespace WaaS.Unity
 
         private void OnEnable()
         {
-            component = new Lazy<IComponent>(() => UnresolvedComponent.Create(data), true);
+            component = new Lazy<IComponent>(() => Component.Create(data), true);
 
             if (deserializeOnLoad && data != null) LoadComponent();
         }
