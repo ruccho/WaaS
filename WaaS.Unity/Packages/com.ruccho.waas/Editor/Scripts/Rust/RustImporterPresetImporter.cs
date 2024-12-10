@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace WaaS.Unity.Editor.Rust
 {
-    [ScriptedImporter(1, "rustimporterpreset")]
+    [ScriptedImporter(1, "rustimporterpreset", -100)]
     public class RustImporterPresetImporter : ScriptedImporter
     {
         [SerializeField] private RustImporterSettings settings;

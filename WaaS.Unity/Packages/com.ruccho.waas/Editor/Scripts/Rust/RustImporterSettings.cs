@@ -13,8 +13,13 @@ namespace WaaS.Unity.Editor.Rust
         [SerializeReference] [ManagedReferenceSelector]
         private PackageDependency?[]? dependencies;
 
+        [SerializeField] private bool componentize;
+        [SerializeField] private ComponentizationSettings? componentizationSettings;
+
         public IEnumerable<IRustPackageDependency> Dependencies =>
             dependencies?.Where(dep => dep != null).Select(dep => dep!) ?? Enumerable.Empty<IRustPackageDependency>();
+
+        public ComponentizationSettings? ComponentizationSettings => componentize ? componentizationSettings : null;
 
         [Serializable]
         private abstract class PackageDependency : IRustPackageDependency

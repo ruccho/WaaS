@@ -27,8 +27,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
-name = "cargo-component-example"
-version = "0.1.0"
+name = "cargo_component_example"
+version = "0.0.0"
 dependencies = [
  "wee_alloc",
 ]
@@ -251,7 +251,6 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 name = "waas_04e4d7aa903d8ab79fc3709e39575ff0"
 version = "0.0.0"
 dependencies = [
- "wee_alloc",
  "wit-bindgen",
 ]
 

@@ -1,0 +1,10 @@
+package my-game:my-sequencer;
+
+world sequence {
+    import env;
+    export play: func();
+}
+
+interface env {
+    show-message: func(speaker: string, message: string);
+}

@@ -13,7 +13,7 @@ namespace WaaS.ComponentModel.Models
     /// <summary>
     ///     Represents a WebAssembly component.
     /// </summary>
-    public class Component : IUnresolved<IComponent>
+    public class UnresolvedComponent : IUnresolved<IComponent>
     {
         private readonly List<CustomSection> customSections = new();
         private readonly List<IExport<ISortedExportable>> exports = new();
@@ -21,7 +21,7 @@ namespace WaaS.ComponentModel.Models
         private readonly List<IImport<ISortedExportable>> imports = new();
         private readonly List<IUnresolved<ISorted>> instantiations = new();
 
-        internal Component(ref ModuleReader reader, long? size = null, IIndexSpace? parentIndexSpace = null)
+        internal UnresolvedComponent(ref ModuleReader reader, long? size = null, IIndexSpace? parentIndexSpace = null)
         {
             long rest = 0;
             if (size.HasValue)
@@ -77,7 +77,7 @@ namespace WaaS.ComponentModel.Models
                     }
                     case SectionId.Component:
                     {
-                        indexSpace.Add(new Component(ref reader, sectionSize, indexSpace));
+                        indexSpace.Add(new UnresolvedComponent(ref reader, sectionSize, indexSpace));
                         break;
                     }
                     case SectionId.Instance:
@@ -134,6 +134,10 @@ namespace WaaS.ComponentModel.Models
             }
         }
 
+        public IEnumerable<CustomSection> CustomSections => customSections;
+        public IEnumerable<IExport<ISortedExportable>> Exports => exports;
+        public IEnumerable<IImport<ISortedExportable>> Imports => imports;
+
         public IComponent ResolveFirstTime(IInstantiationContext context)
         {
             return new CapturedComponent(this, context);
@@ -147,7 +151,7 @@ namespace WaaS.ComponentModel.Models
         public static IComponent Create(ReadOnlySpan<byte> buffer)
         {
             var reader = new ModuleReader(buffer);
-            return new CapturedComponent(new Component(ref reader), null);
+            return new CapturedComponent(new UnresolvedComponent(ref reader), null);
         }
 
         /// <summary>
@@ -158,19 +162,20 @@ namespace WaaS.ComponentModel.Models
         public static IComponent Create(ReadOnlySequence<byte> buffer)
         {
             var reader = new ModuleReader(buffer);
-            return new CapturedComponent(new Component(ref reader), null);
+            return new CapturedComponent(new UnresolvedComponent(ref reader), null);
         }
 
         private class CapturedComponent : IComponent
         {
             private readonly IInstantiationContext? outerContext;
-            private readonly Component source;
 
-            public CapturedComponent(Component source, IInstantiationContext? outerContext)
+            public CapturedComponent(UnresolvedComponent source, IInstantiationContext? outerContext)
             {
-                this.source = source;
+                this.Source = source;
                 this.outerContext = outerContext;
             }
+
+            public UnresolvedComponent Source { get; }
 
             public IInstance Instantiate(IReadOnlyDictionary<string, ISortedExportable> arguments)
             {
@@ -180,7 +185,7 @@ namespace WaaS.ComponentModel.Models
                 var newContext = new InstantiationContext(instance, outerContext, arguments);
 
                 List<IImport<ISortedExportable>>? missingImports = null;
-                foreach (var import in source.imports)
+                foreach (var import in Source.imports)
                 {
                     arguments.TryGetValue(import.Name.Name, out var argument);
                     if (!import.Descriptor.ValidateArgument(newContext, argument))
@@ -194,13 +199,13 @@ namespace WaaS.ComponentModel.Models
                     throw new LinkException(
                         $"The import is missing or invalid: \n{string.Join("\n", missingImports.Select(i => i.Name.Name))}");
 
-                foreach (var export in source.exports)
+                foreach (var export in Source.exports)
                     resolvedExports.Add(export.Name.Name, newContext.Resolve(export.Target));
 
                 // instantiations need to be resolved (unexposed instances may initialize other instance's state)
-                for (var i = 0; i < source.instantiations.Count; i++)
+                for (var i = 0; i < Source.instantiations.Count; i++)
                 {
-                    var instantiation = source.instantiations[i];
+                    var instantiation = Source.instantiations[i];
                     newContext.Resolve(instantiation);
                 }
 

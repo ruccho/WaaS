@@ -1,0 +1,11 @@
+[package]
+name = "waas-unity-native-editor"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-component = "0.221.2"
+wit-parser = "0.221.2"
