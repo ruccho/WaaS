@@ -58,7 +58,7 @@ namespace WaaS.ComponentModel.Runtime
 
     public interface IComponent : ISortedExportable
     {
-        UnresolvedComponent Source { get; }
+        Component Source { get; }
         IInstance Instantiate(IReadOnlyDictionary<string, ISortedExportable> arguments);
     }
 

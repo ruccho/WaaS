@@ -13,7 +13,7 @@ namespace WaaS.ComponentModel.Models
     /// <summary>
     ///     Represents a WebAssembly component.
     /// </summary>
-    public class UnresolvedComponent : IUnresolved<IComponent>
+    public class Component : IUnresolved<IComponent>
     {
         private readonly List<CustomSection> customSections = new();
         private readonly List<IExport<ISortedExportable>> exports = new();
@@ -21,7 +21,7 @@ namespace WaaS.ComponentModel.Models
         private readonly List<IImport<ISortedExportable>> imports = new();
         private readonly List<IUnresolved<ISorted>> instantiations = new();
 
-        internal UnresolvedComponent(ref ModuleReader reader, long? size = null, IIndexSpace? parentIndexSpace = null)
+        internal Component(ref ModuleReader reader, long? size = null, IIndexSpace? parentIndexSpace = null)
         {
             long rest = 0;
             if (size.HasValue)
@@ -77,7 +77,7 @@ namespace WaaS.ComponentModel.Models
                     }
                     case SectionId.Component:
                     {
-                        indexSpace.Add(new UnresolvedComponent(ref reader, sectionSize, indexSpace));
+                        indexSpace.Add(new Component(ref reader, sectionSize, indexSpace));
                         break;
                     }
                     case SectionId.Instance:
@@ -151,7 +151,7 @@ namespace WaaS.ComponentModel.Models
         public static IComponent Create(ReadOnlySpan<byte> buffer)
         {
             var reader = new ModuleReader(buffer);
-            return new CapturedComponent(new UnresolvedComponent(ref reader), null);
+            return new CapturedComponent(new Component(ref reader), null);
         }
 
         /// <summary>
@@ -162,20 +162,20 @@ namespace WaaS.ComponentModel.Models
         public static IComponent Create(ReadOnlySequence<byte> buffer)
         {
             var reader = new ModuleReader(buffer);
-            return new CapturedComponent(new UnresolvedComponent(ref reader), null);
+            return new CapturedComponent(new Component(ref reader), null);
         }
 
         private class CapturedComponent : IComponent
         {
             private readonly IInstantiationContext? outerContext;
 
-            public CapturedComponent(UnresolvedComponent source, IInstantiationContext? outerContext)
+            public CapturedComponent(Component source, IInstantiationContext? outerContext)
             {
                 this.Source = source;
                 this.outerContext = outerContext;
             }
 
-            public UnresolvedComponent Source { get; }
+            public Component Source { get; }
 
             public IInstance Instantiate(IReadOnlyDictionary<string, ISortedExportable> arguments)
             {
