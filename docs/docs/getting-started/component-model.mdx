@@ -3,13 +3,29 @@ title: Component Model Tutorial
 sidebar_position: 3
 ---
 
+import rustImporterComponentSettingsImage from '@site/static/img/rust-importer-component-settings.png';
+import rustImporterImportedComponentImage from '@site/static/img/rust-importer-imported-component.png';
+
 With the Component Model API of WaaS, you can run components based on the [WebAssembly Component Model](https://component-model.bytecodealliance.org/).
 
 While traditional WebAssembly modules were limited to numeric types for arguments and return values, the Component Model allows for more complex data types such as strings, lists, and structures to be exchanged.
 
-### 1. Creating WIT
+This tutorial explains how to create a component using Rust and run it in Unity.
 
-In the Component Model, you define types and function signatures in advance using an IDL called [**WIT**](https://component-model.bytecodealliance.org/design/wit.html) (WebAssembly Interface Type). The following is an example of a WIT intended for use in a simple conversation scene:
+### 1. Installing Required Tools
+
+Install the [Rust toolchain](https://www.rust-lang.org/learn/get-started) and add the `wasm32-unknown-unknown` target.
+
+```sh
+rustup target add wasm32-unknown-unknown
+```
+
+### 2. Creating WIT
+
+In the Component Model, you define types and function signatures in advance using an IDL called [**WIT**](https://component-model.bytecodealliance.org/design/wit.html) (WebAssembly Interface Type). 
+
+First, create `wit/sequence.wit` under the root of your Unity project.  
+The following is an example of a WIT intended for use in a simple conversation scene:
 
 ```wit
 package my-game:my-sequencer;
@@ -21,77 +37,80 @@ world sequence {
 
 interface env {
     show-message: func(speaker: string, message: string);
-    show-options: func(options: list<string>) -> u32;
 }
 ```
 
 `world` defines the set of functions to import and export for this WebAssembly component. `interface env` defines the set of functions to be implemented on the host environment side and imported into the component.
 
-### 2. Guest Language Work
+### 2. Creating Rust Source Files
 
-Once you have created the WIT, generate bindings for each guest language from the WIT. Use the tool [`wit-bindgen`](https://github.com/bytecodealliance/wit-bindgen) for this purpose. Currently, it supports generating bindings for Rust, C, Java, Go, C#, and Moonbit. For Rust, a tool called [`cargo-component`](https://github.com/bytecodealliance/cargo-component) is available to incorporate code generation from WIT into the build pipeline, so we will use it this time.
+To create a component in Rust, you need to generate bindings for Rust from the WIT file you created earlier. Use the tool [`wit-bindgen`](https://github.com/bytecodealliance/wit-bindgen) for this purpose. The usage varies depending on the language you are using, but this time we will introduce how to use it in Rust.
 
-```sh
-cargo install cargo-component --locked
-```
-
-Create a new Rust workspace.
-
-```sh
-cargo component new hello-world --lib
-```
-
-Place the WIT from earlier in `wit/world.wit`.
-
-The following is an example of a script written using the generated bindings for Rust. It calls the functions defined in `interface env`.
+Create `Assets/sequence_0.rs` in any location under `Assets`.
 
 ```rust
-#[allow(warnings)]
-mod bindings;
+use crate::my_game::my_sequencer::env::show_message;
 
-use bindings::my_game::my_sequencer::env::*;
-use bindings::Guest;
+wit_bindgen::generate!({
+    path: "../../../../../wit",
+    world: "my_game::my_sequencer/sequnce"
+});
 
-struct Component;
+struct Sequence;
 
-impl Guest for Component {
+impl Guest for Sequence {
     fn play() {
-        show_message("Sigmo", "Would you mind bringing me a battery?");
-        match show_options(&["Sure".to_string(), "No".to_string()]) {
-            0 => show_message("Sigmo", "Thank you!"),
-            1 => show_message("Sigmo", "……"),
-            _ => {}
-        }
-        show_message("Sigmo", "……");
+        show_message("ぼく", "こんにちは！");
     }
 }
 
-bindings::export!(Component with_types_in bindings);
+export!(Sequence);
 ```
 
-With `cargo-component`, the following command generates bindings from WIT and creates the component:
+:::info
+The `wit_bindgen::generate!` macro generates bindings from the WIT file.  
+`wit-bindgen` tries to find the WIT file relative to the `Cargo.toml` file actually located at `Library/com.ruccho.waas/rust/crates/~~~/Cargo.toml` when using WaaS, not the Rust source file. The path `../../../../../wit` is used to refer to the project root from this `Cargo.toml`.  
+Refer to [Using Rust Importer](../unity-integration/rust) for more information.
+:::
 
-```sh
-cargo component build --release --target wasm32-unknown-unknown
-```
+### 3. Importing and Configuring
 
-The result will be output to `target/wasm32-unknown-unknown/release/hello_world.wasm`. Import this into your Unity project.
+Import the Rust source file you created earlier into Unity.
 
-### 3. C# Work
+<center>
+    <img src={rustImporterComponentSettingsImage} width="400" />
+</center>
 
-Now, before you can actually run the component, you need to implement `show-message` and `show-options` on the C# side. To do this, you first need to convert the WIT to C# interfaces using the `wit2waas` tool provided by WaaS. 
+- Enable **Crate Root**
+- Add a dependency "via Registry" under **Dependencies** and specify `wit-bindgen` in Name
+- Enable **Componentize**
+  - Set the **Wit Directory** to `wit`
+  - Set the **Component Name** to `my-game:my-sequencer/sequence`
+
+:::info
+Refer to [Using Rust Importer](../unity-integration/rust) for more information on the settings.
+:::
+
+Click **Apply** to import. Once the compilation and componentization are complete, the component information will be displayed in the Inspector.
+
+<center>
+    <img src={rustImporterImportedComponentImage} width="400" />
+</center>
+
+We can see that the function `play` is exported from the component.
+
+### 4. Generating C# Bindings
+
+To easily run the component you created, let's create C# bindings. WaaS provides a CLI tool called `wit2waas` that generates C# interfaces from the WIT file.
+
+In the root of your Unity project, run [`wit2waas`](../component-model/wit2waas).
 
 ```sh
 cargo install wit2waas
+wit2waas --out "Assets/WaaS Generated"
 ```
 
-Run `wit2waas` in the directory where the `wit` directory is located.
-
-```sh
-wit2waas
-```
-
-This will generate the following C# code from the WIT above:
+It will generate the following C# code under `Assets/WaaS Generated/my-game/my-sequencer` from the WIT above:
 
 ```csharp
 // <auto-generated />
@@ -99,14 +118,12 @@ This will generate the following C# code from the WIT above:
 
 namespace MyGame.MySequencer
 {
+    // interface env
     [global::WaaS.ComponentModel.Binding.ComponentInterface(@"env")]
     public partial interface IEnv
     {
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"show-message")]
         global::System.Threading.Tasks.ValueTask ShowMessage(string @speaker, string @message);
-
-        [global::WaaS.ComponentModel.Binding.ComponentApi(@"show-options")]
-        global::System.Threading.Tasks.ValueTask<uint> ShowOptions(global::System.ReadOnlyMemory<string> @options);
 
     }
 }
@@ -114,45 +131,48 @@ namespace MyGame.MySequencer
 
 There are various attributes attached to the generated code, which allow the Source Generator to generate the code that actually exchanges values between the WebAssembly component and C#.
 
-Then implement the `IEnv`.
+`IEnv` is an interface that defines the functions to be implemented on the host environment side. Then implement the `IEnv`.
 
 ```csharp
-class Env : IEnv
+internal class Env : IEnv
 {
-    public static readonly Env Instance = new();
-
-    public async ValueTask ShowMessage(string speaker, string message)
+    public ValueTask ShowMessage(string speaker, string message)
     {
-        Debug.Log($"{speaker}: {message}");
-    }
-
-    public async ValueTask<uint> ShowOptions(ReadOnlyMemory<string> options)
-    {
-        Debug.Log($"Options: {string.Join(", ", options.ToArray())}");
-        return 0;
+        Debug.Log($"{speaker}「{message}」");
+        return default;
     }
 }
 ```
 
-Now it's time to run the component. Pass an instance of a class that implements `IEnv` to the component, and `ShowMessage()` and `ShowOptions()` will be called from within the component.
+### 5. Running the Component
+
+Now it's time to run the component.
 
 ```csharp
-[SerializeField] private ComponentAsset componentAsset;
+using System.Collections.Generic;
+using MyGame.MySequencer;
+using UnityEngine;
+using WaaS.ComponentModel.Runtime;
+using WaaS.Runtime;
+using WaaS.Unity;
 
-var component = componentAsset.LoadComponent();
-
-// Instantiate the component
-var instance = component.Instantiate(null, new Dictionary<string, ISortedExportable>()
+public class RunSequenceTest : MonoBehaviour
 {
-    // Import the `env` implementation
-    { "my-game:my-sequencer/env", IEnv.CreateWaaSInstance(Env.Instance) }
-});
+    [SerializeField] private ComponentAsset componentAsset;
 
-using var context = new ExecutionContext();
-var wrapper = new ISequence.Wrapper(instance, context);
-
-// Run
-await wrapper.Play();
+    private async void Start()
+    {
+        var component = await componentAsset.LoadComponentAsync();
+        var instance = component.Instantiate(new Dictionary<string, ISortedExportable>()
+        {
+            { "my-game:my-sequencer/env", IEnv.CreateWaaSInstance(new Env()) }
+        });
+        using var context = new ExecutionContext();
+        var sequence = new ISequence.Wrapper(instance, context);
+        await sequence.Play(); // ぼく「こんにちは！」
+    }
+}
 ```
 
-
+Attach `RunSequenceTest` to a GameObject and assign the imported component to `Component Asset`.  
+Now you can run the component in Unity.

@@ -70,7 +70,7 @@ export!(Sequence);
 :::info
 `wit-bindgen` WIT ファイルをもとに `generate!` マクロでバインディングを生成します。  
 `wit-bindgen` は WIT を検索する際、Rust ソースファイルではなく `Library/com.ruccho.waas/rust/crates/~~~/Cargo.toml` を基準とします。`../../../../../wit` というパスは、この `Cargo.toml` からプロジェクトルートを参照するためのものです。  
-詳しい背景については [Rust Importer の使用](../unity-integration/rust.mdx) を参照してください。
+詳しい背景については [Rust Importer の使用](../unity-integration/rust) を参照してください。
 :::
 
 ### 3. 必要な設定を行ってインポートする
@@ -103,9 +103,10 @@ export!(Sequence);
 
 作成したコンポーネントを簡単に実行するために、C# のバインディングを作成しましょう。WaaS では `wit2waas` という CLI ツールを提供しており、WIT ファイルから C# のインターフェースを生成することができます。
 
-Unity プロジェクトのルートで [`wit2waas`](../component-model/wit2waas.mdx) を実行します。
+Unity プロジェクトのルートで [`wit2waas`](../component-model/wit2waas) を実行します。
 
 ```sh
+cargo install wit2waas
 wit2waas --out "Assets/WaaS Generated"
 ```
 
