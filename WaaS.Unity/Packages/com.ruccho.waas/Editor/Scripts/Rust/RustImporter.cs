@@ -292,6 +292,12 @@ namespace WaaS.Unity.Editor.Rust
                 AssetDatabase.ImportAsset(AssetDatabase.GUIDToAssetPath(guid));
         }
 
+        [MenuItem("Assets/Create/WaaS/Rust Script")]
+        private static void CreateRust()
+        {
+            ProjectWindowUtil.CreateAssetWithContent("script.rs", "");
+        }
+
         [CustomEditor(typeof(RustImporter))]
         private class Editor : ScriptedImporterEditor
         {
