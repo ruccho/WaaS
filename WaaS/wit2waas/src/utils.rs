@@ -56,7 +56,7 @@ impl ToWaas for Type {
             Type::S64 => "long".into(),
             Type::F32 => "float".into(),
             Type::F64 => "double".into(),
-            Type::Char => "global:WaaS.ComponentModel.Binding.ComponentChar".into(),
+            Type::Char => "global::WaaS.ComponentModel.Binding.ComponentChar".into(),
             Type::String => "string".into(),
             Type::Id(id) => {
                 let ty = resolve.types.get(*id).unwrap();
