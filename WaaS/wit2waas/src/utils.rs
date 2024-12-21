@@ -141,8 +141,14 @@ impl ToWaas for World {
 
 impl ToWaas for Interface {
     fn to_waas(&self, resolve: &Resolve) -> anyhow::Result<String> {
-        let package = resolve.packages.get(self.package.unwrap()).unwrap();
-        Ok(format!("{}.I{}", package.to_waas(resolve)?, to_upper_camel(&self.name.clone().unwrap())))
+        // TODO: support inline interfaces
+        let name = to_upper_camel(&self.name.clone().unwrap());
+        if let Some(package_id) = self.package {
+            let package = resolve.packages.get(package_id).unwrap();
+            Ok(format!("{}.I{}", package.to_waas(resolve)?, name))
+        } else {
+            Ok(format!("global::I{}", name))
+        }
     }
 }
 

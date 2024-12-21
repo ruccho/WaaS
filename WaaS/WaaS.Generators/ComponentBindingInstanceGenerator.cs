@@ -26,7 +26,6 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
     private void EmitInstance(SourceProductionContext source, GeneratorAttributeSyntaxContext context)
     {
         StringBuilder sourceBuilder = new();
-        // source.AddSource($"{context.TargetSymbol.MetadataName}.Instance.Marker.g.cs", "");
 
         var symbol = context.TargetSymbol;
 
@@ -63,7 +62,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
 
         var name = namedSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-        static IEnumerable<ComponentApi> ExtractApis(INamedTypeSymbol symbol, bool includeBases = false)
+        static IEnumerable<ComponentApi> ExtractApis(INamedTypeSymbol symbol)
         {
             var members = symbol.GetMembers().Where(member =>
                     member is { DeclaredAccessibility: Accessibility.Public, IsAbstract: true, IsStatic: false } &&
@@ -73,14 +72,11 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                     member is not (IMethodSymbol and ({ IsGenericMethod: true } or
                         { MethodKind: MethodKind.PropertyGet or MethodKind.PropertySet })))
                 .Select(member => new ComponentApi(member));
-            if (includeBases)
-                members = members.Concat(symbol.AllInterfaces.SelectMany(@interface => ExtractApis(@interface)));
 
             return members;
         }
 
-        static IEnumerable<(INamedTypeSymbol type, string name)> ExtractResourceImplTypes(INamedTypeSymbol symbol,
-            bool includeBases = false)
+        static IEnumerable<(INamedTypeSymbol type, string name)> ExtractResourceImplTypes(INamedTypeSymbol symbol)
         {
             var members = symbol.GetMembers().OfType<INamedTypeSymbol>().Where(type =>
                 type is
@@ -96,19 +92,27 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                     attr?.ConstructorArguments.Length == 1 ? attr.ConstructorArguments[0].Value as string : null);
             }).Where(p => !string.IsNullOrEmpty(p.Item2));
 
-            if (includeBases)
-                members = members!.Concat(
-                    symbol.AllInterfaces.SelectMany(@interface => ExtractResourceImplTypes(@interface)))!;
-
             return members!;
         }
 
-        var directMembers = ExtractApis(namedSymbol, true).ToArray();
+        var directMembers = ExtractApis(namedSymbol).ToArray();
 
-        var resourceTypes = ExtractResourceImplTypes(namedSymbol, true).ToArray();
+        var resourceTypes = ExtractResourceImplTypes(namedSymbol).ToArray();
 
         var allMembers =
             directMembers.Concat(resourceTypes.SelectMany(t => ExtractApis(t.type)));
+
+        // for world, we need to generate properties to get exported interface instances
+        var exportedInterfaces = namedSymbol.GetMembers().OfType<IPropertySymbol>().Select(property =>
+        {
+            var type = property.Type;
+            if (type is not INamedTypeSymbol named) return null;
+            if (type.TypeKind is not TypeKind.Interface) return null;
+            var attr = type.GetAttributes().FirstOrDefault(a =>
+                a.AttributeClass?.Matches("WaaS.ComponentModel.Binding.ComponentInterfaceAttribute") ?? false);
+            if (attr?.ConstructorArguments[0].Value is not string componentName) return null;
+            return new ComponentExportedInterface(named, componentName, property.Name);
+        }).Where(p => p != null).Select(p => p!);
 
         // TODO: generics
         sourceBuilder.AppendLine(
@@ -131,7 +135,6 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                                 global::WaaS.ComponentModel.Runtime.ISortedExportable? exportable = name switch
                                 {
                 """);
-
 
         foreach (var member in directMembers)
             sourceBuilder.AppendLine(
@@ -325,7 +328,8 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
 
         // wrapper
 
-        static void AppendWrapperBody(StringBuilder sourceBuilder, IEnumerable<ComponentApi> apis, string wrapperName)
+        static void AppendWrapperBody(StringBuilder sourceBuilder, IEnumerable<ComponentApi> apis,
+            IEnumerable<ComponentExportedInterface> exportedInterfaces, string wrapperName)
         {
             sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
@@ -339,6 +343,27 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                                 this.context = context;
                             }
                 """);
+
+
+            foreach (var property in exportedInterfaces)
+            {
+                var type = property.Type;
+                var typeExp = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                sourceBuilder.AppendLine(
+/* lang=c#  */$$"""
+                            public {{typeExp}} {{property.PropertyName}}
+                            {
+                                get
+                                {
+                                    if (!instance.TryGetExport<global::WaaS.ComponentModel.Runtime.IInstance>(@"{{property.ComponentName}}", out var export))
+                                    {
+                                        throw new global::System.InvalidOperationException(@"Export ""{{property.ComponentName}}"" not found.");
+                                    }
+                                    return new {{typeExp}}.Wrapper(export, this.context);
+                                }
+                            }
+                """);
+            }
 
             foreach (var member in apis)
             {
@@ -387,9 +412,9 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                 """);
 
 
-        AppendWrapperBody(sourceBuilder, directMembers, "Wrapper");
+        AppendWrapperBody(sourceBuilder, directMembers, exportedInterfaces, "Wrapper");
 
-        var resourceTypesImpl = ExtractResourceImplTypes(namedSymbol, true);
+        var resourceTypesImpl = ExtractResourceImplTypes(namedSymbol);
 
         foreach (var pair in resourceTypesImpl)
         {
@@ -399,7 +424,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                         public readonly struct {{propName}}Wrapper : {{pair.type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}
                         {
                 """);
-            AppendWrapperBody(sourceBuilder, ExtractApis(pair.type), $"{propName}Wrapper");
+            AppendWrapperBody(sourceBuilder, ExtractApis(pair.type), [], $"{propName}Wrapper");
             sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
                             global::WaaS.ComponentModel.Runtime.IResourceType global::WaaS.ComponentModel.Binding.IResourceImpl.Type { get { if (!this.instance.TryGetExport(@"{{Utils.ToComponentName(pair.name)}}", out global::WaaS.ComponentModel.Runtime.IResourceType? type)) throw new global::System.InvalidOperationException(@"Resource type not found."); return type; } }
