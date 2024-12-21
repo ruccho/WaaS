@@ -119,14 +119,13 @@ namespace WaaS.ComponentModel.Runtime
         {
             var listType = MoveNextType<IListType>();
 
-            var despecialized = listType.Despecialize();
+            var despecialized = listType.ElementType.Despecialize();
             var size = checked((uint)(despecialized.ElementSize * length));
             var ptr = Realloc(0, 0,
                 checked((uint)(1 << despecialized.AlignmentRank)),
                 size);
 
-            PushU32Core(ptr);
-            PushU32Core(checked((uint)length));
+            PushListDataWithoutMoving(ptr, checked((uint)length));
 
             return SerializedLoweringPusher.Get(
                     Context!.Options.MemoryToRealloc!.AsMemory().Slice(checked((int)ptr), checked((int)size)))
@@ -323,5 +322,6 @@ namespace WaaS.ComponentModel.Runtime
         protected abstract void PushF32Core(float value);
 
         protected abstract void PushF64Core(double value);
+        protected abstract void PushListDataWithoutMoving(uint ptr, uint length);
     }
 }

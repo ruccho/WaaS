@@ -1,6 +1,7 @@
 ﻿#nullable enable
 
 using System;
+using System.Runtime.CompilerServices;
 using WaaS.ComponentModel.Models;
 using WaaS.ComponentModel.Runtime;
 
@@ -73,6 +74,7 @@ namespace WaaS.ComponentModel.Binding
 
             static Cache()
             {
+                RuntimeHelpers.RunClassConstructor(typeof(T).TypeHandle);
                 if (CacheCheck<T>.suppressAutoInitialization) return;
 
                 // resolve generic formatters

@@ -388,7 +388,7 @@ namespace WaaS.ComponentModel.Models
                 var length = Cases.Length;
                 var n = length >> 8;
                 var d = 0;
-                for (; n >= 0; n >>= 1) d++;
+                for (; n > 0; n >>= 1) d++;
                 if ((length & ((1 << 8) - 1)) != 0) d++; // ceil
 
                 return (d >> 3) switch
@@ -527,7 +527,7 @@ namespace WaaS.ComponentModel.Models
         }
 
         public byte AlignmentRank => 2;
-        public ushort ElementSize => 4;
+        public ushort ElementSize => 8;
         public uint FlattenedCount => 2;
 
         public void Flatten(Span<ValueType> dest)
