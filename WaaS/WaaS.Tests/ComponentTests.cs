@@ -2,11 +2,6 @@
 using WaaS.ComponentModel.Binding;
 using WaaS.ComponentModel.Models;
 using WaaS.ComponentModel.Runtime;
-using WaaS.Runtime;
-using Wasi.Cli;
-using Wasi.Clocks;
-using Wasi.Filesystem;
-using Wasi.Io;
 using ExecutionContext = WaaS.Runtime.ExecutionContext;
 
 namespace WaaS.Tests;

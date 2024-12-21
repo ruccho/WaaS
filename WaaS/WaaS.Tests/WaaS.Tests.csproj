@@ -18,7 +18,6 @@
     <ItemGroup>
         <ProjectReference Include="..\WaaS.Core\WaaS.Core.csproj"/>
         <ProjectReference Include="..\WaaS.Generators\WaaS.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
-        <ProjectReference Include="..\wasi\wasi.csproj" />
     </ItemGroup>
 
 </Project>
