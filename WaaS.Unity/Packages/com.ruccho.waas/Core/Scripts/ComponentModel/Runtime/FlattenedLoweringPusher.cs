@@ -81,6 +81,19 @@ namespace WaaS.ComponentModel.Runtime
             MoveNextType();
         }
 
+        protected override void PushListDataWithoutMoving(uint ptr, uint length)
+        {
+            ref var t = ref Destination.Span[destinationCursor++];
+            t = t.valueType == ValueType.I64
+                ? new StackValueItem((ulong)ptr)
+                : new StackValueItem(ptr);
+            
+            t = ref Destination.Span[destinationCursor++];
+            t = t.valueType == ValueType.I64
+                ? new StackValueItem((ulong)length)
+                : new StackValueItem(length);
+        }
+
         protected override void PushU64Core(ulong value)
         {
             Destination.Span[destinationCursor] = new StackValueItem(value);

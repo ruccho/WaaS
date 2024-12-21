@@ -18,6 +18,26 @@ namespace WaaS.ComponentModel.Binding
         [ComponentCase] public TOk? Ok { get; private init; }
         [ComponentCase] public TError? Error { get; private init; }
 
+        public static Result<TOk, TError> CreateOk(TOk ok)
+        {
+            return new Result<TOk, TError>
+            {
+                Ok = ok,
+                Error = default,
+                Case = VariantCase.Ok
+            };
+        }
+
+        public static Result<TOk, TError> CreateError(TError error)
+        {
+            return new Result<TOk, TError>
+            {
+                Ok = default,
+                Error = error,
+                Case = VariantCase.Error
+            };
+        }
+
         public bool Equals(Result<TOk, TError> other)
         {
             if (Case != other.Case) return false;

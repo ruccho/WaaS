@@ -300,7 +300,7 @@ namespace WaaS.ComponentModel.Runtime
                 if (Flattened)
                     value = NextFlattenedF64();
                 else
-                    value = LoadSerialized<float>();
+                    value = LoadSerialized<double>();
 
                 if (double.IsNaN(value)) Unsafe.As<double, ulong>(ref value) = 0x7ff8000000000000;
 

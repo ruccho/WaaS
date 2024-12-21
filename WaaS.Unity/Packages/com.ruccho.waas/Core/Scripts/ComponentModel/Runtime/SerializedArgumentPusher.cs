@@ -46,6 +46,16 @@ namespace WaaS.ComponentModel.Runtime
             MoveNextType();
         }
 
+        protected override void PushListDataWithoutMoving(uint ptr, uint length)
+        {
+            destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
+            Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = ptr;
+            destinationCursor += 4;
+            destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
+            Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = length;
+            destinationCursor += 4;
+        }
+
         protected override void PushU64Core(ulong value)
         {
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 3);
