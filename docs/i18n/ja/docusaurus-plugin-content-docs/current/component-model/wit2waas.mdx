@@ -62,3 +62,14 @@ Options:
   -V, --version            Print version
 ```
 
+### `init` アクセサに関する問題
+
+`wit2waas` はレコードの型定義を作成する際に `init` アクセサを使用します。  
+Unity など .NET 5 未満の環境ではデフォルトではコンパイルできませんが、以下のコードを追加することでコンパイル可能になります。
+
+```csharp
+namespace System.Runtime.CompilerServices
+{
+    internal static class IsExternalInit { }
+}
+```

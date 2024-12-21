@@ -62,3 +62,14 @@ Options:
   -V, --version            Print version
 ```
 
+### Problems with `init` accessors
+
+`wit2waas` emits `init` accessors for type definitions of records in the WIT.  
+It cannot be compiled in environments earlier than .NET 5 such as Unity, but it can be made compilable by adding the following code.
+
+```csharp
+namespace System.Runtime.CompilerServices
+{
+    internal static class IsExternalInit { }
+}
+```
