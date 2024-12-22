@@ -326,7 +326,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
             var isNone = memberType.Matches("WaaS.ComponentModel.Binding.None");
             var valueExpression = isNone
                 ? "default(global::WaaS.ComponentModel.Binding.None)"
-                : $"await pullable.PullValueAsync<{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>()";
+                : $"await pullable.PullValueAsync<{memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>()";
 
             bodyBuilder.AppendLine(
 /* lang=c#  */$$"""
@@ -350,8 +350,13 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
         foreach (var member in members)
         {
             var memberType = GetMemberType(member);
-            var isNone = memberType.TryGetNullableElement(out var elementType) &&
-                         elementType!.Matches("WaaS.ComponentModel.Binding.None");
+            var isNone = false;
+            if (memberType.TryGetNullableElement(out var elementType))
+            {
+                memberType = elementType!;
+                isNone = memberType.Matches("WaaS.ComponentModel.Binding.None");
+            }
+
             bodyBuilder.AppendLine(
 /* lang=c#  */$$"""
                                     case VariantCase.{{member.Name}}:
@@ -359,7 +364,7 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
             if (!isNone)
                 bodyBuilder.AppendLine(
 /* lang=c#  */$$"""
-                                        global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{GetMemberType(member).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push(value.{{member.Name}} ?? throw new global::System.InvalidOperationException(), pusher);
+                                        global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{memberType!.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push(value.{{member.Name}} ?? throw new global::System.InvalidOperationException(), pusher);
                 """);
             bodyBuilder.AppendLine(
 /* lang=c#  */"""                        break;""");
@@ -391,6 +396,46 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
 /* lang=c#    */"""
                         }
                 """);
+
+        // constructors
+        foreach (var member in members)
+        {
+            var memberType = GetMemberType(member);
+            if (memberType.TryGetNullableElement(out var elementType)) memberType = elementType!;
+
+            memberBuilder.AppendLine(
+/* lang=c#  */$$"""
+                        public static {{name}} Create{{member.Name}}({{memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}} value)
+                        {
+                            return new {{name}}() { Case = VariantCase.{{member.Name}}, {{member.Name}} = value };
+                        }
+                """);
+        }
+
+        // ToString
+        {
+            memberBuilder.AppendLine(
+/* lang=c#  */"""
+                      public override string ToString()
+                      {
+                          return Case switch
+                          {
+              """);
+
+            foreach (var member in members)
+                memberBuilder.AppendLine(
+                    /* lang=c#  */
+                    $$"""
+                                      VariantCase.{{member.Name}} => $"{{member.Name}}({{{member.Name}}?.ToString() ?? ""})",   
+                      """);
+
+            memberBuilder.AppendLine(
+/* lang=c#  */"""
+                              _ => throw new ArgumentOutOfRangeException()
+                          };
+                      }
+              """);
+        }
     }
 
     private static void EmitAliasFormatterBody(INamedTypeSymbol namedSymbol, StringBuilder sourceBuilder)
