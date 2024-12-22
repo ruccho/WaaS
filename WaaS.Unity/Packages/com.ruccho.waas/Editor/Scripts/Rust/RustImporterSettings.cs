@@ -63,6 +63,12 @@ namespace WaaS.Unity.Editor.Rust
         }
 
         [Serializable]
+        [ManagedReferenceTypeDisplayName("via Workspace")]
+        private class PackageWorkspaceDependency : PackageDependency, IRustPackageWorkspaceDependency
+        {
+        }
+
+        [Serializable]
         private class VersionRequirement : IVersionRequirement
         {
             [SerializeField] private VersionRequirementKind kind;
