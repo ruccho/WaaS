@@ -50,5 +50,10 @@ namespace WaaS.ComponentModel.Binding
         {
             return !left.Equals(right);
         }
+
+        public override string ToString()
+        {
+            return "";
+        }
     }
 }

@@ -530,7 +530,15 @@ namespace WaaS.ComponentModel.Runtime
                     if (caseType == null)
                         return new ValueLifter(Context, ElementTypeSelector.FromSingle(null), Span<byte>.Empty);
 
-                    serializedCursor = Utils.ElementSizeAlignTo(serializedCursor, caseType.AlignmentRank);
+                    // align to max alignment
+                    byte alignmentRank = 1;
+                    foreach (var otherCase in variantType.Cases.Span)
+                    {
+                        if (otherCase.Type is not { } type) continue;
+                        var rank = type.Despecialize().AlignmentRank;
+                        if(alignmentRank < rank) alignmentRank = rank;
+                    }
+                    serializedCursor = Utils.ElementSizeAlignTo(serializedCursor, alignmentRank);
                     var length = caseType.ElementSize;
                     var newSource = source.Slice(checked((int)serializedCursor), length);
                     serializedCursor = checked(serializedCursor + length);
