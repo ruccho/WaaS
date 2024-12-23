@@ -59,15 +59,15 @@ namespace WaaS.Unity.Editor.Rust
             {
                 cargoTomlBuilder.Append(dependency.Name);
                 cargoTomlBuilder.Append(" = {");
+                var hasVersion = false;
                 if (dependency.VersionRequirements is { } versionRequirements)
                 {
-                    var any = false;
                     cargoTomlBuilder.Append(" version = \"");
                     foreach (var versionRequirement in versionRequirements)
                     {
-                        if (any) cargoTomlBuilder.Append(", ");
+                        if (hasVersion) cargoTomlBuilder.Append(", ");
 
-                        any = true;
+                        hasVersion = true;
                         _ = versionRequirement.Kind switch
                         {
                             VersionRequirementKind.Caret => cargoTomlBuilder.Append('^'),
@@ -83,7 +83,8 @@ namespace WaaS.Unity.Editor.Rust
                         cargoTomlBuilder.Append(versionRequirement.Version);
                     }
 
-                    if (!any) cargoTomlBuilder.Append("*");
+                    if (!hasVersion) cargoTomlBuilder.Append("*");
+                    hasVersion = true;
 
                     cargoTomlBuilder.Append("\"");
                 }
@@ -94,16 +95,24 @@ namespace WaaS.Unity.Editor.Rust
                     {
                         if (regDep.Registry is { } registry)
                         {
-                            cargoTomlBuilder.Append(", registry = \"");
+                            if (hasVersion) cargoTomlBuilder.Append(", ");
+                            cargoTomlBuilder.Append("registry = \"");
                             cargoTomlBuilder.Append(registry);
                             cargoTomlBuilder.Append("\"");
                         }
 
                         break;
                     }
+                    case IRustPackageWorkspaceDependency:
+                    {
+                        if (hasVersion) cargoTomlBuilder.Append(", ");
+                        cargoTomlBuilder.Append("workspace = true");
+                        break;
+                    }
                     case IRustPackageGitDependency gitDep:
                     {
-                        cargoTomlBuilder.Append(" git = \"");
+                        if (hasVersion) cargoTomlBuilder.Append(", ");
+                        cargoTomlBuilder.Append("git = \"");
                         cargoTomlBuilder.Append(gitDep.GitUrl);
                         cargoTomlBuilder.Append("\"");
                         if (gitDep.Branch is { } branch)

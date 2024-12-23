@@ -12,6 +12,7 @@ namespace WaaS.Unity
         [NonSerialized] private Lazy<Module> module;
 
         internal ulong Size => (ulong)(data?.Length ?? 0);
+        internal byte[] Data => data;
 
         private void OnEnable()
         {

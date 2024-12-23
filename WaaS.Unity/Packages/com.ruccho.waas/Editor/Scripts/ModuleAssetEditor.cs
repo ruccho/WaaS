@@ -11,7 +11,21 @@ namespace WaaS.Unity.Editor
             base.OnInspectorGUI();
 
             var moduleAsset = (ModuleAsset)target;
-            GUILayout.Label($"{moduleAsset.Size} bytes");
+
+            var enabled = GUI.enabled;
+            GUI.enabled = true;
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.PrefixLabel($"{moduleAsset.Size} bytes");
+            if (GUILayout.Button("Export"))
+            {
+                var path = EditorUtility.SaveFilePanel("Export Module", "", $"{target.name}.wasm", "wasm");
+                if (!string.IsNullOrEmpty(path))
+                    System.IO.File.WriteAllBytes(path, moduleAsset.Data);
+            }
+            EditorGUILayout.EndHorizontal();
+
+            GUI.enabled = enabled;
+            
             var module = moduleAsset.LoadModule();
 
             var imports = module.ImportSection?.Imports;

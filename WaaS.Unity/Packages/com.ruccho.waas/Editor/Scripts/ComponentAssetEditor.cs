@@ -11,9 +11,22 @@ namespace WaaS.Unity.Editor
         public override void OnInspectorGUI()
         {
             base.OnInspectorGUI();
-
             var componentAsset = (ComponentAsset)target;
-            GUILayout.Label($"{componentAsset.Size} bytes");
+
+            var enabled = GUI.enabled;
+            GUI.enabled = true;
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.PrefixLabel($"{componentAsset.Size} bytes");
+            if (GUILayout.Button("Export"))
+            {
+                var path = EditorUtility.SaveFilePanel("Export Module", "", $"{target.name}.wasm", "wasm");
+                if (!string.IsNullOrEmpty(path))
+                    System.IO.File.WriteAllBytes(path, componentAsset.Data);
+            }
+            EditorGUILayout.EndHorizontal();
+
+            GUI.enabled = enabled;
+
             var componentSource = componentAsset.LoadComponent().Source;
 
             GUILayout.Label("Imports", EditorStyles.boldLabel);
