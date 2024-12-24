@@ -23,7 +23,7 @@ namespace WaaS.Models
 
         protected abstract TValue Convert(in TReadValue value);
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             try
             {
@@ -277,7 +277,7 @@ namespace WaaS.Models
 
         protected abstract TWriteValue Convert(in TValue value);
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var writeSize = Unsafe.SizeOf<TWriteValue>();
 
@@ -450,7 +450,7 @@ namespace WaaS.Models
     {
         [Operand(0)] public byte Reserved { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             current.Push(checked((uint)(current.Instance.GetMemory(0).Length >> Memory.PageSizeRank)));
         }
@@ -481,7 +481,7 @@ namespace WaaS.Models
     {
         [Operand(0)] public byte Reserved { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var n = current.Pop().ExpectValueI32();
             if (current.Instance.TryGrowMemory(0, checked((int)n), out var oldNumPages))
@@ -518,7 +518,7 @@ namespace WaaS.Models
         [Operand(0)] public byte Reserved0 { get; }
         [Operand(1)] public byte Reserved1 { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var memory = current.Instance.GetMemory(0);
 
@@ -567,7 +567,7 @@ namespace WaaS.Models
     {
         [Operand(0)] public byte Reserved { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var memory = current.Instance.GetMemory(0);
 

@@ -21,7 +21,8 @@ namespace WaaS.Models
         ///     Executes the instruction.
         /// </summary>
         /// <param name="current"></param>
-        public abstract void Execute(WasmStackFrame current);
+        /// <param name="pushedFrame"></param>
+        public abstract void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame);
 
         /// <summary>
         ///     Get the number of values to pop and push from the stack to validate stack depth.
