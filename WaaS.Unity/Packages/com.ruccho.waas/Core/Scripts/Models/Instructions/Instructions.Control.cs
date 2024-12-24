@@ -49,7 +49,7 @@ namespace WaaS.Models
     [OpCode(0x00)]
     public partial class Unreachable : Instruction
     {
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             throw new TrapException();
         }
@@ -70,7 +70,7 @@ namespace WaaS.Models
     [OpCode(0x01)]
     public partial class Nop : Instruction
     {
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
         }
 
@@ -104,9 +104,9 @@ namespace WaaS.Models
         {
         }
 
-        protected abstract void OnBeforeBlockEnter(WasmStackFrame current, out uint continuationIndex);
+        protected abstract void OnBeforeBlockEnter(in TransientWasmStackFrame current, out uint continuationIndex);
 
-        public sealed override void Execute(WasmStackFrame current)
+        public sealed override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             OnBeforeBlockEnter(current, out var continuationIndex);
             current.EnterBlock(new Label(Index, continuationIndex));
@@ -133,7 +133,7 @@ namespace WaaS.Models
     {
         public override uint Arity => BlockType.Type.HasValue ? 1u : 0u;
 
-        protected override void OnBeforeBlockEnter(WasmStackFrame current, out uint continuationIndex)
+        protected override void OnBeforeBlockEnter(in TransientWasmStackFrame current, out uint continuationIndex)
         {
             continuationIndex = End.Index + 1;
         }
@@ -147,7 +147,7 @@ namespace WaaS.Models
     {
         public override uint Arity => 0;
 
-        protected override void OnBeforeBlockEnter(WasmStackFrame current, out uint continuationIndex)
+        protected override void OnBeforeBlockEnter(in TransientWasmStackFrame current, out uint continuationIndex)
         {
             continuationIndex = Index;
         }
@@ -173,7 +173,7 @@ namespace WaaS.Models
             stackState.Pop(ValueType.I32);
         }
 
-        protected override void OnBeforeBlockEnter(WasmStackFrame current, out uint continuationIndex)
+        protected override void OnBeforeBlockEnter(in TransientWasmStackFrame current, out uint continuationIndex)
         {
             var c = current.Pop().ExpectValueI32();
             continuationIndex = End.Index + 1;
@@ -209,7 +209,7 @@ namespace WaaS.Models
     [OpCode(0x05)]
     public partial class Else : BlockDelimiterInstruction
     {
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             current.EndBlock();
         }
@@ -230,7 +230,7 @@ namespace WaaS.Models
     [OpCode(0x0B)]
     public partial class End : BlockDelimiterInstruction
     {
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             current.EndBlock();
         }
@@ -253,7 +253,7 @@ namespace WaaS.Models
     {
         [Operand(0)] public uint LabelIndex { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             current.JumpLabel(LabelIndex);
         }
@@ -276,7 +276,7 @@ namespace WaaS.Models
     {
         [Operand(0)] public uint LabelIndex { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var c = current.Pop().ExpectValueI32();
             if (c == 0) return;
@@ -303,7 +303,7 @@ namespace WaaS.Models
         [Operand(0)] public ReadOnlyMemory<uint> LabelIndices { get; }
         [Operand(1)] public uint DefaultLabelIndex { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var i = current.Pop().ExpectValueI32();
 
@@ -330,7 +330,7 @@ namespace WaaS.Models
     [OpCode(0x0F)]
     public partial class Return : Instruction
     {
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             current.End();
         }
@@ -353,7 +353,7 @@ namespace WaaS.Models
     {
         [Operand(0)] public uint FuncIndex { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var function = current.Instance.FunctionInstance.Functions.Span[checked((int)FuncIndex)];
 
@@ -369,7 +369,7 @@ namespace WaaS.Models
                 parameters[i] = stackItem;
             }
 
-            current.PushFrame(function, parameters);
+            pushedFrame = current.CreateFrame(function, parameters);
         }
 
         public override void Validate(in ValidationContext context)
@@ -407,7 +407,7 @@ namespace WaaS.Models
         // https://blog.rust-lang.org/2024/09/24/webassembly-targets-change-in-default-target-features.html
         [Operand(1)] public uint TableIndex { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var functionIndex = current.Pop().ExpectValueI32();
             if (current.Instance.TableInstance.Tables.Span[0] is not Table<IInvocableFunction> table)
@@ -434,7 +434,7 @@ namespace WaaS.Models
                 parameters[i] = stackItem;
             }
 
-            current.PushFrame(function, parameters);
+            pushedFrame = current.CreateFrame(function, parameters);
         }
 
         public override void Validate(in ValidationContext context)

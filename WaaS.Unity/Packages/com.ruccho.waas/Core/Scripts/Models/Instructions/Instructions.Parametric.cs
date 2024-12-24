@@ -8,7 +8,7 @@ namespace WaaS.Models
     [OpCode(0x1A)]
     public partial class Drop : Instruction
     {
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             current.Pop().ExpectValue();
         }
@@ -30,7 +30,7 @@ namespace WaaS.Models
     [OpCode(0x1B)]
     public partial class Select : Instruction
     {
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var c = current.Pop().ExpectValueI32();
             var v2 = current.Pop().ExpectValue();
