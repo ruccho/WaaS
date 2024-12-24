@@ -25,3 +25,12 @@
 [submodule "WaaS/DocFxMarkdownGen"]
 	path = WaaS/DocFxMarkdownGen
 	url = https://github.com/ruccho/DocFxMarkdownGen.git
+[submodule "WaaS/WaaS.Tests.Wast/wasm-tools"]
+	path = WaaS/WaaS.Tests.Wast/wasm-tools
+	url = https://github.com/ruccho/wasm-tools.git
+[submodule "WaaS/WaaS.Tests.Wast/wasmtime"]
+	path = WaaS/WaaS.Tests.Wast/wasmtime
+	url = https://github.com/bytecodealliance/wasmtime.git
+[submodule "WaaS/WaaS.Debugging.Cdp/devtools-protocol"]
+	path = WaaS/WaaS.Debugging.Cdp/devtools-protocol
+	url = https://github.com/ChromeDevTools/devtools-protocol.git

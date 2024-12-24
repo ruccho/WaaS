@@ -13,17 +13,17 @@ public class Wast2Json
         this.logger = logger;
     }
 
-    public async Task<WastProc> RunAsync(string wastPath, string binaryPath = "wast2json",
-        CancellationToken ct = default)
+    public async Task<WastProc> RunAsync(string wastPath, CancellationToken ct = default)
     {
         var dir = Path.Combine(Path.GetTempPath(), "WaaS.Tests.Wast", "Wast2Json");
         var path = Path.GetFullPath(wastPath);
 
         Directory.CreateDirectory(dir);
 
+        Console.WriteLine($"wast: {path}");
         Console.WriteLine($"output: {dir}");
 
-        var startInfo = new ProcessStartInfo(binaryPath, $@"--disable-bulk-memory -o ""out.json"" ""{path}""")
+        var startInfo = new ProcessStartInfo("wasm-tools", $@"json-from-wast -o ""out.json"" ""{path}""")
         {
             UseShellExecute = false,
             WorkingDirectory = dir,
@@ -50,7 +50,7 @@ public class Wast2Json
         WastProc proc;
         using (var file = File.OpenRead(Path.Combine(dir, "out.json")))
         {
-            proc = await JsonSerializer.DeserializeAsync<WastProc>(file, WastProc.SerializerOptions, ct) ??
+            proc = JsonSerializer.Deserialize<WastProc>(file, WastProc.SerializerOptions) ??
                    throw new InvalidOperationException();
         }
 
