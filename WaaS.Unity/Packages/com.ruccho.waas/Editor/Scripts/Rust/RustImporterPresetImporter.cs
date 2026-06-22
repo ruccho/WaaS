@@ -21,7 +21,11 @@ namespace WaaS.Unity.Editor.Rust
         [MenuItem("Assets/Create/WaaS/Rust Importer Preset")]
         private static void CreatePreset()
         {
+#if UNITY_6000_4_OR_NEWER
+            ProjectWindowUtil.CreateAssetWithTextContent("New Rust Importer Preset.rustimporterpreset", "");
+#else
             ProjectWindowUtil.CreateAssetWithContent("New Rust Importer Preset.rustimporterpreset", "");
+#endif
         }
     }
 }

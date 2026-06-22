@@ -304,7 +304,11 @@ namespace WaaS.Unity.Editor.Rust
         [MenuItem("Assets/Create/WaaS/Rust Script")]
         private static void CreateRust()
         {
+#if UNITY_6000_4_OR_NEWER
+            ProjectWindowUtil.CreateAssetWithTextContent("script.rs", "");
+#else
             ProjectWindowUtil.CreateAssetWithContent("script.rs", "");
+#endif
         }
 
         [CustomEditor(typeof(RustImporter))]
