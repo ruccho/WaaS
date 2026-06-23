@@ -7,6 +7,8 @@ on:
 
 jobs:
   publish-crates:
+    permissions:
+      id-token: write     # Required for OIDC token exchange
     runs-on: ubuntu-latest
     defaults:
       run:
