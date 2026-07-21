@@ -11,7 +11,18 @@ app.AddRootCommand(async (Wast2Json wast2Json, [Option("d", "directory")] string
 {
     foreach (var file in Directory.EnumerateFiles(dir, "*.wast", SearchOption.TopDirectoryOnly))
     {
-        var proc = await wast2Json.RunAsync(file);
+        WastProc proc;
+        try
+        {
+            proc = await wast2Json.RunAsync(file);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to convert wast to json: {file}\n{ex}");
+            throw;
+        }
+
+        
         Console.WriteLine($"{proc.SourceFilename}: running...");
         try
         {
