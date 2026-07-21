@@ -10,7 +10,7 @@ namespace WaaS.Models
     {
         [Operand(0)] public uint LocalIndex { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             current.Push(current.GetLocal((int)LocalIndex));
         }
@@ -40,7 +40,7 @@ namespace WaaS.Models
     {
         [Operand(0)] public uint LocalIndex { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             ref var local = ref current.GetLocal((int)LocalIndex);
             var val = current.Pop();
@@ -69,7 +69,7 @@ namespace WaaS.Models
     {
         [Operand(0)] public uint LocalIndex { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var val = current.Pop().ExpectValue();
             current.Push(val);
@@ -102,7 +102,7 @@ namespace WaaS.Models
     {
         [Operand(0)] public uint GlobalIndex { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             current.Push(current.Instance.GlobalInstance.Globals.Span[(int)GlobalIndex].GetStackValue());
         }
@@ -132,7 +132,7 @@ namespace WaaS.Models
     {
         [Operand(0)] public uint GlobalIndex { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             if (current.Instance.GlobalInstance.Globals.Span[checked((int)GlobalIndex)] is not GlobalMutable
                 globalMutable)

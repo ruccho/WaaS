@@ -16,7 +16,7 @@ namespace WaaS.Models
     {
         [Operand(0, Signed = true)] public TValue Value { get; }
 
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var t = default(TValueType);
             t.Push(current, Value);
@@ -78,7 +78,7 @@ namespace WaaS.Models
     public abstract partial class UnaryInstruction<TValue, TValueType> : Instruction
         where TValue : unmanaged where TValueType : struct, IValueType<TValue>
     {
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var t = default(TValueType);
             t.Push(current, Operate(t.Pop(current)));
@@ -112,7 +112,7 @@ namespace WaaS.Models
         where TValue2 : unmanaged
         where TValueType2 : struct, IValueType<TValue2>
     {
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var t1 = default(TValueType1);
             var t2 = default(TValueType2);
@@ -143,7 +143,7 @@ namespace WaaS.Models
     public abstract partial class BinaryInstruction<TValue, TValueType> : Instruction
         where TValue : unmanaged where TValueType : struct, IValueType<TValue>
     {
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var t = default(TValueType);
             var rhs = t.Pop(current);
@@ -175,7 +175,7 @@ namespace WaaS.Models
     public abstract partial class UnaryBoolInstruction<TValue, TValueType> : Instruction
         where TValue : unmanaged where TValueType : struct, IValueType<TValue>
     {
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var t = default(TValueType);
             current.Push((uint)(Operate(t.Pop(current)) ? 1 : 0));
@@ -204,7 +204,7 @@ namespace WaaS.Models
     public abstract partial class BinaryBoolInstruction<TValue, TValueType> : Instruction
         where TValue : unmanaged where TValueType : struct, IValueType<TValue>
     {
-        public override void Execute(WasmStackFrame current)
+        public override void Execute(in TransientWasmStackFrame current, ref StackFrame? pushedFrame)
         {
             var t = default(TValueType);
             var rhs = t.Pop(current);

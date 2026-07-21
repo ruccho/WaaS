@@ -165,7 +165,7 @@ namespace WaaS.Runtime
             }
         }
 
-        internal StackFrame PushFrame(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
+        private StackFrame PushFrame(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
         {
             lock (locker)
             {
@@ -177,13 +177,12 @@ namespace WaaS.Runtime
             }
         }
 
-        internal StackFrame PushFrame(StackFrame frame)
+        internal void PushFrame(StackFrame frame)
         {
             lock (locker)
             {
                 if (frames.Count >= maxStackFrames) throw new InvalidOperationException();
                 frames.Push(frame);
-                return frame;
             }
         }
 

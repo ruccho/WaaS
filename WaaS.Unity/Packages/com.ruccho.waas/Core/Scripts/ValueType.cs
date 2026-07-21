@@ -33,18 +33,18 @@ namespace WaaS
 
     public interface IValueType<T> where T : unmanaged
     {
-        T Pop(WasmStackFrame frame);
-        void Push(WasmStackFrame frame, T value);
+        T Pop(in TransientWasmStackFrame frame);
+        void Push(in TransientWasmStackFrame frame, T value);
     }
 
     public struct ValueTypeI32 : IValueType<uint>
     {
-        public uint Pop(WasmStackFrame frame)
+        public uint Pop(in TransientWasmStackFrame frame)
         {
             return frame.Pop().ExpectValueI32();
         }
 
-        public void Push(WasmStackFrame frame, uint value)
+        public void Push(in TransientWasmStackFrame frame, uint value)
         {
             frame.Push(value);
         }
@@ -52,12 +52,12 @@ namespace WaaS
 
     public struct ValueTypeI64 : IValueType<ulong>
     {
-        public ulong Pop(WasmStackFrame frame)
+        public ulong Pop(in TransientWasmStackFrame frame)
         {
             return frame.Pop().ExpectValueI64();
         }
 
-        public void Push(WasmStackFrame frame, ulong value)
+        public void Push(in TransientWasmStackFrame frame, ulong value)
         {
             frame.Push(value);
         }
@@ -65,12 +65,12 @@ namespace WaaS
 
     public struct ValueTypeF32 : IValueType<float>
     {
-        public float Pop(WasmStackFrame frame)
+        public float Pop(in TransientWasmStackFrame frame)
         {
             return frame.Pop().ExpectValueF32();
         }
 
-        public void Push(WasmStackFrame frame, float value)
+        public void Push(in TransientWasmStackFrame frame, float value)
         {
             frame.Push(value);
         }
@@ -78,12 +78,12 @@ namespace WaaS
 
     public struct ValueTypeF64 : IValueType<double>
     {
-        public double Pop(WasmStackFrame frame)
+        public double Pop(in TransientWasmStackFrame frame)
         {
             return frame.Pop().ExpectValueF64();
         }
 
-        public void Push(WasmStackFrame frame, double value)
+        public void Push(in TransientWasmStackFrame frame, double value)
         {
             frame.Push(value);
         }
