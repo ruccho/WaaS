@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -48,6 +49,8 @@ namespace WaaS.Runtime
 
         private void MoveToEndOrPending(StackFrame initial, out bool pending)
         {
+            Span<StackValueItem> resultsBuffer = stackalloc StackValueItem[16];
+
             lock (locker)
             {
                 try
@@ -103,9 +106,29 @@ namespace WaaS.Runtime
 
                             if (frames.TryPeek(out var next) && next.DoesTakeResults())
                             {
-                                Span<StackValueItem> results = stackalloc StackValueItem[current.ResultLength];
-                                current.TakeResults(results);
-                                next.PushResults(results);
+                                // stackalloc inside this loop would never be released until the method returns,
+                                // so the buffer is allocated once outside the loop.
+                                var resultLength = current.ResultLength;
+                                if (resultLength <= resultsBuffer.Length)
+                                {
+                                    var results = resultsBuffer.Slice(0, resultLength);
+                                    current.TakeResults(results);
+                                    next.PushResults(results);
+                                }
+                                else
+                                {
+                                    var rented = ArrayPool<StackValueItem>.Shared.Rent(resultLength);
+                                    try
+                                    {
+                                        var results = rented.AsSpan(0, resultLength);
+                                        current.TakeResults(results);
+                                        next.PushResults(results);
+                                    }
+                                    finally
+                                    {
+                                        ArrayPool<StackValueItem>.Shared.Return(rented);
+                                    }
+                                }
                             }
 
                             current.Dispose();
