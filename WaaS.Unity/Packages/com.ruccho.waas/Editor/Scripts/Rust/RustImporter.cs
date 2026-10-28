@@ -29,6 +29,7 @@ namespace WaaS.Unity.Editor.Rust
             }
 
             EnsureWorkspaceCreated();
+            RemoveStaleCrates();
 
             var assetPath = ctx.assetPath;
             var hash = Hash128.Compute(assetPath);
@@ -297,6 +298,35 @@ namespace WaaS.Unity.Editor.Rust
             File.WriteAllText("Cargo.toml",
                 "[workspace]\nmembers = [\"Library/com.ruccho.waas/rust/crates/*\"] # Used by WaaS\nresolver = \"2\" # Used by WaaS\n",
                 Encoding.UTF8);
+        }
+
+        /// <summary>
+        ///     Removes crates whose source file no longer exists (e.g. the script was deleted or moved).
+        ///     A crate with a missing source breaks every build in the workspace.
+        /// </summary>
+        private static void RemoveStaleCrates()
+        {
+            const string cratesPath = "Library/com.ruccho.waas/rust/crates";
+            if (!Directory.Exists(cratesPath)) return;
+
+            foreach (var crateDirectory in Directory.GetDirectories(cratesPath))
+            {
+                var cargoTomlPath = Path.Combine(crateDirectory, "Cargo.toml");
+                if (!File.Exists(cargoTomlPath)) continue;
+
+                string? sourcePath = null;
+                foreach (var line in File.ReadLines(cargoTomlPath))
+                {
+                    const string prefix = "path = \"";
+                    if (!line.StartsWith(prefix, StringComparison.Ordinal) || !line.EndsWith("\"")) continue;
+                    sourcePath = line.Substring(prefix.Length, line.Length - prefix.Length - 1);
+                    break;
+                }
+
+                if (sourcePath == null || File.Exists(Path.Combine(crateDirectory, sourcePath))) continue;
+
+                Directory.Delete(crateDirectory, true);
+            }
         }
 
         [MenuItem("Assets/Recompile Rust scripts for WaaS")]
