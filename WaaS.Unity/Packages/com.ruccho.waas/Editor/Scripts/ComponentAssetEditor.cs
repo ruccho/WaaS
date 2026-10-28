@@ -8,6 +8,8 @@ namespace WaaS.Unity.Editor
     [CustomEditor(typeof(ComponentAsset))]
     public class ComponentAssetEditor : UnityEditor.Editor
     {
+        private static bool witFoldout;
+
         public override void OnInspectorGUI()
         {
             base.OnInspectorGUI();
@@ -26,6 +28,10 @@ namespace WaaS.Unity.Editor
             EditorGUILayout.EndHorizontal();
 
             GUI.enabled = enabled;
+
+            witFoldout = EditorGUILayout.Foldout(witFoldout, "WIT", true);
+            if (witFoldout)
+                EditorGUILayout.TextArea(componentAsset.Wit, EditorStyles.textArea);
 
             var componentSource = componentAsset.LoadComponent().Source;
 

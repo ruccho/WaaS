@@ -10,9 +10,17 @@ namespace WaaS.Unity
     {
         [SerializeField] private bool deserializeOnLoad;
         [SerializeField] [HideInInspector] private byte[] data;
+
+        // the type of the component in WIT, recorded when the asset is imported in the editor
+        [SerializeField] [HideInInspector] private string wit;
         [NonSerialized] private Lazy<IComponent> component;
 
         internal ulong Size => (ulong)(data?.Length ?? 0);
+
+        /// <summary>
+        ///     The type of the component (imports and exports) in WIT, or an empty string if it could not be decoded.
+        /// </summary>
+        public string Wit => wit ?? "";
         internal byte[] Data => data;
 
         private void OnEnable()
@@ -41,6 +49,11 @@ namespace WaaS.Unity
         internal void SetData(byte[] data)
         {
             this.data = data;
+        }
+
+        internal void SetWit(string wit)
+        {
+            this.wit = wit;
         }
     }
 }

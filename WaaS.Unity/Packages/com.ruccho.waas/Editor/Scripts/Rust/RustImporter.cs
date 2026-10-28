@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace WaaS.Unity.Editor.Rust
 {
-    [ScriptedImporter(2, "rs", 100)]
+    [ScriptedImporter(3, "rs", 100)]
     public class RustImporter : ScriptedImporter
     {
         [SerializeField] private bool crateRoot = true;
@@ -278,6 +278,7 @@ namespace WaaS.Unity.Editor.Rust
                     componentizationSettings.World ?? "", StringEncoding.UTF8);
                 var component = ScriptableObject.CreateInstance<ComponentAsset>();
                 component.SetData(componentBytes);
+                component.SetWit(ComponentWitDecoder.Decode(ctx, componentBytes));
                 ctx.AddObjectToAsset("component", component);
                 ctx.SetMainObject(component);
             }

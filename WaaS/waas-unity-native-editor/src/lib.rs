@@ -70,3 +70,35 @@ pub enum StringEncoding {
     UTF16,
     CompactUTF16,
 }
+
+/// Decodes the type of a component and prints it as WIT.
+#[no_mangle]
+pub unsafe extern "C" fn decode_wit(
+    source: *const u8,
+    source_len: usize,
+    user_data: usize,
+    on_success: extern "C" fn(usize, *const u8, usize),
+    on_error: extern "C" fn(usize, *const c_char),
+) {
+    let result = decode_wit_inner(std::slice::from_raw_parts(source, source_len));
+    match result {
+        Ok(text) => on_success(user_data, text.as_ptr(), text.len()),
+        Err(e) => {
+            let error = std::ffi::CString::new(e.to_string()).unwrap_or_default();
+            on_error(user_data, error.as_ptr());
+        }
+    }
+}
+
+fn decode_wit_inner(bytes: &[u8]) -> Result<String, Box<dyn Error>> {
+    let decoded = wit_component::decode(bytes)?;
+    let resolve = decoded.resolve();
+    let main = decoded.package();
+    let nested = resolve
+        .packages
+        .iter()
+        .map(|(id, _)| id)
+        .filter(|id| *id != main)
+        .collect::<Vec<_>>();
+    Ok(wit_component::WitPrinter::default().print(resolve, main, &nested)?)
+}
