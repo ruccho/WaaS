@@ -114,6 +114,71 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
             return new ComponentExportedInterface(named, componentName, property.Name);
         }).Where(p => p != null).Select(p => p!);
 
+        Dictionary<INamedTypeSymbol, string> encounteredResourceTypes = new(SymbolEqualityComparer.Default);
+
+        foreach (var pair in resourceTypes)
+            encounteredResourceTypes.Add(
+                pair.type,
+                Utils.ToCSharpName(pair.name));
+
+        string GetResourcePropertyName(INamedTypeSymbol resourceType)
+        {
+            if (!encounteredResourceTypes.TryGetValue(resourceType, out var name))
+                encounteredResourceTypes[resourceType] = name = GetResourceComponentName(resourceType);
+
+            return Utils.ToCSharpName(name);
+        }
+
+        static string GetResourceComponentName(INamedTypeSymbol resourceType)
+        {
+            var attr = resourceType.GetAttributes().FirstOrDefault(attr =>
+                attr.AttributeClass?.Matches("WaaS.ComponentModel.Binding.ComponentResourceAttribute") ??
+                false);
+            return (attr?.ConstructorArguments.Length == 1
+                ? attr.ConstructorArguments[0].Value as string
+                : null) ?? resourceType.Name;
+        }
+
+        // value types (records, variants, enums and flags) are exported as types,
+        // because components import the types they use as well as functions.
+        // This includes the types declared in this interface and the types referenced from other interfaces.
+        var valueTypeSet = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+        var valueTypes = new List<INamedTypeSymbol>();
+
+        void AddValueType(INamedTypeSymbol type)
+        {
+            if (valueTypeSet.Add(type)) valueTypes.Add(type);
+        }
+
+        foreach (var type in namedSymbol.GetMembers().OfType<INamedTypeSymbol>())
+            if (IsValueTypeDefinition(type))
+                AddValueType(type);
+
+        foreach (var member in allMembers)
+        {
+            foreach (var parameter in member.parameters) CollectValueTypes(parameter.Type, AddValueType);
+            if (member.returnType != null) CollectValueTypes(member.returnType, AddValueType);
+        }
+
+        // collect all resource types referenced by the members and the value types in advance
+        {
+            var discarded = new StringBuilder();
+            foreach (var member in allMembers)
+            {
+                foreach (var parameter in member.parameters)
+                    AppendParameterType(parameter.Type, discarded, GetResourcePropertyName);
+                if (member.returnType != null)
+                    AppendParameterType(member.returnType, discarded, GetResourcePropertyName);
+            }
+
+            foreach (var valueType in valueTypes)
+                AppendParameterType(valueType, discarded, GetResourcePropertyName);
+        }
+
+        var referencedResourceTypes = encounteredResourceTypes.Keys
+            .Where(type => !resourceTypes.Any(pair => SymbolEqualityComparer.Default.Equals(pair.type, type)))
+            .ToArray();
+
         // TODO: generics
         sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
@@ -124,6 +189,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                         private class Instance : global::WaaS.ComponentModel.Runtime.IInstance
                         {
                             private readonly {{name}} __waas__target;
+                            private {{name}} __waas__root => __waas__target;
                 
                             public Instance({{name}} target)
                             {
@@ -159,6 +225,25 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                       """);
         }
 
+        foreach (var resourceType in referencedResourceTypes)
+            sourceBuilder.AppendLine(
+                /* lang=c#  */
+                $$"""
+                                      @"{{GetResourceComponentName(resourceType)}}" => __waas__target.{{GetResourcePropertyName(resourceType)}}.Type,
+                  """);
+
+        for (var i = 0; i < valueTypes.Count; i++)
+        {
+            var valueType = valueTypes[i];
+            sourceBuilder.Append(
+                /* lang=c#  */
+                $$"""
+                                      @"{{Utils.ToComponentName(valueType.Name)}}" => __waas__type__{{i}} ??= 
+                  """);
+            AppendParameterType(valueType, sourceBuilder, GetResourcePropertyName);
+            sourceBuilder.AppendLine(",");
+        }
+
         sourceBuilder.AppendLine(
 /* lang=c#  */"""
                                   _ => null
@@ -169,12 +254,12 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                           }
               """);
 
-        Dictionary<INamedTypeSymbol, string> encounteredResourceTypes = new(SymbolEqualityComparer.Default);
-
-        foreach (var pair in resourceTypes)
-            encounteredResourceTypes.Add(
-                pair.type,
-                Utils.ToCSharpName(pair.name));
+        for (var i = 0; i < valueTypes.Count; i++)
+            sourceBuilder.AppendLine(
+                /* lang=c#  */
+                $$"""
+                              private global::WaaS.ComponentModel.Runtime.IType? __waas__type__{{i}};
+                  """);
 
         foreach (var member in allMembers)
         {
@@ -201,22 +286,6 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                                     this.Type = new global::WaaS.ComponentModel.Models.ResolvedFunctionType(
                 """);
 
-
-            string GetResourcePropertyName(INamedTypeSymbol resourceType)
-            {
-                if (!encounteredResourceTypes.TryGetValue(resourceType, out var name))
-                {
-                    var attr = resourceType.GetAttributes().FirstOrDefault(attr =>
-                        attr.AttributeClass?.Matches("WaaS.ComponentModel.Binding.ComponentResourceAttribute") ??
-                        false);
-                    encounteredResourceTypes[resourceType] = name = (attr?.ConstructorArguments.Length == 1
-                        ? attr.ConstructorArguments[0].Value as string
-                        : null) ?? resourceType.Name;
-                    ;
-                }
-
-                return Utils.ToCSharpName(name);
-            }
 
             if (!member.parameters.Any())
             {
@@ -462,6 +531,50 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
         source.AddSource($"{identifier}.Instance.g.cs", sourceBuilder.ToString());
     }
 
+    private static bool IsValueTypeDefinition(INamedTypeSymbol type)
+    {
+        return type.TypeKind is TypeKind.Enum ||
+               type.GetAttributes().Any(attr =>
+                   (attr.AttributeClass?.Matches("WaaS.ComponentModel.Binding.ComponentRecordAttribute") ?? false) ||
+                   (attr.AttributeClass?.Matches("WaaS.ComponentModel.Binding.ComponentVariantAttribute") ?? false));
+    }
+
+    private static void CollectValueTypes(ITypeSymbol type, Action<INamedTypeSymbol> add)
+    {
+        if (type is not INamedTypeSymbol named) return;
+
+        if (named.IsTupleType)
+        {
+            foreach (var element in named.TupleElements) CollectValueTypes(element.Type, add);
+            return;
+        }
+
+        if (named.IsGenericType)
+            foreach (var typeArgument in named.TypeArguments)
+                CollectValueTypes(typeArgument, add);
+
+        if (!IsValueTypeDefinition(named)) return;
+
+        add(named);
+
+        if (named.TypeKind is TypeKind.Enum) return;
+
+        var isRecord = named.GetAttributes().Any(attr =>
+            attr.AttributeClass?.Matches("WaaS.ComponentModel.Binding.ComponentRecordAttribute") ?? false);
+        foreach (var member in isRecord ? named.GetRecordMembers() : named.GetVariantMembers())
+        {
+            var memberType = member switch
+            {
+                IPropertySymbol property => property.Type,
+                IFieldSymbol field => field.Type,
+                _ => null
+            };
+            if (memberType == null) continue;
+            if (memberType.TryGetNullableElement(out var elementType)) memberType = elementType!;
+            if (!SymbolEqualityComparer.Default.Equals(memberType, named)) CollectValueTypes(memberType, add);
+        }
+    }
+
     private static void AppendParameterType(ITypeSymbol type, StringBuilder sourceBuilder,
         Func<INamedTypeSymbol, string> getResourcePropertyName)
     {
@@ -517,7 +630,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                     // TODO: validate values
                     sourceBuilder.Append("global::WaaS.ComponentModel.Models.EnumType.Create(new string[] {");
 
-                foreach (var value in values) sourceBuilder.Append($"\"{value.Name}\", ");
+                foreach (var value in values) sourceBuilder.Append($"\"{Utils.ToComponentName(value.Name)}\", ");
 
                 sourceBuilder.Append("})");
                 return;
@@ -539,7 +652,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                         _ => throw new ArgumentOutOfRangeException()
                     };
                     sourceBuilder.Append(
-                        $"new global::WaaS.ComponentModel.Models.ResolvedRecordField(\"{member.Name}\", ");
+                        $"new global::WaaS.ComponentModel.Models.ResolvedRecordField(\"{Utils.ToComponentName(member.Name)}\", ");
                     AppendParameterType(memberType, sourceBuilder, getResourcePropertyName);
                     sourceBuilder.Append("), ");
                 }
@@ -569,7 +682,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                         memberType = memberType.WithNullableAnnotation(NullableAnnotation.NotAnnotated);
 
                     sourceBuilder.Append(
-                        $"new global::WaaS.ComponentModel.Models.ResolvedVariantCase(\"{member.Name}\", ");
+                        $"new global::WaaS.ComponentModel.Models.ResolvedVariantCase(\"{Utils.ToComponentName(member.Name)}\", ");
 
                     if (memberType.Matches("WaaS.ComponentModel.Binding.None"))
                         sourceBuilder.Append("null");
