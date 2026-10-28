@@ -179,6 +179,15 @@ namespace WaaS.ComponentModel.Runtime
         uint Rep(uint index);
     }
 
+    /// <summary>
+    ///     A resource type that issues a separate handle when a borrow of its resource is lent to a component.
+    ///     Dropping the issued handle ends the borrow and does not destroy the resource.
+    /// </summary>
+    public interface IBorrowLendingResourceType : IResourceType
+    {
+        uint LendBorrow(uint index);
+    }
+
     public interface IFunctionType : IType
     {
         ReadOnlyMemory<IParameter> Parameters { get; }

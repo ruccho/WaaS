@@ -18,13 +18,20 @@ namespace WaaS.ComponentModel.Runtime
         public IResourceType? Type { get; private set; }
         private uint Value { get; set; }
 
-        public static Owned GetHandle(IResourceType type, uint value)
+        /// <summary>
+        ///     Whether dropping this handle calls the destructor of the resource.
+        ///     False for handles that only represent a borrow lifted from a component.
+        /// </summary>
+        private bool OwnsResource { get; set; }
+
+        public static Owned GetHandle(IResourceType type, uint value, bool ownsResource = true)
         {
             pool ??= new Stack<Ownership>();
             if (!pool.TryPop(out var popped)) popped = new Ownership();
 
             popped.Type = type;
             popped.Value = value;
+            popped.OwnsResource = ownsResource;
             return new Owned(popped);
         }
 
@@ -32,8 +39,13 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (Interlocked.CompareExchange(ref this.version, unchecked(version + 1), version) != version) return;
 
+            // the type and the value must be taken before they are cleared
+            var type = OwnsResource ? Type : null;
+            var value = Value;
+
             Type = null;
             Value = 0;
+            OwnsResource = false;
 
             if (version != -2)
             {
@@ -41,7 +53,7 @@ namespace WaaS.ComponentModel.Runtime
                 pool.Push(this);
             }
 
-            CallDestructor();
+            type?.Drop(value);
         }
 
         public uint GetValue(int version)
@@ -60,6 +72,7 @@ namespace WaaS.ComponentModel.Runtime
 
             Type = null;
             Value = 0;
+            OwnsResource = false;
 
             if (version != -2)
             {
@@ -82,6 +95,7 @@ namespace WaaS.ComponentModel.Runtime
 
             Type = null;
             Value = 0;
+            OwnsResource = false;
 
             if (version != -2)
             {
@@ -94,14 +108,9 @@ namespace WaaS.ComponentModel.Runtime
 
         ~Ownership()
         {
-            if (Type == null) return;
+            if (Type is not { } type || !OwnsResource) return;
             Interlocked.Increment(ref version);
-            CallDestructor();
-        }
-
-        private void CallDestructor()
-        {
-            Type!.Drop(Value);
+            type.Drop(Value);
         }
     }
 

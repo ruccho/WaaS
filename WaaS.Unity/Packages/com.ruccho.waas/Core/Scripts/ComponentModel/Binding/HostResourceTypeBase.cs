@@ -9,18 +9,24 @@ namespace WaaS.ComponentModel.Binding
     ///     Base class for host-provided resource types.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public abstract class HostResourceTypeBase<T> : IHostResourceType<T>
+    public abstract class HostResourceTypeBase<T> : IHostResourceType<T>, IBorrowLendingResourceType
     {
-        private ResourceTable<T> resources = new();
+        private ResourceTable<Entry> resources = new();
 
         public T ToHostResource(uint resourceId)
         {
-            return resources.Get(unchecked((int)resourceId));
+            return resources.Get(unchecked((int)resourceId)).value;
         }
 
         public uint AllocateResourceId(T hostResource)
         {
-            return unchecked((uint)resources.Add(hostResource));
+            return unchecked((uint)resources.Add(new Entry(hostResource, false)));
+        }
+
+        public uint LendBorrow(uint index)
+        {
+            var entry = resources.Get(unchecked((int)index));
+            return unchecked((uint)resources.Add(new Entry(entry.value, true)));
         }
 
         public uint New(uint rep)
@@ -30,7 +36,10 @@ namespace WaaS.ComponentModel.Binding
 
         public void Drop(uint index)
         {
-            OnDrop(resources.RemoveAt(unchecked((int)index)));
+            var entry = resources.RemoveAt(unchecked((int)index));
+
+            // dropping a lent borrow only ends the borrow
+            if (!entry.isBorrow) OnDrop(entry.value);
         }
 
         public uint Rep(uint index)
@@ -38,7 +47,8 @@ namespace WaaS.ComponentModel.Binding
             return index;
         }
 
-        public virtual IInstance? Instance => throw new InvalidOperationException();
+        // host resource types are not defined by any component instance
+        public virtual IInstance? Instance => null;
 
         public bool ValidateEquals(IType other)
         {
@@ -70,6 +80,18 @@ namespace WaaS.ComponentModel.Binding
         public void Reset()
         {
             resources = new();
+        }
+
+        private readonly struct Entry
+        {
+            public readonly T value;
+            public readonly bool isBorrow;
+
+            public Entry(T value, bool isBorrow)
+            {
+                this.value = value;
+                this.isBorrow = isBorrow;
+            }
         }
     }
 }

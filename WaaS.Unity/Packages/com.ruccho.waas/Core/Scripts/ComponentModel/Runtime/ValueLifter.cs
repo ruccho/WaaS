@@ -605,8 +605,8 @@ namespace WaaS.ComponentModel.Runtime
             {
                 var value = Flattened ? NextFlattenedI32() : LoadSerialized<uint>();
 
-                var owned = Ownership.GetHandle(resourceType, value);
-                //owned.// TODO: lifetime
+                // a lifted borrow must not drop the resource when the handle is released
+                var owned = Ownership.GetHandle(resourceType, value, false);
                 return owned.Borrow();
             }
             finally

@@ -163,6 +163,9 @@ namespace WaaS.ComponentModel.Runtime
             if (borrowed.Type != handle.Type) throw new InvalidOperationException();
             if (handle.Type.Instance == Context!.Instance)
                 PushU32Core(handle.Type.Rep(handle.GetValue()));
+            else if (handle.Type is IBorrowLendingResourceType lending)
+                // the component drops the lent handle when the borrow ends
+                PushU32Core(lending.LendBorrow(handle.GetValue()));
             else
                 PushU32Core(handle.GetValue());
         }
