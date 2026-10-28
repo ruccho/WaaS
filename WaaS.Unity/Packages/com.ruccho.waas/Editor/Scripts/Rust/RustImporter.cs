@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace WaaS.Unity.Editor.Rust
 {
-    [ScriptedImporter(3, "rs", 100)]
+    [ScriptedImporter(4, "rs", 100)]
     public class RustImporter : ScriptedImporter
     {
         [SerializeField] private bool crateRoot = true;
