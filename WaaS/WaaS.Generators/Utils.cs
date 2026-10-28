@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Microsoft.CodeAnalysis;
 
 namespace WaaS.Generators;
@@ -70,29 +71,24 @@ public static class Utils
 
     public static string ToComponentName(string name)
     {
-        var isLower = false;
-        var numHeads = 0;
+        // A word starts at an upper case letter that follows a lower case letter or a digit ("fooBar" -> "foo-bar"),
+        // or at an upper case letter that follows another one and is followed by a lower case letter
+        // ("YCoord" -> "y-coord", "HTTPServer" -> "http-server").
+        var builder = new StringBuilder(name.Length + 8);
         for (var i = 0; i < name.Length; i++)
         {
-            var isLowerCurrent = !char.IsUpper(name[i]);
-            if (isLower && !isLowerCurrent) numHeads++;
+            var c = name[i];
+            if (i > 0 && char.IsUpper(c))
+            {
+                var previous = name[i - 1];
+                var isNextLower = i + 1 < name.Length && char.IsLower(name[i + 1]);
+                if (!char.IsUpper(previous) || isNextLower) builder.Append('-');
+            }
 
-            isLower = isLowerCurrent;
+            builder.Append(char.ToLowerInvariant(c));
         }
 
-        Span<char> apiName = stackalloc char[name.Length + numHeads];
-        var cursor = 0;
-        isLower = false;
-        for (var i = 0; i < name.Length; i++)
-        {
-            var isLowerCurrent = !char.IsUpper(name[i]);
-            if (isLower && !isLowerCurrent) apiName[cursor++] = '-';
-
-            apiName[cursor++] = char.ToLowerInvariant(name[i]);
-            isLower = isLowerCurrent;
-        }
-
-        return apiName.ToString();
+        return builder.ToString();
     }
 
     public static string ToCSharpName(string componentName)

@@ -533,6 +533,9 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
 
     private static bool IsValueTypeDefinition(INamedTypeSymbol type)
     {
+        // built-in generic types such as Result<TOk, TError> are not user-defined value types
+        if (type.IsGenericType) return false;
+
         return type.TypeKind is TypeKind.Enum ||
                type.GetAttributes().Any(attr =>
                    (attr.AttributeClass?.Matches("WaaS.ComponentModel.Binding.ComponentRecordAttribute") ?? false) ||
@@ -590,6 +593,19 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                     var element = named.TypeArguments[0];
                     sourceBuilder.Append("new global::WaaS.ComponentModel.Models.ResolvedOptionType(");
                     AppendParameterType(element, sourceBuilder, getResourcePropertyName);
+                    sourceBuilder.Append(")");
+                    return;
+                }
+
+                // Result is declared as a variant, so it must be handled before variants
+                if (unbound.Matches("WaaS.ComponentModel.Binding.Result`2"))
+                {
+                    var ok = named.TypeArguments[0];
+                    var error = named.TypeArguments[1];
+                    sourceBuilder.Append("new global::WaaS.ComponentModel.Models.ResolvedResultType(");
+                    AppendParameterType(ok, sourceBuilder, getResourcePropertyName);
+                    sourceBuilder.Append(", ");
+                    AppendParameterType(error, sourceBuilder, getResourcePropertyName);
                     sourceBuilder.Append(")");
                     return;
                 }
@@ -721,17 +737,6 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                     return;
                 }
 
-                if (unbound.Matches("WaaS.ComponentModel.Binding.Result`2"))
-                {
-                    var ok = named.TypeArguments[0];
-                    var error = named.TypeArguments[1];
-                    sourceBuilder.Append("new global::WaaS.ComponentModel.Models.ResolvedResultType(");
-                    AppendParameterType(ok, sourceBuilder, getResourcePropertyName);
-                    sourceBuilder.Append(", ");
-                    AppendParameterType(error, sourceBuilder, getResourcePropertyName);
-                    sourceBuilder.Append(")");
-                    return;
-                }
 
                 if (named.TypeArguments.Length == 1 &&
                     named.TypeArguments[0] is INamedTypeSymbol resourceType &&
