@@ -20,7 +20,18 @@ namespace WaaS.Unity.Editor.Wit
 
         static WitExporter()
         {
-            EditorApplication.delayCall += () => ExportAll(false);
+            // EditorApplication.delayCall may not be invoked while the editor is in the background,
+            // so EditorApplication.update is used instead.
+            EditorApplication.update += ExportWhenReady;
+        }
+
+        private static void ExportWhenReady()
+        {
+            // the asset database cannot find the settings while importing, e.g. when the editor is starting
+            if (EditorApplication.isUpdating || EditorApplication.isCompiling) return;
+
+            EditorApplication.update -= ExportWhenReady;
+            ExportAll(false);
         }
 
         [MenuItem("Assets/Export WIT for WaaS")]
