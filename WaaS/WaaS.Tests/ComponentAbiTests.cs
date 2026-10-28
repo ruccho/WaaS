@@ -38,6 +38,22 @@ public partial interface IAbiHost
         [ComponentCase] public None? Empty { get; init; }
     }
 
+    [ComponentVariant]
+    public readonly partial struct Mixed
+    {
+        [ComponentCase] public int? Small { get; init; }
+        [ComponentCase] public long? Big { get; init; }
+        [ComponentCase] public string? Text { get; init; }
+        [ComponentCase] public None? Nothing { get; init; }
+    }
+
+    [ComponentRecord]
+    public readonly partial struct Tagged
+    {
+        [ComponentField] public Mixed Value { get; init; }
+        [ComponentField] public int After { get; init; }
+    }
+
     public enum Color
     {
         Red,
@@ -77,6 +93,15 @@ public partial interface IAbiHost
 
     [ComponentApi(@"wait-ticks")]
     ValueTask<uint> WaitTicks(uint ticks);
+
+    [ComponentApi(@"make-shape")]
+    ValueTask<Shape?> MakeShape(uint kind);
+
+    [ComponentApi(@"make-tagged")]
+    ValueTask<Tagged> MakeTagged(uint kind);
+
+    [ComponentApi(@"describe-tagged")]
+    ValueTask<string> DescribeTagged(Tagged value);
 }
 
 [ComponentInterface(@"waas:abi-test/guest-types")]
@@ -134,6 +159,12 @@ public partial interface IAbiTestExports
 
     [ComponentApi(@"test-async")]
     ValueTask<uint> TestAsync();
+
+    [ComponentApi(@"test-variant-result")]
+    ValueTask<string> TestVariantResult();
+
+    [ComponentApi(@"test-mixed-variant")]
+    ValueTask<string> TestMixedVariant();
 
     [ComponentApi(@"test-forged-handle")]
     ValueTask<int> TestForgedHandle(uint handle);
@@ -287,6 +318,20 @@ public class ComponentAbiTests
     }
 
     [Test]
+    public async Task VariantIsLoweredFromHost()
+    {
+        Assert.That(await Call(e => e.TestVariantResult()), Is.EqualTo("circle(1.5);rect(42,2.5);empty;none"));
+    }
+
+    [Test]
+    public async Task VariantWithMixedAlignmentsRoundTrip()
+    {
+        Assert.That(await Call(e => e.TestMixedVariant()), Is.EqualTo(
+            "small(-5)+100;big(1099511627776)+101;text(hello)+102;nothing+103|" +
+            "small(-7)+0;big(1099511627776)+10;text(abc)+20;nothing+30"));
+    }
+
+    [Test]
     public async Task EnumAndFlagsAreLifted()
     {
         Assert.That(await Call(e => e.TestEnumFlags()), Is.EqualTo("Red:Read;GreenBlue:Read, Write"));
@@ -407,6 +452,42 @@ public class ComponentAbiTests
             var current = tick;
             tick = null;
             current?.SetResult();
+        }
+
+        public ValueTask<IAbiHost.Shape?> MakeShape(uint kind)
+        {
+            IAbiHost.Shape? shape = kind switch
+            {
+                0 => IAbiHost.Shape.CreateCircle(1.5f),
+                1 => IAbiHost.Shape.CreateRect(new IAbiHost.Point { X = 42, YCoord = 2.5f }),
+                2 => IAbiHost.Shape.CreateEmpty(default),
+                _ => null
+            };
+            return new ValueTask<IAbiHost.Shape?>(shape);
+        }
+
+        public ValueTask<IAbiHost.Tagged> MakeTagged(uint kind)
+        {
+            var value = kind switch
+            {
+                0 => IAbiHost.Mixed.CreateSmall(-5),
+                1 => IAbiHost.Mixed.CreateBig(1L << 40),
+                2 => IAbiHost.Mixed.CreateText("hello"),
+                _ => IAbiHost.Mixed.CreateNothing(default)
+            };
+            return new ValueTask<IAbiHost.Tagged>(new IAbiHost.Tagged { Value = value, After = 100 + (int)kind });
+        }
+
+        public ValueTask<string> DescribeTagged(IAbiHost.Tagged value)
+        {
+            var text = value.Value.Case switch
+            {
+                IAbiHost.Mixed.VariantCase.Small => $"small({value.Value.Small})",
+                IAbiHost.Mixed.VariantCase.Big => $"big({value.Value.Big})",
+                IAbiHost.Mixed.VariantCase.Text => $"text({value.Value.Text})",
+                _ => "nothing"
+            };
+            return new ValueTask<string>($"{text}+{value.After}");
         }
 
         public async ValueTask<uint> WaitTicks(uint ticks)

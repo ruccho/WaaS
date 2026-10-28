@@ -357,7 +357,7 @@ namespace WaaS.ComponentModel.Models
             Cases = cases;
         }
 
-        private byte MaxCaseAlignmentRank
+        public byte MaxCaseAlignmentRank
         {
             get
             {
@@ -381,25 +381,15 @@ namespace WaaS.ComponentModel.Models
             return this;
         }
 
-        public byte DiscriminantTypeSizeRank
+        /// <summary>
+        ///     log2 of the size of the discriminant: 0 (u8), 1 (u16) or 2 (u32).
+        /// </summary>
+        public byte DiscriminantTypeSizeRank => Cases.Length switch
         {
-            get
-            {
-                var length = Cases.Length;
-                var n = length >> 8;
-                var d = 0;
-                for (; n > 0; n >>= 1) d++;
-                if ((length & ((1 << 8) - 1)) != 0) d++; // ceil
-
-                return (d >> 3) switch
-                {
-                    0 or 1 => 1,
-                    2 => 2,
-                    3 => 4,
-                    _ => throw new InvalidOperationException()
-                };
-            }
-        }
+            <= 1 << 8 => 0,
+            <= 1 << 16 => 1,
+            _ => 2
+        };
 
         public byte AlignmentRank => Math.Max(DiscriminantTypeSizeRank, MaxCaseAlignmentRank);
 

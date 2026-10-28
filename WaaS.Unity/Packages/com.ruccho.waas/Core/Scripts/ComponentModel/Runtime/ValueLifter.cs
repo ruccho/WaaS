@@ -513,35 +513,46 @@ namespace WaaS.ComponentModel.Runtime
                 {
                     // stack value type is verified by context
                     caseIndex = NextFlattenedI32();
+                    if (caseIndex >= variantType.Cases.Length) throw new TrapException("Invalid variant case.");
+
+                    // a flattened variant occupies the joined payload of all cases regardless of the case
+                    var payloadCount = checked((int)variantType.FlattenedCount) - 1;
+                    var payload = SourceFlattened[..payloadCount];
+                    SourceFlattened = SourceFlattened[payloadCount..];
+
                     var caseType = variantType.Cases.Span[checked((int)caseIndex)].Type?.Despecialize();
                     if (caseType == null)
                         return new ValueLifter(Context, ElementTypeSelector.FromSingle(null),
                             Span<StackValueItem>.Empty);
 
-                    var count = checked((int)caseType.FlattenedCount);
-                    var newSource = SourceFlattened[..count];
-                    SourceFlattened = SourceFlattened[count..];
+                    var newSource = payload[..checked((int)caseType.FlattenedCount)];
                     return new ValueLifter(Context, ElementTypeSelector.FromSingle(caseType), newSource);
                 }
                 else
                 {
-                    caseIndex = LoadSerialized<uint>();
+                    // a variant occupies its whole size regardless of the case
+                    serializedCursor = Utils.ElementSizeAlignTo(serializedCursor, variantType.AlignmentRank);
+                    var start = serializedCursor;
+
+                    var discriminantTypeSizeRank = variantType.DiscriminantTypeSizeRank;
+                    caseIndex = discriminantTypeSizeRank switch
+                    {
+                        0 => LoadSerialized<byte>(),
+                        1 => LoadSerialized<ushort>(),
+                        _ => LoadSerialized<uint>()
+                    };
+                    if (caseIndex >= variantType.Cases.Length) throw new TrapException("Invalid variant case.");
+
+                    // the payload is aligned to the maximum alignment of the cases
+                    var payloadOffset = Utils.ElementSizeAlignTo(start + (1u << discriminantTypeSizeRank),
+                        variantType.MaxCaseAlignmentRank);
+                    serializedCursor = checked(start + variantType.ElementSize);
+
                     var caseType = variantType.Cases.Span[checked((int)caseIndex)].Type?.Despecialize();
                     if (caseType == null)
                         return new ValueLifter(Context, ElementTypeSelector.FromSingle(null), Span<byte>.Empty);
 
-                    // align to max alignment
-                    byte alignmentRank = 1;
-                    foreach (var otherCase in variantType.Cases.Span)
-                    {
-                        if (otherCase.Type is not { } type) continue;
-                        var rank = type.Despecialize().AlignmentRank;
-                        if(alignmentRank < rank) alignmentRank = rank;
-                    }
-                    serializedCursor = Utils.ElementSizeAlignTo(serializedCursor, alignmentRank);
-                    var length = caseType.ElementSize;
-                    var newSource = source.Slice(checked((int)serializedCursor), length);
-                    serializedCursor = checked(serializedCursor + length);
+                    var newSource = source.Slice(checked((int)payloadOffset), caseType.ElementSize);
                     return new ValueLifter(Context, ElementTypeSelector.FromSingle(caseType), newSource);
                 }
             }

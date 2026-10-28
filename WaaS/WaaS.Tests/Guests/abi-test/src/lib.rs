@@ -5,7 +5,7 @@ wit_bindgen::generate!({
 
 use exports::waas::abi_test::guest_types;
 use std::cell::Cell;
-use waas::abi_test::host::{self, Color, Permissions, Shape};
+use waas::abi_test::host::{self, Color, Mixed, Permissions, Shape, Tagged};
 
 static mut DESTROYED: u32 = 0;
 
@@ -113,6 +113,48 @@ impl Guest for AbiTest {
     fn test_async() -> u32 {
         // each call suspends the guest until the host completes
         host::wait_ticks(3) + host::wait_ticks(4)
+    }
+
+    fn test_variant_result() -> String {
+        (0..4)
+            .map(|kind| match host::make_shape(kind) {
+                Some(Shape::Circle(radius)) => format!("circle({radius})"),
+                Some(Shape::Rect(point)) => format!("rect({},{})", point.x, point.y_coord),
+                Some(Shape::Empty) => "empty".to_string(),
+                None => "none".to_string(),
+            })
+            .collect::<Vec<_>>()
+            .join(";")
+    }
+
+    fn test_mixed_variant() -> String {
+        // host -> guest
+        let lowered = (0..4)
+            .map(|kind| {
+                let tagged = host::make_tagged(kind);
+                let value = match tagged.value {
+                    Mixed::Small(v) => format!("small({v})"),
+                    Mixed::Big(v) => format!("big({v})"),
+                    Mixed::Text(v) => format!("text({v})"),
+                    Mixed::Nothing => "nothing".to_string(),
+                };
+                format!("{value}+{}", tagged.after)
+            })
+            .collect::<Vec<_>>()
+            .join(";");
+        // guest -> host
+        let lifted = [
+            Mixed::Small(-7),
+            Mixed::Big(1 << 40),
+            Mixed::Text("abc".to_string()),
+            Mixed::Nothing,
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(i, value)| host::describe_tagged(&Tagged { value, after: i as i32 * 10 }))
+        .collect::<Vec<_>>()
+        .join(";");
+        format!("{lowered}|{lifted}")
     }
 
     fn test_forged_handle(handle: u32) -> i32 {

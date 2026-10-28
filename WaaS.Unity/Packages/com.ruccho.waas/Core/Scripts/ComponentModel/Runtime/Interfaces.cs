@@ -121,7 +121,15 @@ namespace WaaS.ComponentModel.Runtime
     public interface IVariantType : IDespecializedValueType
     {
         ReadOnlyMemory<IVariantCase> Cases { get; }
+        /// <summary>
+        ///     log2 of the size of the discriminant: 0 (u8), 1 (u16) or 2 (u32).
+        /// </summary>
         byte DiscriminantTypeSizeRank { get; }
+
+        /// <summary>
+        ///     The maximum alignment (log2) of the payloads, to which the payload is aligned.
+        /// </summary>
+        byte MaxCaseAlignmentRank { get; }
     }
 
     public interface IVariantCase

@@ -16,6 +16,8 @@ world abi-test {
     export test-variant: func() -> f32;
     export test-enum-flags: func() -> string;
     export test-async: func() -> u32;
+    export test-variant-result: func() -> string;
+    export test-mixed-variant: func() -> string;
     // uses a handle that was never passed to the component
     export test-forged-handle: func(handle: u32) -> s32;
 }

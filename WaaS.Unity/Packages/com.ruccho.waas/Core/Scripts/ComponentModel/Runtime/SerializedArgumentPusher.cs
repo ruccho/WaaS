@@ -140,33 +140,36 @@ namespace WaaS.ComponentModel.Runtime
             var variantType = MoveNextType<IVariantType>();
             var caseType = variantType.Cases.Span[caseIndex].Type;
 
+            // a variant occupies its whole size regardless of the case
+            destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, variantType.AlignmentRank);
+            var start = destinationCursor;
+
             var discriminantTypeSizeRank = variantType.DiscriminantTypeSizeRank;
             switch (discriminantTypeSizeRank)
             {
+                case 0:
+                    DestinationSpan[checked((int)start)] = checked((byte)caseIndex);
+                    break;
                 case 1:
-                    DestinationSpan[checked((int)destinationCursor++)] = (byte)caseIndex;
+                    Unsafe.As<byte, ushort>(ref DestinationSpan[checked((int)start)]) = checked((ushort)caseIndex);
                     break;
                 case 2:
-                    destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
-                    Unsafe.As<byte, uint>(ref DestinationSpan[checked((int)destinationCursor)]) = (ushort)caseIndex;
-                    destinationCursor += 4;
-                    break;
-                case 4:
-                    destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
-                    Unsafe.As<byte, uint>(ref DestinationSpan[checked((int)destinationCursor)]) = (uint)caseIndex;
-                    destinationCursor += 4;
+                    Unsafe.As<byte, uint>(ref DestinationSpan[checked((int)start)]) = checked((uint)caseIndex);
                     break;
                 default:
                     throw new IndexOutOfRangeException();
             }
 
+            // the payload is aligned to the maximum alignment of the cases
+            var payloadOffset = Utils.ElementSizeAlignTo(start + (1u << discriminantTypeSizeRank),
+                variantType.MaxCaseAlignmentRank);
+            destinationCursor = start + variantType.ElementSize;
+
             if (caseType == null) return default;
 
             var caseTypeDespecialized = caseType.Despecialize();
-            var size = caseTypeDespecialized.ElementSize;
-            destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, caseTypeDespecialized.AlignmentRank);
-            var dest = Get(destinationMemory!, destinationOffset + checked((int)destinationCursor), size);
-            destinationCursor += size;
+            var dest = Get(destinationMemory!, destinationOffset + checked((int)payloadOffset),
+                caseTypeDespecialized.ElementSize);
             return dest.Init(Context ?? throw new InvalidOperationException(),
                 ElementTypeSelector.FromSingle(caseTypeDespecialized)).Wrap();
         }

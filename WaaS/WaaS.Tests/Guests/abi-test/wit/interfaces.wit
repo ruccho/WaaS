@@ -17,6 +17,19 @@ interface host {
         empty,
     }
 
+    // cases with different alignments, followed by another field
+    variant mixed {
+        small(s32),
+        big(s64),
+        text(string),
+        nothing,
+    }
+
+    record tagged {
+        value: mixed,
+        after: s32,
+    }
+
     enum color {
         red,
         green-blue,
@@ -37,6 +50,10 @@ interface host {
     describe: func(color: color, permissions: permissions) -> string;
     // completes asynchronously on the host
     wait-ticks: func(ticks: u32) -> u32;
+    // returns a variant (and an option of it) from the host
+    make-shape: func(kind: u32) -> option<shape>;
+    make-tagged: func(kind: u32) -> tagged;
+    describe-tagged: func(value: tagged) -> string;
 }
 
 // resources defined by the guest
