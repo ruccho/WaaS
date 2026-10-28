@@ -803,13 +803,16 @@ namespace WaaS.ComponentModel.Models
 
         public bool ValidateEquals(IType other)
         {
-            return other is IResultType resultType &&
-                   ((Type == null && resultType.Type == null) ||
-                    (Type != null && resultType.Type != null &&
-                     Type.ValidateEquals(resultType.Type) &&
-                     ((ErrorType == null && resultType.ErrorType == null) ||
-                      (ErrorType != null && resultType.ErrorType != null &&
-                       ErrorType.ValidateEquals(resultType.ErrorType)))));
+            if (other is not IResultType resultType) return false;
+
+            static bool ValidateEqualsOptional(IValueType? lhs, IValueType? rhs)
+            {
+                if (lhs == null || rhs == null) return lhs == null && rhs == null;
+                return lhs.ValidateEquals(rhs);
+            }
+
+            return ValidateEqualsOptional(Type, resultType.Type) &&
+                   ValidateEqualsOptional(ErrorType, resultType.ErrorType);
         }
     }
 
@@ -1428,6 +1431,33 @@ namespace WaaS.ComponentModel.Models
             instance?.TryGetExport(name, out result);
             return desc.ValidateArgument(context, result);
         }
+
+        /// <summary>
+        ///     Describes why <paramref name="argument" /> does not satisfy <paramref name="desc" />.
+        ///     This is intended to be called only after the validation failed, to build error messages.
+        /// </summary>
+        public static void DescribeMismatch(this IExportableDescriptor<ISortedExportable> desc,
+            IInstantiationContext context, ISortedExportable? argument, string path, List<string> output)
+        {
+            if (desc is ExportableDescriptorInstance instanceDescriptor)
+            {
+                instanceDescriptor.DescribeMismatch(context, argument, path, output);
+                return;
+            }
+
+            var kind = desc switch
+            {
+                ExportableDescriptorCoreModuleType => "core module",
+                ExportableDescriptorFunction => "function",
+                ExportableDescriptorType => "type",
+                ExportableDescriptorComponent => "component",
+                _ => desc.GetType().Name
+            };
+
+            output.Add(argument == null
+                ? $"{path}: {kind} is missing"
+                : $"{path}: {kind} does not match (provided: {argument.GetType().Name})");
+        }
     }
 
     internal class ExportableDescriptorFormatter : IFormatter<IExportableDescriptor<ISortedExportable>>
@@ -1541,6 +1571,37 @@ namespace WaaS.ComponentModel.Models
                     return false;
 
             return true;
+        }
+
+        internal void DescribeMismatch(IInstantiationContext context, ISortedExportable? argument, string path,
+            List<string> output)
+        {
+            var type = context.Resolve(Type);
+            if (type is not IInstanceType instanceType)
+            {
+                output.Add($"{path}: the expected type is not an instance type");
+                return;
+            }
+
+            if (argument is null)
+            {
+                output.Add($"{path}: instance is missing");
+                return;
+            }
+
+            if (argument is not IInstance instance)
+            {
+                output.Add($"{path}: instance does not match (provided: {argument.GetType().Name})");
+                return;
+            }
+
+            context = new InstantiationContext(null, context, null, instance);
+            foreach (var (key, desc) in instanceType.Exports)
+            {
+                if (desc.ValidateExported(context, instance, key)) continue;
+                instance.TryGetExport(key, out ISortedExportable? exported);
+                desc.DescribeMismatch(context, exported, $"{path}/{key}", output);
+            }
         }
     }
 

@@ -196,8 +196,17 @@ namespace WaaS.ComponentModel.Models
                 }
 
                 if (missingImports != null)
+                {
+                    var details = new List<string>();
+                    foreach (var import in missingImports)
+                    {
+                        arguments.TryGetValue(import.Name.Name, out var argument);
+                        import.Descriptor.DescribeMismatch(newContext, argument, import.Name.Name, details);
+                    }
+
                     throw new LinkException(
-                        $"The import is missing or invalid: \n{string.Join("\n", missingImports.Select(i => i.Name.Name))}");
+                        $"The import is missing or invalid: \n{string.Join("\n", missingImports.Select(i => i.Name.Name))}\n\nDetails:\n{string.Join("\n", details)}");
+                }
 
                 foreach (var export in Source.exports)
                     resolvedExports.Add(export.Name.Name, newContext.Resolve(export.Target));
