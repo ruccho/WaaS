@@ -34,23 +34,28 @@ unsafe fn componentize_inner(
     let wit_path = CStr::from_ptr(wit_path)
         .to_str()?;
     let world = CStr::from_ptr(world).to_str()?;
-    let mut resolve = Resolve::default();
-    let (id, _) = resolve.push_dir(wit_path)?;
-    let world = resolve
-        .select_world(id, if world.is_empty() { None } else { Some(world) })?;
 
     let mut wasm = std::slice::from_raw_parts(source, source_len).to_vec();
 
-    wit_component::embed_component_metadata(
-        &mut wasm,
-        &resolve,
-        world,
-        match encoding {
-            StringEncoding::UTF8 => wit_component::StringEncoding::UTF8,
-            StringEncoding::UTF16 => wit_component::StringEncoding::UTF16,
-            StringEncoding::CompactUTF16 => wit_component::StringEncoding::CompactUTF16,
-        },
-    )?;
+    // An empty WIT path means the module already carries its component type metadata
+    // (e.g. embedded by wit-bindgen), so nothing is embedded here.
+    if !wit_path.is_empty() {
+        let mut resolve = Resolve::default();
+        let (id, _) = resolve.push_dir(wit_path)?;
+        let world = resolve
+            .select_world(id, if world.is_empty() { None } else { Some(world) })?;
+
+        wit_component::embed_component_metadata(
+            &mut wasm,
+            &resolve,
+            world,
+            match encoding {
+                StringEncoding::UTF8 => wit_component::StringEncoding::UTF8,
+                StringEncoding::UTF16 => wit_component::StringEncoding::UTF16,
+                StringEncoding::CompactUTF16 => wit_component::StringEncoding::CompactUTF16,
+            },
+        )?;
+    }
 
     let mut encoder = ComponentEncoder::default();
     encoder = encoder.module(&wasm)?;
