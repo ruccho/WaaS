@@ -9,31 +9,42 @@ namespace WaaS.ComponentModel.Runtime
     {
         private static readonly Stack<SerializedLoweringPusher> Pool = new();
         private uint destinationCursor;
-        private Memory<byte> Destination { get; set; }
 
-        public static SerializedLoweringPusher Get(Memory<byte> destination)
+        // The destination is held as an offset into the linear memory instead of a slice of its buffer,
+        // because the buffer is replaced when the memory grows (e.g. by realloc while lowering a string).
+        private WaaS.Runtime.Memory? destinationMemory;
+        private int destinationOffset;
+        private int destinationLength;
+
+        private Span<byte> DestinationSpan =>
+            destinationMemory!.Span.Slice(destinationOffset, destinationLength);
+
+        public static SerializedLoweringPusher Get(WaaS.Runtime.Memory memory, int offset, int length)
         {
             if (!Pool.TryPop(out var pooled)) pooled = new SerializedLoweringPusher();
-            pooled.Destination = destination;
+            pooled.destinationMemory = memory;
+            pooled.destinationOffset = offset;
+            pooled.destinationLength = length;
             pooled.destinationCursor = 0;
             return pooled;
         }
 
         protected override void Dispose(bool reuse)
         {
+            destinationMemory = null;
             if (reuse) Pool.Push(this);
         }
 
         protected override void PushU8Core(byte value)
         {
-            Destination.Span[checked((int)destinationCursor++)] = value;
+            DestinationSpan[checked((int)destinationCursor++)] = value;
             MoveNextType();
         }
 
         protected override void PushU16Core(ushort value)
         {
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 1);
-            Unsafe.As<byte, ushort>(ref Destination.Span[checked((int)destinationCursor)]) = value;
+            Unsafe.As<byte, ushort>(ref DestinationSpan[checked((int)destinationCursor)]) = value;
             destinationCursor += 2;
             MoveNextType();
         }
@@ -41,7 +52,7 @@ namespace WaaS.ComponentModel.Runtime
         protected override void PushU32Core(uint value)
         {
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
-            Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = value;
+            Unsafe.As<byte, uint>(ref DestinationSpan[checked((int)destinationCursor)]) = value;
             destinationCursor += 4;
             MoveNextType();
         }
@@ -49,17 +60,17 @@ namespace WaaS.ComponentModel.Runtime
         protected override void PushListDataWithoutMoving(uint ptr, uint length)
         {
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
-            Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = ptr;
+            Unsafe.As<byte, uint>(ref DestinationSpan[checked((int)destinationCursor)]) = ptr;
             destinationCursor += 4;
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
-            Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = length;
+            Unsafe.As<byte, uint>(ref DestinationSpan[checked((int)destinationCursor)]) = length;
             destinationCursor += 4;
         }
 
         protected override void PushU64Core(ulong value)
         {
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 3);
-            Unsafe.As<byte, ulong>(ref Destination.Span[checked((int)destinationCursor)]) = value;
+            Unsafe.As<byte, ulong>(ref DestinationSpan[checked((int)destinationCursor)]) = value;
             destinationCursor += 8;
             MoveNextType();
         }
@@ -87,7 +98,7 @@ namespace WaaS.ComponentModel.Runtime
         protected override void PushF32Core(float value)
         {
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
-            Unsafe.As<byte, float>(ref Destination.Span[checked((int)destinationCursor)]) = value;
+            Unsafe.As<byte, float>(ref DestinationSpan[checked((int)destinationCursor)]) = value;
             destinationCursor += 4;
             MoveNextType();
         }
@@ -95,7 +106,7 @@ namespace WaaS.ComponentModel.Runtime
         protected override void PushF64Core(double value)
         {
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 3);
-            Unsafe.As<byte, double>(ref Destination.Span[checked((int)destinationCursor)]) = value;
+            Unsafe.As<byte, double>(ref DestinationSpan[checked((int)destinationCursor)]) = value;
             destinationCursor += 8;
             MoveNextType();
         }
@@ -106,9 +117,9 @@ namespace WaaS.ComponentModel.Runtime
                 throw new InvalidOperationException();
 
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
-            Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = ptr;
+            Unsafe.As<byte, uint>(ref DestinationSpan[checked((int)destinationCursor)]) = ptr;
             destinationCursor += 4;
-            Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = length;
+            Unsafe.As<byte, uint>(ref DestinationSpan[checked((int)destinationCursor)]) = length;
             destinationCursor += 4;
         }
 
@@ -118,9 +129,9 @@ namespace WaaS.ComponentModel.Runtime
 
             var size = recordType.ElementSize;
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, recordType.AlignmentRank);
-            var dest = Destination.Slice(checked((int)destinationCursor), size);
+            var dest = Get(destinationMemory!, destinationOffset + checked((int)destinationCursor), size);
             destinationCursor += size;
-            return Get(dest).Init(Context ?? throw new InvalidOperationException(),
+            return dest.Init(Context ?? throw new InvalidOperationException(),
                 ElementTypeSelector.FromRecord(recordType)).Wrap();
         }
 
@@ -133,16 +144,16 @@ namespace WaaS.ComponentModel.Runtime
             switch (discriminantTypeSizeRank)
             {
                 case 1:
-                    Destination.Span[checked((int)destinationCursor++)] = (byte)caseIndex;
+                    DestinationSpan[checked((int)destinationCursor++)] = (byte)caseIndex;
                     break;
                 case 2:
                     destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
-                    Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = (ushort)caseIndex;
+                    Unsafe.As<byte, uint>(ref DestinationSpan[checked((int)destinationCursor)]) = (ushort)caseIndex;
                     destinationCursor += 4;
                     break;
                 case 4:
                     destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, 2);
-                    Unsafe.As<byte, uint>(ref Destination.Span[checked((int)destinationCursor)]) = (uint)caseIndex;
+                    Unsafe.As<byte, uint>(ref DestinationSpan[checked((int)destinationCursor)]) = (uint)caseIndex;
                     destinationCursor += 4;
                     break;
                 default:
@@ -154,9 +165,9 @@ namespace WaaS.ComponentModel.Runtime
             var caseTypeDespecialized = caseType.Despecialize();
             var size = caseTypeDespecialized.ElementSize;
             destinationCursor = Utils.ElementSizeAlignTo(destinationCursor, caseTypeDespecialized.AlignmentRank);
-            var dest = Destination.Slice(checked((int)destinationCursor), size);
+            var dest = Get(destinationMemory!, destinationOffset + checked((int)destinationCursor), size);
             destinationCursor += size;
-            return Get(dest).Init(Context ?? throw new InvalidOperationException(),
+            return dest.Init(Context ?? throw new InvalidOperationException(),
                 ElementTypeSelector.FromSingle(caseTypeDespecialized)).Wrap();
         }
     }
