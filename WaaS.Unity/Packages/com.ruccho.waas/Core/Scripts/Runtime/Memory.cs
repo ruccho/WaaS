@@ -11,6 +11,9 @@ namespace WaaS.Runtime
     {
         public const int PageSizeRank = 16; // 64KiB
 
+        // the maximum length of a byte array (Array.MaxLength in .NET 6 and later)
+        private const int MaxArrayLength = 0x7FFFFFC7;
+
         private readonly object locker = new();
         private byte[] buffer;
 
@@ -64,16 +67,27 @@ namespace WaaS.Runtime
             if (afterNumPages > 1 << 16) return false;
             if (PageLimits.Max.HasValue && afterNumPages > PageLimits.Max) return false;
 
+            var prevLength = Length;
             NumPages = afterNumPages;
             Length = NumPages << PageSizeRank;
 
+            if (Length <= buffer.Length)
+            {
+                // the buffer has enough capacity
+                Array.Clear(buffer, prevLength, Length - prevLength);
+                return true;
+            }
+
+            // grow the capacity geometrically to avoid copying the whole memory on every grow
+            var capacity = (int)Math.Min(Math.Max(Length, (long)buffer.Length * 2), MaxArrayLength);
+
             var prevBuffer = buffer;
 
-            buffer = ArrayPool<byte>.Shared.Rent(Length);
+            buffer = ArrayPool<byte>.Shared.Rent(capacity);
 
-            prevBuffer.CopyTo(buffer, 0);
+            prevBuffer.AsSpan(0, prevLength).CopyTo(buffer);
 
-            Array.Clear(buffer, prevBuffer.Length, buffer.Length - prevBuffer.Length);
+            Array.Clear(buffer, prevLength, buffer.Length - prevLength);
 
             ArrayPool<byte>.Shared.Return(prevBuffer);
 
