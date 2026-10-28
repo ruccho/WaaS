@@ -12,4 +12,13 @@ internal static class Diagnostics
         DiagnosticSeverity.Error,
         true
     );
+
+    public static readonly DiagnosticDescriptor WitGenerationDiagnostic = new(
+        "WAAS0002",
+        "The interface cannot be represented in WIT",
+        "The interface cannot be represented in WIT: {0}",
+        "Compiler",
+        DiagnosticSeverity.Warning,
+        true
+    );
 }

@@ -312,12 +312,12 @@ public class ComponentAbiTests
         Assert.That(host.CompletedWaits, Is.EqualTo(2));
     }
 
-    private class Counter
+    internal class Counter
     {
         public int Value;
     }
 
-    private class CounterType : HostResourceTypeBase<Counter>, IAbiHost.ICounterResourceImpl
+    internal class CounterType : HostResourceTypeBase<Counter>, IAbiHost.ICounterResourceImpl
     {
         public List<int> Dropped { get; } = new();
         public IResourceType Type => this;
@@ -339,7 +339,7 @@ public class ComponentAbiTests
         }
     }
 
-    private class AbiHost : IAbiHost
+    internal class AbiHost : IAbiHost
     {
         public CounterType CounterType { get; } = new();
         public int CompletedWaits { get; private set; }
@@ -430,14 +430,31 @@ internal static class GuestBuilder
     /// <summary>
     ///     Builds a guest crate under Guests/ and returns the path of the component.
     /// </summary>
-    public static string Build(string name)
+    /// <param name="name">name of the crate</param>
+    /// <param name="witOverrides">
+    ///     WIT files that replace the files in the wit directory of the crate (file name -> source).
+    ///     When specified, the crate is copied to a temporary directory and built there.
+    /// </param>
+    public static string Build(string name, IReadOnlyDictionary<string, string>? witOverrides = null)
     {
         lock (Built)
         {
-            if (Built.TryGetValue(name, out var cached)) return cached;
+            var key = witOverrides == null ? name : $"{name}+overrides";
+            if (Built.TryGetValue(key, out var cached)) return cached;
 
             var crateDir = Path.Combine(GetSourceDirectory(), "Guests", name);
             var targetDir = Path.Combine(Path.GetTempPath(), "WaaS.Tests", "guest-target");
+
+            if (witOverrides != null)
+            {
+                var copiedDir = Path.Combine(Path.GetTempPath(), "WaaS.Tests", "guest-overrides", name);
+                if (Directory.Exists(copiedDir)) Directory.Delete(copiedDir, true);
+                CopyDirectory(crateDir, copiedDir);
+                foreach (var (fileName, source) in witOverrides)
+                    File.WriteAllText(Path.Combine(copiedDir, "wit", fileName), source);
+                crateDir = copiedDir;
+                targetDir += "-overrides";
+            }
             Run("cargo",
                 $"build --release --target wasm32-unknown-unknown --target-dir \"{targetDir}\"", crateDir);
 
@@ -446,8 +463,21 @@ internal static class GuestBuilder
             var componentPath = Path.Combine(targetDir, $"{name}.component.wasm");
             Run("wasm-tools", $"component new \"{modulePath}\" -o \"{componentPath}\"", crateDir);
 
-            Built[name] = componentPath;
+            Built[key] = componentPath;
             return componentPath;
+        }
+    }
+
+    private static void CopyDirectory(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.GetFiles(source))
+            File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
+        foreach (var directory in Directory.GetDirectories(source))
+        {
+            var name = Path.GetFileName(directory);
+            if (name is "target") continue;
+            CopyDirectory(directory, Path.Combine(destination, name));
         }
     }
 
