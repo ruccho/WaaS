@@ -173,19 +173,16 @@ namespace WaaS.ComponentModel.Runtime
 
     public interface IResourceType : IType
     {
+        /// <summary>
+        ///     The component instance that defines this resource type, or null for host resource types.
+        /// </summary>
         IInstance? Instance { get; }
-        uint New(uint rep);
-        void Drop(uint index);
-        uint Rep(uint index);
-    }
 
-    /// <summary>
-    ///     A resource type that issues a separate handle when a borrow of its resource is lent to a component.
-    ///     Dropping the issued handle ends the borrow and does not destroy the resource.
-    /// </summary>
-    public interface IBorrowLendingResourceType : IResourceType
-    {
-        uint LendBorrow(uint index);
+        /// <summary>
+        ///     Destroys the resource represented by <paramref name="rep" />.
+        ///     Handles are managed by the handle table of each component instance, not by the resource type.
+        /// </summary>
+        void Drop(uint rep);
     }
 
     public interface IFunctionType : IType

@@ -154,7 +154,10 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType() is not IOwnedType owned) throw new InvalidOperationException();
             if (owned.Type != handle.Type) throw new InvalidOperationException();
-            PushU32Core(handle.GetValue());
+
+            // the ownership moves into the handle table of the component instance
+            var rep = handle.GetValue();
+            PushU32Core(HandleTable.Of(Context!.Instance).AddOwn(owned.Type, rep));
         }
 
         public void PushBorrowed(Borrowed handle)
@@ -162,12 +165,11 @@ namespace WaaS.ComponentModel.Runtime
             if (GetNextType() is not IBorrowedType borrowed) throw new InvalidOperationException();
             if (borrowed.Type != handle.Type) throw new InvalidOperationException();
             if (handle.Type.Instance == Context!.Instance)
-                PushU32Core(handle.Type.Rep(handle.GetValue()));
-            else if (handle.Type is IBorrowLendingResourceType lending)
-                // the component drops the lent handle when the borrow ends
-                PushU32Core(lending.LendBorrow(handle.GetValue()));
-            else
+                // a component receives the rep of the resources it defines
                 PushU32Core(handle.GetValue());
+            else
+                // the component drops the handle when the borrow ends
+                PushU32Core(HandleTable.Of(Context.Instance).AddBorrow(borrowed.Type, handle.GetValue()));
         }
 
         public void Push(ReadOnlySpan<char> value)

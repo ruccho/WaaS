@@ -1018,7 +1018,6 @@ namespace WaaS.ComponentModel.Models
         {
             [ThreadStatic] private static ExecutionContext? contextForDestructor;
             private readonly IInvocableFunction? destructor;
-            private readonly ResourceTable<uint> table = new();
 
             public ResolvedResourceType(IInvocableFunction? destructor, IInstance instance)
             {
@@ -1026,17 +1025,8 @@ namespace WaaS.ComponentModel.Models
                 Instance = instance;
             }
 
-            public uint New(uint rep)
+            public void Drop(uint rep)
             {
-                var index = unchecked((uint)table.Add(rep));
-                // Console.WriteLine($"new resource {index}: {rep}");
-                return index;
-            }
-
-            public void Drop(uint index)
-            {
-                var rep = table.RemoveAt(unchecked((int)index));
-
                 if (destructor != null)
                 {
                     var repValue = new StackValueItem(rep);
@@ -1044,15 +1034,6 @@ namespace WaaS.ComponentModel.Models
                     contextForDestructor.InterruptFrame(destructor, MemoryMarshal.CreateSpan(ref repValue, 1),
                         Span<StackValueItem>.Empty);
                 }
-
-                // Console.WriteLine($"drop resource {index}: {rep}");
-            }
-
-            public uint Rep(uint index)
-            {
-                var rep = table.Get(unchecked((int)index));
-                // Console.WriteLine($"rep resource {index}: {rep}");
-                return rep;
             }
 
             public IInstance? Instance { get; }

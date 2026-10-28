@@ -50,27 +50,6 @@ public class HostResourceTests
     }
 
     [Test]
-    public void DroppingLentBorrowDoesNotDestroyResource()
-    {
-        var type = new CounterType();
-        var owned = type.Wrap(10);
-        var original = owned.GetValue(false);
-
-        var lent = type.LendBorrow(original);
-        Assert.That(lent, Is.Not.EqualTo(original));
-        Assert.That(type.ToHostResource(lent), Is.EqualTo(10));
-
-        // a component ends the borrow
-        type.Drop(lent);
-
-        Assert.That(type.DroppedValues, Is.Empty);
-        Assert.That(type.ToHostResource(original), Is.EqualTo(10));
-
-        owned.Dispose();
-        Assert.That(type.DroppedValues, Is.EqualTo(new[] { 10 }));
-    }
-
-    [Test]
     public void HostResourceTypeBelongsToNoInstance()
     {
         Assert.That(new CounterType().Instance, Is.Null);

@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using WaaS.ComponentModel.Binding;
 using WaaS.ComponentModel.Models;
 using WaaS.ComponentModel.Runtime;
+using WaaS.Runtime;
 using ExecutionContext = WaaS.Runtime.ExecutionContext;
 
 namespace WaaS.Tests;
@@ -78,6 +79,29 @@ public partial interface IAbiHost
     ValueTask<uint> WaitTicks(uint ticks);
 }
 
+[ComponentInterface(@"waas:abi-test/guest-types")]
+public partial interface IAbiGuestTypes
+{
+    [ComponentResource(@"accumulator")]
+    public partial interface IAccumulatorResourceImpl : IResourceImpl
+    {
+        [ComponentApi(@"[constructor]accumulator")]
+        ValueTask<Owned<IAccumulatorResourceImpl>> New(int start);
+
+        [ComponentApi(@"[method]accumulator.add")]
+        ValueTask Add(Borrowed<IAccumulatorResourceImpl> self, int value);
+
+        [ComponentApi(@"[method]accumulator.total")]
+        ValueTask<int> Total(Borrowed<IAccumulatorResourceImpl> self);
+    }
+
+    [ComponentApi(@"destroyed-count")]
+    ValueTask<uint> DestroyedCount();
+
+    [ComponentApi(@"consume")]
+    ValueTask<int> Consume(Owned<IAccumulatorResourceImpl> accumulator);
+}
+
 [ComponentInterface(@"waas:abi-test/abi-test")]
 public partial interface IAbiTestExports
 {
@@ -110,6 +134,9 @@ public partial interface IAbiTestExports
 
     [ComponentApi(@"test-async")]
     ValueTask<uint> TestAsync();
+
+    [ComponentApi(@"test-forged-handle")]
+    ValueTask<int> TestForgedHandle(uint handle);
 }
 
 /// <summary>
@@ -176,6 +203,48 @@ public class ComponentAbiTests
 
         owned.Dispose();
         Assert.That(host.CounterType.Dropped, Is.EqualTo(new[] { 3 }));
+    }
+
+    [Test]
+    public async Task GuestDefinedResourceIsDestroyedByOwner()
+    {
+        using var context = new ExecutionContext();
+        Assert.That(instance.TryGetExport("waas:abi-test/guest-types", out IInstance? guestTypesInstance), Is.True);
+        var guestTypes = new IAbiGuestTypes.Wrapper(guestTypesInstance!, context);
+        var accumulatorType = guestTypes.Accumulator;
+
+        // the host owns an accumulator created by the guest
+        var accumulator = await accumulatorType.New(5);
+        await accumulatorType.Add((Borrowed<IAbiGuestTypes.IAccumulatorResourceImpl>)accumulator.handle.Borrow(), 3);
+        Assert.That(await accumulatorType.Total((Borrowed<IAbiGuestTypes.IAccumulatorResourceImpl>)accumulator.handle.Borrow()),
+            Is.EqualTo(8));
+        Assert.That(await guestTypes.DestroyedCount(), Is.EqualTo(0));
+
+        // dropping it on the host calls the destructor in the guest
+        accumulator.handle.Dispose();
+        Assert.That(await guestTypes.DestroyedCount(), Is.EqualTo(1));
+
+        // passing the ownership back to the guest
+        var another = await accumulatorType.New(10);
+        Assert.That(await guestTypes.Consume(another), Is.EqualTo(10));
+        Assert.That(await guestTypes.DestroyedCount(), Is.EqualTo(2));
+    }
+
+    [Test]
+    public void ComponentCannotAccessResourcesNotPassedToIt()
+    {
+        // a host resource that exists but was never passed to the component
+        var owned = host.CounterType.Wrap(new Counter { Value = 1 });
+        var rep = owned.GetValue(false);
+
+        foreach (var handle in new[] { rep, 12345u })
+        {
+            var exception = Assert.CatchAsync(async () => await Call(e => e.TestForgedHandle(handle)));
+            Assert.That(exception, Is.InstanceOf<TrapException>().Or.InnerException.InstanceOf<TrapException>(),
+                exception!.ToString());
+        }
+
+        owned.Dispose();
     }
 
     [Test]

@@ -9,42 +9,24 @@ namespace WaaS.ComponentModel.Binding
     ///     Base class for host-provided resource types.
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public abstract class HostResourceTypeBase<T> : IHostResourceType<T>, IBorrowLendingResourceType
+    public abstract class HostResourceTypeBase<T> : IHostResourceType<T>
     {
-        private ResourceTable<Entry> resources = new();
+        // the index in this table is used as the rep of the resource
+        private ResourceTable<T> resources = new();
 
         public T ToHostResource(uint resourceId)
         {
-            return resources.Get(unchecked((int)resourceId)).value;
+            return resources.Get(unchecked((int)resourceId));
         }
 
         public uint AllocateResourceId(T hostResource)
         {
-            return unchecked((uint)resources.Add(new Entry(hostResource, false)));
+            return unchecked((uint)resources.Add(hostResource));
         }
 
-        public uint LendBorrow(uint index)
+        public void Drop(uint rep)
         {
-            var entry = resources.Get(unchecked((int)index));
-            return unchecked((uint)resources.Add(new Entry(entry.value, true)));
-        }
-
-        public uint New(uint rep)
-        {
-            throw new InvalidOperationException("resource.new is not supported for host resource types.");
-        }
-
-        public void Drop(uint index)
-        {
-            var entry = resources.RemoveAt(unchecked((int)index));
-
-            // dropping a lent borrow only ends the borrow
-            if (!entry.isBorrow) OnDrop(entry.value);
-        }
-
-        public uint Rep(uint index)
-        {
-            return index;
+            OnDrop(resources.RemoveAt(unchecked((int)rep)));
         }
 
         // host resource types are not defined by any component instance
@@ -80,18 +62,6 @@ namespace WaaS.ComponentModel.Binding
         public void Reset()
         {
             resources = new();
-        }
-
-        private readonly struct Entry
-        {
-            public readonly T value;
-            public readonly bool isBorrow;
-
-            public Entry(T value, bool isBorrow)
-            {
-                this.value = value;
-                this.isBorrow = isBorrow;
-            }
         }
     }
 }

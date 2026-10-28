@@ -77,6 +77,22 @@ namespace WaaS.ComponentModel
             }
         }
 
+        public bool TryGet(int index, out T value)
+        {
+            lock (locker)
+            {
+                if ((reserveZero && index == 0) || index < 0 || index >= elements.Length ||
+                    !elements[index].isOccupied)
+                {
+                    value = default!;
+                    return false;
+                }
+
+                value = elements[index].rep;
+                return true;
+            }
+        }
+
         private struct Element
         {
             public T rep;

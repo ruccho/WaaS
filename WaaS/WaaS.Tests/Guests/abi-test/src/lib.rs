@@ -3,7 +3,47 @@ wit_bindgen::generate!({
     world: "abi-test",
 });
 
+use exports::waas::abi_test::guest_types;
+use std::cell::Cell;
 use waas::abi_test::host::{self, Color, Permissions, Shape};
+
+static mut DESTROYED: u32 = 0;
+
+struct Accumulator {
+    total: Cell<i32>,
+}
+
+impl Drop for Accumulator {
+    fn drop(&mut self) {
+        unsafe { DESTROYED += 1 };
+    }
+}
+
+impl guest_types::GuestAccumulator for Accumulator {
+    fn new(start: i32) -> Self {
+        Accumulator { total: Cell::new(start) }
+    }
+
+    fn add(&self, value: i32) {
+        self.total.set(self.total.get() + value);
+    }
+
+    fn total(&self) -> i32 {
+        self.total.get()
+    }
+}
+
+impl guest_types::Guest for AbiTest {
+    type Accumulator = Accumulator;
+
+    fn destroyed_count() -> u32 {
+        unsafe { DESTROYED }
+    }
+
+    fn consume(accumulator: guest_types::Accumulator) -> i32 {
+        accumulator.get::<Accumulator>().total.get()
+    }
+}
 
 struct AbiTest;
 
@@ -73,6 +113,13 @@ impl Guest for AbiTest {
     fn test_async() -> u32 {
         // each call suspends the guest until the host completes
         host::wait_ticks(3) + host::wait_ticks(4)
+    }
+
+    fn test_forged_handle(handle: u32) -> i32 {
+        let counter = unsafe { Counter::from_handle(handle) };
+        let value = counter.get();
+        std::mem::forget(counter);
+        value
     }
 }
 

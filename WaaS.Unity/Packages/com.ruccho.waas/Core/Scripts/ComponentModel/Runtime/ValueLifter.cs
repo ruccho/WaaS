@@ -586,9 +586,13 @@ namespace WaaS.ComponentModel.Runtime
 
             try
             {
-                var value = Flattened ? NextFlattenedI32() : LoadSerialized<uint>();
+                var index = Flattened ? NextFlattenedI32() : LoadSerialized<uint>();
 
-                return Ownership.GetHandle(resourceType, value);
+                // the ownership moves out of the handle table of the component instance
+                var handle = HandleTable.Of(Context.Instance).Remove(index, resourceType);
+                if (!handle.IsOwn) throw new TrapException("A borrowed handle cannot be passed as an owned handle.");
+
+                return Ownership.GetHandle(resourceType, handle.Rep);
             }
             finally
             {
@@ -603,10 +607,11 @@ namespace WaaS.ComponentModel.Runtime
 
             try
             {
-                var value = Flattened ? NextFlattenedI32() : LoadSerialized<uint>();
+                var index = Flattened ? NextFlattenedI32() : LoadSerialized<uint>();
+                var handle = HandleTable.Of(Context.Instance).Get(index, resourceType);
 
                 // a lifted borrow must not drop the resource when the handle is released
-                var owned = Ownership.GetHandle(resourceType, value, false);
+                var owned = Ownership.GetHandle(resourceType, handle.Rep, false);
                 return owned.Borrow();
             }
             finally
