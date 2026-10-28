@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace WaaS.Unity.Editor.Rust
 {
-    [ScriptedImporter(1, "rs", 100)]
+    [ScriptedImporter(2, "rs", 100)]
     public class RustImporter : ScriptedImporter
     {
         [SerializeField] private bool crateRoot = true;
@@ -262,7 +262,11 @@ namespace WaaS.Unity.Editor.Rust
                 }
                 else if (found && segment != assetPath)
                 {
-                    ctx.DependsOnSourceAsset(segment);
+                    // files outside the asset database (e.g. WIT files) are tracked as custom dependencies
+                    if (ExternalFileDependency.ToAssetPath(segment) is { } dependencyAssetPath)
+                        ctx.DependsOnSourceAsset(dependencyAssetPath);
+                    else
+                        ctx.DependsOnCustomDependency(ExternalFileDependency.GetDependencyName(segment));
                 }
             }
 
