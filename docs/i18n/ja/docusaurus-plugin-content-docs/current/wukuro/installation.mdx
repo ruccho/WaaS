@@ -16,8 +16,10 @@ sidebar_position: 1
 UniTask と WaaS を先に導入してから、Package Manager の `Add package from git URL...` に次の URL を入力して Wukuro を追加します。
 
 ```
-https://github.com/ruccho/WaaS.git?path=/WaaS.Unity/Packages/com.ruccho.wukuro
+https://github.com/ruccho/WaaS.git?path=/WaaS.Unity/Packages/com.ruccho.wukuro#release
 ```
+
+`#release` は、最新のリリースを指す `release` ブランチを参照します。特定のバージョンを使う場合は、代わりに `#v0.3.0` のようにタグを指定してください。WaaS と Wukuro には同じバージョンを使ってください。
 
 UniTask は Unity のパッケージレジストリにないため、`package.json` の依存として宣言していません。[UniTask の導入方法](https://github.com/Cysharp/UniTask#upm-package) に従って、別途導入してください。
 

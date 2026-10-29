@@ -15,7 +15,7 @@ See the [documentation](https://ruccho.com/WaaS/wukuro) ([日本語](https://ruc
 - Install the package with the git URL:
 
   ```
-  https://github.com/ruccho/WaaS.git?path=/WaaS.Unity/Packages/com.ruccho.wukuro
+  https://github.com/ruccho/WaaS.git?path=/WaaS.Unity/Packages/com.ruccho.wukuro#release
   ```
 
 - Rust scripts depend on the crates [`wukuro`](https://crates.io/crates/wukuro) and [`wukuro-dialog`](https://crates.io/crates/wukuro-dialog) of the same version as the package.
