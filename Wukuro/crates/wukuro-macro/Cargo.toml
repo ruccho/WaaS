@@ -1,0 +1,17 @@
+[package]
+name = "wukuro-macro"
+description = "Procedural macros of Wukuro"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+readme = "../../README.md"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0.107"
+quote = "1.0.47"
+syn = { version = "3.0.9", features = ["full", "extra-traits"] }

@@ -1,3 +1,8 @@
 ﻿[workspace]
 members = ["Library/com.ruccho.waas/rust/crates/*"] # Used by WaaS
 resolver = "2" # Used by WaaS
+
+[workspace.dependencies]
+# used by the tests of Wukuro (Assets/Tests/Wukuro)
+wukuro = { path = "../Wukuro/crates/wukuro" }
+wukuro_dialog = { package = "wukuro-dialog", path = "../Wukuro/crates/wukuro-dialog" }

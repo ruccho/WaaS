@@ -121,7 +121,15 @@ namespace WaaS.ComponentModel.Runtime
     public interface IVariantType : IDespecializedValueType
     {
         ReadOnlyMemory<IVariantCase> Cases { get; }
+        /// <summary>
+        ///     log2 of the size of the discriminant: 0 (u8), 1 (u16) or 2 (u32).
+        /// </summary>
         byte DiscriminantTypeSizeRank { get; }
+
+        /// <summary>
+        ///     The maximum alignment (log2) of the payloads, to which the payload is aligned.
+        /// </summary>
+        byte MaxCaseAlignmentRank { get; }
     }
 
     public interface IVariantCase
@@ -173,10 +181,16 @@ namespace WaaS.ComponentModel.Runtime
 
     public interface IResourceType : IType
     {
+        /// <summary>
+        ///     The component instance that defines this resource type, or null for host resource types.
+        /// </summary>
         IInstance? Instance { get; }
-        uint New(uint rep);
-        void Drop(uint index);
-        uint Rep(uint index);
+
+        /// <summary>
+        ///     Destroys the resource represented by <paramref name="rep" />.
+        ///     Handles are managed by the handle table of each component instance, not by the resource type.
+        /// </summary>
+        void Drop(uint rep);
     }
 
     public interface IFunctionType : IType

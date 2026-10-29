@@ -1,0 +1,84 @@
+---
+title: 導入
+sidebar_position: 1
+---
+
+# 導入
+
+## 必要なもの
+
+- Unity 6000.0 以降
+- [UniTask](https://github.com/Cysharp/UniTask)（`com.cysharp.unitask`）
+- WaaS（`com.ruccho.waas`）と、[Rust Importer](../unity-integration/rust.mdx) を利用するための Rust のツールチェインと `wasm32-unknown-unknown` ターゲット
+
+## Unity パッケージの追加
+
+UniTask と WaaS を先に導入してから、Package Manager の `Add package from git URL...` に次の URL を入力して Wukuro を追加します。
+
+```
+https://github.com/ruccho/WaaS.git?path=/WaaS.Unity/Packages/com.ruccho.wukuro#release
+```
+
+`#release` は、最新のリリースを指す `release` ブランチを参照します。特定のバージョンを使う場合は、代わりに `#v0.3.0` のようにタグを指定してください。WaaS と Wukuro には同じバージョンを使ってください。
+
+UniTask は Unity のパッケージレジストリにないため、`package.json` の依存として宣言していません。[UniTask の導入方法](https://github.com/Cysharp/UniTask#upm-package) に従って、別途導入してください。
+
+## Rust のクレートの設定
+
+Rust のスクリプトは、Rust Importer のインポート設定の **Dependencies** に指定したクレートに依存してビルドされます。Wukuro のスクリプトには、次のクレートが必要です。
+
+| クレート | 用途 |
+| --- | --- |
+| `wukuro` | すべてのスクリプトで必要です。 |
+| `wit-bindgen` | すべてのスクリプトで必要です。`#[entry]` が展開する `wit_bindgen::generate!` が直接参照するためです。バージョンは `wukuro` が依存するものと合わせてください。 |
+| `wukuro-dialog` | ダイアログを表示するスクリプトで必要です。 |
+| ゲーム固有のクレート | ゲーム側で追加した機能を使うスクリプトで必要です（[機能の追加](./extending.mdx)）。 |
+
+Wukuro のクレートは [crates.io](https://crates.io/) で公開しています。**via Registry** で、次のように指定します。
+
+| Name | Version Requirements |
+| --- | --- |
+| `wukuro` | Unity パッケージと同じバージョン（例: Unity パッケージが `0.3.0` であれば `0.3.0`） |
+| `wukuro-dialog` | `wukuro` と同じバージョン |
+| `wit-bindgen` | `wukuro` が依存するバージョン（`0.63.0`） |
+
+:::warning
+クレートに同梱されている WIT は、Unity パッケージの C# の定義から生成されたものです。Unity パッケージとクレートのバージョンが異なると、スクリプトとホストの関数の定義が一致せず、実行時にエラーになることがあります。両者のバージョンを揃えてください。
+:::
+
+:::warning
+Wukuro のスクリプトのインポート設定では、**Componentize** を有効にし、**WIT Directory** を空にしてください。スクリプトの WIT は `#[entry]` が埋め込みます。
+:::
+
+:::info
+すべてのスクリプトに同じ依存を設定するため、依存を [プリセット](../unity-integration/rust.mdx#プリセットの利用) にまとめておくと便利です。
+:::
+
+### ワークスペースの依存を利用する
+
+ゲーム固有のクレートを Unity プロジェクト内で開発する場合や、依存のバージョンを 1 か所で管理したい場合は、Unity プロジェクトのルートの `Cargo.toml` に `[workspace.dependencies]` を追加し、Rust Importer の Dependencies で **via Workspace** を選択します。
+
+```toml
+[workspace]
+members = ["Library/com.ruccho.waas/rust/crates/*", "rust/*"] # Used by WaaS
+resolver = "2" # Used by WaaS
+
+[workspace.dependencies]
+wukuro = "0.3.0"
+wukuro_dialog = { package = "wukuro-dialog", version = "0.3.0" }
+my-game = { path = "./rust/my-game" }
+```
+
+**via Workspace** の依存では、**Name** に `[workspace.dependencies]` のキーを指定します。
+
+### 未公開のバージョンを使う
+
+crates.io に公開されていない変更を試す場合は、WaaS のリポジトリから git で取得できます。cargo はリポジトリ内のクレートを名前で探すため、リポジトリ内のパスを指定する必要はありません。
+
+```toml
+[workspace.dependencies]
+wukuro = { git = "https://github.com/ruccho/WaaS.git", rev = "<コミットハッシュ>" }
+wukuro_dialog = { package = "wukuro-dialog", git = "https://github.com/ruccho/WaaS.git", rev = "<コミットハッシュ>" }
+```
+
+この場合、cargo はリポジトリ全体をサブモジュールを含めて取得するため、初回の取得に時間がかかります。Unity パッケージも同じコミットのものを使ってください。

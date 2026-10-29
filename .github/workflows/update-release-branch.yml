@@ -1,0 +1,27 @@
+name: Update Release Branch
+
+# Fast-forwards the release branch to the commit of a published release. Unity packages installed
+# with git URLs refer to the release branch so that unreleased changes on main are not installed.
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  fast-forward:
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # the whole history is needed to push the commit as a fast-forward
+          fetch-depth: 0
+      - name: Fast-forward the release branch
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          commit=$(git rev-parse "refs/tags/$TAG^{commit}")
+          # the push is rejected unless it is a fast-forward; the branch is created at the first release
+          git push origin "$commit:refs/heads/release"

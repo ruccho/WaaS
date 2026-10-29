@@ -1,0 +1,374 @@
+---
+title: 機能の追加
+sidebar_position: 5
+---
+
+# 機能の追加
+
+Wukuro 自体が提供する機能は、待機、変数、ログ、ダイアログなどの基本的なものに限られます。サウンドの再生、カメラの操作、アイテムの付与などのゲーム固有の機能は、ゲーム側で追加して使うことを前提としています。
+
+このページでは、サウンドの再生とカメラの移動をスクリプトから呼び出せるようにする例を通して、機能を追加する手順を説明します。
+
+## 全体の流れ
+
+1. **C# で定義する**: スクリプトに提供する関数と型を、属性を付けた C# のインターフェースとして定義します。
+2. **C# で実装する**: 定義したインターフェースを実装し、ゲームの処理を呼び出します。
+3. **インポートを登録する**: 実装を `WukuroRunner` に登録します。
+4. **WIT を書き出す**: 定義から WIT ファイルを書き出します。
+5. **Rust のクレートを作る**: WIT からバインディングを生成するクレートを作ります。
+6. **スクリプトから使う**: スクリプトの依存にクレートを追加し、関数を呼び出します。
+
+定義の起点は C# です。WIT は C# の定義から自動で生成されるため、手で書く必要はありません。
+
+## モジュールの設計
+
+ゲーム固有の機能は、**モジュール**としてまとめることを推奨します。モジュールは次の 2 つから構成されます。
+
+- C# 側: `IWukuroModule` を実装したクラス。スクリプトの実行ごとに `WukuroRunner.AddModule` で追加します。
+- WIT 側: モジュールを表すリソースと、スクリプトのコンテキストからそのリソースを取得する関数。
+
+```wit
+package my-game:events;
+
+interface types {
+    use wukuro:core/types.{object};
+
+    resource game-module {
+        play-sound: func(name: string);
+        move-camera: func(target: borrow<object>, duration: f32);
+    }
+}
+
+interface functions {
+    use types.{game-module};
+    use wukuro:core/types.{context};
+
+    get-game-module: func(context: borrow<context>) -> game-module;
+}
+```
+
+スクリプトは `get_game_module(cx)` でモジュールを取得し、そのメソッドを呼び出します。モジュールは実行ごとに異なるインスタンスを渡せるため、再生中のイベントの情報（どのイベントか、初めての再生か、など）や、ゲームのシステムへの参照をモジュールに持たせることができます。
+
+## 1. C# で定義する
+
+WIT のインターフェースごとに、`partial` な C# のインターフェースを定義し、[属性](../component-model/binding-generator/attributes.mdx) を付けます。`[ComponentInterface]` には `名前空間:パッケージ/インターフェース` の形式の名前を指定します。
+
+```csharp title="MyGameTypes.cs"
+using System.Threading.Tasks;
+using WaaS.ComponentModel.Binding;
+
+namespace MyGame.Events
+{
+    [ComponentInterface(@"my-game:events/types")]
+    public partial interface ITypes
+    {
+        [ComponentResource("game-module")]
+        public partial interface IGameModuleResourceImpl : IResourceImpl
+        {
+            [ComponentApi(@"[method]game-module.play-sound")]
+            ValueTask PlaySound(Borrowed<IGameModuleResourceImpl> self, string name);
+
+            [ComponentApi(@"[method]game-module.move-camera")]
+            ValueTask MoveCamera(Borrowed<IGameModuleResourceImpl> self,
+                Borrowed<Wukuro.Core.ITypes.IObjectResourceImpl> target, float duration);
+        }
+    }
+}
+```
+
+```csharp title="MyGameFunctions.cs"
+using System.Threading.Tasks;
+using WaaS.ComponentModel.Binding;
+
+namespace MyGame.Events
+{
+    [ComponentInterface(@"my-game:events/functions")]
+    public partial interface IFunctions
+    {
+        [ComponentApi(@"get-game-module")]
+        ValueTask<Owned<ITypes.IGameModuleResourceImpl>> GetGameModule(
+            Borrowed<Wukuro.Core.ITypes.IContextResourceImpl> context);
+    }
+}
+```
+
+- Unity のオブジェクトは `wukuro:core` の `object` リソース（`Wukuro.Core.ITypes.IObjectResourceImpl`）として受け取ります。
+- テキストは `Wukuro.Core.ITypes.Text` として受け取ります。ローカライズされたテキストの解決はホストが行います。
+- 関数の戻り値の型を `ValueTask` にすると、スクリプトは処理の完了まで待機します。演出の完了を待つ関数は、完了したときに完了する `ValueTask` を返すように実装します。
+
+## 2. C# で実装する
+
+### モジュール
+
+モジュールのクラスには、ゲームの処理を記述します。WaaS のバインディングの型に依存しないように書いておくと、テストや再利用が容易になります。
+
+```csharp title="GameModule.cs"
+using Cysharp.Threading.Tasks;
+using UnityEngine;
+using Wukuro;
+
+namespace MyGame.Events
+{
+    public class GameModule : IWukuroModule
+    {
+        private readonly SoundPlayer sound;
+        private readonly CameraController camera;
+
+        public GameModule(SoundPlayer sound, CameraController camera)
+        {
+            this.sound = sound;
+            this.camera = camera;
+        }
+
+        public void PlaySound(string name)
+        {
+            sound.Play(name);
+        }
+
+        public UniTask MoveCamera(Transform target, float duration)
+        {
+            return camera.MoveAsync(target.position, duration);
+        }
+    }
+}
+```
+
+### リソースと関数
+
+C# のインターフェースの定義から、Source Generator は実装すべきメンバを生成します。リソースは `HostResourceTypeBase<T>` を継承して実装し、`Unwrap(self)` でリソースに対応する C# のオブジェクト（ここではモジュール）を取り出します。
+
+```csharp title="MyGameImports.cs"
+using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
+using UnityEngine;
+using WaaS.ComponentModel.Binding;
+using WaaS.ComponentModel.Runtime;
+using Wukuro;
+using CoreTypes = Wukuro.Core.ITypes;
+
+namespace MyGame.Events
+{
+    public static class MyGameImports
+    {
+        public static void Register()
+        {
+            var types = ITypes.CreateWaaSInstance(new Types());
+            var functions = IFunctions.CreateWaaSInstance(new Functions());
+            WukuroRunner.RegisterImportProvider(
+                new DelegateImportProvider<ISortedExportable>("my-game:events/types", () => types));
+            WukuroRunner.RegisterImportProvider(
+                new DelegateImportProvider<ISortedExportable>("my-game:events/functions", () => functions));
+        }
+
+        private class Types : ITypes
+        {
+            public ITypes.IGameModuleResourceImpl GameModule => GameModuleType.Instance;
+            public CoreTypes.IObjectResourceImpl Object => WukuroObjects.ResourceType;
+        }
+
+        private class Functions : IFunctions
+        {
+            public CoreTypes.IContextResourceImpl Context => WukuroContexts.ResourceType;
+            public ITypes.IGameModuleResourceImpl GameModule => GameModuleType.Instance;
+
+            public ValueTask<Owned<ITypes.IGameModuleResourceImpl>> GetGameModule(
+                Borrowed<CoreTypes.IContextResourceImpl> context)
+            {
+                // AddModule で追加されたモジュールを、スクリプトのコンテキストから取得する
+                var module = WukuroContexts.GetModule<GameModule>(context);
+                return new ValueTask<Owned<ITypes.IGameModuleResourceImpl>>(
+                    (Owned<ITypes.IGameModuleResourceImpl>)GameModuleType.Instance.Wrap(module));
+            }
+        }
+
+        private class GameModuleType : HostResourceTypeBase<GameModule>, ITypes.IGameModuleResourceImpl
+        {
+            public static new readonly GameModuleType Instance = new();
+            public IResourceType Type => this;
+
+            public ValueTask PlaySound(Borrowed<ITypes.IGameModuleResourceImpl> self, string name)
+            {
+                Unwrap(self).PlaySound(name);
+                return default;
+            }
+
+            public ValueTask MoveCamera(Borrowed<ITypes.IGameModuleResourceImpl> self,
+                Borrowed<CoreTypes.IObjectResourceImpl> target, float duration)
+            {
+                return Unwrap(self).MoveCamera(WukuroObjects.Get<Transform>(target), duration).AsValueTask();
+            }
+        }
+    }
+}
+```
+
+- `Types` と `Functions` には、インターフェースが参照するリソースの実装を返すプロパティが必要です。`wukuro:core` のリソースには、`WukuroObjects.ResourceType`、`WukuroContexts.ResourceType`、`WukuroTasks.ResourceType` を使います。
+- `WukuroObjects.Get<T>(handle)` は、スクリプトから渡されたオブジェクトを型 `T` として取り出します。`T` がコンポーネントの型で、渡されたオブジェクトが GameObject の場合は、その GameObject のコンポーネントを返します。型が合わない場合は例外を送出します。
+- `WukuroContexts.GetModule<T>(handle)` は、スクリプトを実行している `WukuroRunner` に追加されたモジュールを返します。
+
+### 待機せずに進む処理
+
+スクリプトに処理の完了を待たせず、後から完了を待てるようにするには、`wukuro:core` の `task` リソースを返します。`WukuroTasks.Wrap(uniTask)` で、UniTask を `task` に変換できます。
+
+```csharp
+[ComponentApi(@"[method]game-module.play-cutscene")]
+ValueTask<Owned<Wukuro.Core.ITypes.ITaskResourceImpl>> PlayCutscene(Borrowed<IGameModuleResourceImpl> self,
+    string name);
+```
+
+```csharp
+public ValueTask<Owned<CoreTypes.ITaskResourceImpl>> PlayCutscene(Borrowed<ITypes.IGameModuleResourceImpl> self,
+    string name)
+{
+    return new ValueTask<Owned<CoreTypes.ITaskResourceImpl>>(WukuroTasks.Wrap(Unwrap(self).PlayCutsceneAsync(name)));
+}
+```
+
+スクリプトは戻り値の `Task` の `wait()` で完了を待てます。
+
+## 3. インポートを登録する
+
+スクリプトを実行する前に、一度だけ `MyGameImports.Register()` を呼びます。スクリプトを実行するときは、モジュールを `AddModule` で追加します。
+
+```csharp
+MyGameImports.Register();
+
+var runner = new WukuroRunner();
+runner.AddModule(new GameModule(soundPlayer, cameraController));
+await runner.RunAsync(entry, variables);
+```
+
+スクリプトが import するインターフェースの実装が登録されていない場合や、スクリプトが取得するモジュールが追加されていない場合は、実行時にエラーになります。
+
+## 4. WIT を書き出す
+
+`Create` > `WaaS` > `WIT Export Settings` から設定アセットを作成し、C# の定義から WIT ファイルを書き出します（[WIT の書き出し](../component-model/binding-generator/wit-export.mdx)）。
+
+Rust のクレートに WIT を同梱するため、書き出し先にはクレートのディレクトリの中を指定します。クレートの WIT は `wukuro:core` の型を参照するため、`wukuro:core` も同じ場所に書き出します。
+
+- **Output Directory**: `rust/my-game/wit`
+- **Packages**: `wukuro:core`、`my-game:events`
+
+`rust/my-game/wit/wukuro-core/wukuro-core.wit` と `rust/my-game/wit/my-game-events/my-game-events.wit` が作られます。C# の定義を変更すると、コンパイルのたびに自動で書き出され、そのクレートに依存するスクリプトが再インポートされます。
+
+## 5. Rust のクレートを作る
+
+Unity プロジェクトのルートの `Cargo.toml` に、クレートをワークスペースのメンバーと依存として追加します（[ワークスペースの依存を利用する](./installation.mdx#ワークスペースの依存を利用する)）。
+
+```toml title="Cargo.toml"
+[workspace]
+members = ["Library/com.ruccho.waas/rust/crates/*", "rust/*"] # Used by WaaS
+resolver = "2" # Used by WaaS
+
+[workspace.dependencies]
+wukuro = "0.3.0"
+wukuro_dialog = { package = "wukuro-dialog", version = "0.3.0" }
+my-game = { path = "./rust/my-game" }
+```
+
+```toml title="rust/my-game/Cargo.toml"
+[package]
+name = "my-game"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+wit-bindgen = "0.63.0"
+wukuro = { workspace = true }
+```
+
+クレートでは、書き出した WIT から `wit_bindgen::generate!` でバインディングを生成します。`wukuro:core` の型は `wukuro` クレートが生成したものを使うよう、`with` で指定します。
+
+```rust title="rust/my-game/src/lib.rs"
+pub use bindings::my_game::events::{functions, types};
+
+mod bindings {
+    wit_bindgen::generate!({
+        inline: r#"
+            package my-game:events-inline;
+
+            world imports {
+                import my-game:events/functions;
+                import my-game:events/types;
+            }
+        "#,
+        path: ["wit/wukuro-core", "wit/my-game-events"],
+        world: "my-game:events-inline/imports",
+        with: {
+            "wukuro:core/types": ::wukuro::wukuro::core::types,
+            "my-game:events/types": generate,
+            "my-game:events/functions": generate,
+        },
+    });
+}
+```
+
+:::warning
+`with` で `wukuro:core/types` を指定しないと、`wukuro:core` の型（`Context`、`Object` など）がクレートの中で別の型として生成されます。その場合、`wukuro` クレートの型と組み合わせて使えません。
+:::
+
+:::info
+`wit_bindgen::generate!` は、WIT のパッケージの名前空間に対応するモジュール（ここでは `my_game`）を生成します。このモジュールを公開すると、スクリプトで `use my_game::*` としたときに、生成されたモジュールがほかのクレートの名前を隠すことがあります。上の例のように、生成されたコードを非公開のモジュールに置き、必要なものだけを公開することを推奨します。
+:::
+
+クレートには、スクリプトから使いやすくするための補助（定数、関数、型など）を追加できます。
+
+## 6. スクリプトから使う
+
+スクリプトのインポート設定の Dependencies に、**via Workspace** で `my-game` を追加します。
+
+```rust
+use wukuro::entry;
+use wukuro::types::{Context, Object};
+use my_game::functions::*;
+
+#[entry]
+fn arrival(cx: &Context, camera_target: &Object) {
+    let game = get_game_module(cx);
+    game.play_sound("door");
+    game.move_camera(camera_target, 1.5);
+}
+```
+
+## ダイアログを実装する
+
+`wukuro:dialog` の関数は Wukuro のパッケージが提供しますが、ダイアログの表示そのものはゲームの UI で行います。`IDialogModule` を実装し、モジュールとして追加します。
+
+```csharp
+public class MyDialogModule : IDialogModule
+{
+    public ValueTask OpenDialog(Option<string> provider) { /* ダイアログを開く */ }
+    public ValueTask CloseDialog() { /* ダイアログを閉じる */ }
+    public ValueTask ShowMessage(Wukuro.Dialog.ITypes.MessageInfo message) { /* メッセージを表示し、進められるまで待つ */ }
+    public ValueTask<int> ShowOptions(ReadOnlyMemory<Wukuro.Core.ITypes.Text> options) { /* 選択肢を表示し、選ばれた番号を返す */ }
+    public ValueTask FadeIn(float duration) { /* 画面をフェードする */ }
+    public ValueTask FadeOut(float duration) { /* フェードを戻す */ }
+}
+```
+
+```csharp
+DialogImports.Register();
+
+var runner = new WukuroRunner();
+runner.AddModule(new MyDialogModule());
+```
+
+`MessageInfo` の `Speaker` と `Face` は、スクリプトで指定した話者と表情の名前です。`Styles` は、ホストが自由に解釈できる表示のスタイルの名前の一覧です。テキスト（`Text`）は、`Plain` であればそのまま表示し、`Localized` であればテーブル名とキーからローカライズされた文字列を取得して表示します。
+
+## ゲームのデータから Rust のコードを生成する
+
+話者の一覧、シナリオの進行状態、アイテムの ID など、ゲームのデータに含まれる名前をスクリプトから参照する場合は、その名前を定数や型として Rust のコードに生成しておくと、名前の誤りをコンパイル時に検出できます。
+
+生成はエディタ拡張で行い、ゲーム固有のクレートのソースとして書き出します。書き出したファイルを `ExternalFileDependency.Register(path)`（`WaaS.Unity.Editor`）で登録すると、ファイルが変わったときに、そのファイルに依存するスクリプトが再インポートされます。
+
+```csharp
+var source = GenerateSpeakers(); // ゲームのデータから Rust のコードを作る
+if (!File.Exists(path) || File.ReadAllText(path) != source)
+{
+    File.WriteAllText(path, source);
+    AssetDatabase.Refresh();
+}
+ExternalFileDependency.Register(path);
+```
+
+オブジェクトの型の宣言から Rust の型を生成する機能は Wukuro に含まれています（[オブジェクトの型](./object-types.mdx)）。

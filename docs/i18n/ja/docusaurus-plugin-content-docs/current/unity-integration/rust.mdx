@@ -86,6 +86,11 @@ Define Symbol として `WAAS_DISABLE_RUST_IMPORTER` を指定すると、Rust I
 コンポーネント化については [Component Model ではじめる](../getting-started/component-model) を参照してください。
 :::
 
+**Componentize** を有効にすると、次の項目を設定できます。
+
+- **WIT Directory**: コンポーネントのワールドを定義する WIT のディレクトリを、Unity プロジェクトのルートからの相対パスで指定します。`wit_bindgen::generate!` でビルドしたモジュールなど、モジュールがすでにコンポーネントの型を持つ場合は空にします。この場合、WIT は改めて埋め込まれません。
+- **World**: WIT のワールドの名前を指定します。空の場合は自動で選択されます。
+
 ## ベストプラクティス
 
 ### バージョン管理

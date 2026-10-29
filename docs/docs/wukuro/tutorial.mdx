@@ -1,0 +1,79 @@
+---
+title: Tutorial
+sidebar_position: 2
+---
+
+# Tutorial
+
+In this tutorial, we create a simple script that only outputs logs and run it from a component in the scene. Complete [Installation](./installation.mdx) beforehand.
+
+## Creating a script
+
+Create `hello.rs` under `Assets` with the following content.
+
+```rust title="hello.rs"
+use wukuro::entry;
+use wukuro::functions::*;
+use wukuro::types::Context;
+
+#[entry]
+fn hello(cx: &Context, name: String, count: i32) {
+    for i in 0..count {
+        log(&format!("Hello, {name}! ({i})"));
+        delay(1.0, UpdateModeKind::Scaled);
+    }
+}
+```
+
+- The function `hello` with `#[entry]` becomes an entry point.
+- The first parameter `&Context` is the information of the running script. It is used to get the arguments, variables and modules.
+- `name` and `count` are arguments whose values are set in the inspector.
+- `log` and `delay` are functions provided by `wukuro:core`.
+
+In the import settings, add `wukuro` and `wit-bindgen` to Dependencies, enable **Componentize**, clear **WIT Directory** and apply. The WIT of a Wukuro script is embedded by `#[entry]`, so **WIT Directory** must be empty ([Componentization](../unity-integration/rust.mdx#componentization)). When the import succeeds, the script becomes a component asset (`ComponentAsset`).
+
+## Creating a component to run the script
+
+Create the following C# script.
+
+```csharp title="HelloEvent.cs"
+using Cysharp.Threading.Tasks;
+using UnityEngine;
+using Wukuro;
+
+public class HelloEvent : MonoBehaviour
+{
+    [SerializeField] private WukuroEntryReference entry = new();
+
+    // where the variables of the script are stored
+    private readonly MemoryVariables variables = new();
+
+    private void Start()
+    {
+        PlayAsync().Forget();
+    }
+
+    private async UniTask PlayAsync()
+    {
+        var runner = new WukuroRunner();
+        await runner.RunAsync(entry, variables);
+    }
+}
+```
+
+`WukuroEntryReference` holds a script, an entry point and the values of the arguments together.
+
+## Setting the arguments and running
+
+1. Add `HelloEvent` to a GameObject in the scene.
+2. Set `hello.rs` to **Script** of **Entry** in the inspector.
+3. Select `hello` from the list of entry points. The fields of `name` and `count` are shown according to the parameters of the entry point.
+4. Enter the values of `name` and `count`, and enter the play mode.
+
+It succeeds if a log is output to the console every second.
+
+## Next steps
+
+- See [Writing Scripts](./writing-scripts.mdx) for the features available in scripts.
+- See [Running Scripts](./running-scripts.mdx) for the details of running scripts from C#.
+- Showing dialogs and calling game-specific features from scripts require host implementations. See [Extending](./extending.mdx).

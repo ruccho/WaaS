@@ -14,7 +14,11 @@ jobs:
       run:
         working-directory: WaaS/wit2waas
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - name: Check versions
+        if: github.event_name == 'release'
+        run: python scripts/version.py check "${{ github.event.release.tag_name }}"
+        working-directory: .
       - uses: rust-lang/crates-io-auth-action@v1
         id: auth
       - name: Publish

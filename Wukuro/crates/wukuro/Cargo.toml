@@ -1,0 +1,13 @@
+[package]
+name = "wukuro"
+description = "Guest library of Wukuro, an event scripting framework for Unity based on WaaS"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+readme = "../../README.md"
+
+[dependencies]
+wit-bindgen = "0.63.0"
+wukuro-macro = { path = "../wukuro-macro", version = "0.3.0" }

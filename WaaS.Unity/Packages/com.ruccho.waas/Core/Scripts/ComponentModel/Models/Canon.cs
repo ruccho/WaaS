@@ -121,21 +121,32 @@ namespace WaaS.ComponentModel.Models
         public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstantiationContext context)
         {
             var resourceType = context.Resolve(ResourceType) as IResourceType ?? throw new InvalidModuleException();
-            return new NewFunction(resourceType);
+            var instance = context.Instance ?? throw new InvalidOperationException();
+            return new NewFunction(resourceType, HandleTable.Of(instance));
         }
 
-        private class NewFunction : ExternalFunctionDelegate, ICoreSortedExportable<IInvocableFunction>
+        private class NewFunction : ExternalFunction, ICoreSortedExportable<IInvocableFunction>
         {
-            public NewFunction(IResourceType type) : base(static (state, parameters, results) =>
+            private static readonly WaaS.Models.FunctionType NewFunctionType =
+                new(new[] { ValueType.I32 }, new[] { ValueType.I32 });
+
+            private readonly HandleTable handles;
+            private readonly IResourceType type;
+
+            public NewFunction(IResourceType type, HandleTable handles)
             {
-                var rep = parameters[0].ExpectValueI32();
-                var type = state as IResourceType ?? throw new InvalidOperationException();
-                results[0] = new StackValueItem(type.New(rep));
-            }, type, new WaaS.Models.FunctionType(new[] { ValueType.I32 }, new[] { ValueType.I32 }))
-            {
+                this.type = type;
+                this.handles = handles;
             }
 
+            public override WaaS.Models.FunctionType Type => NewFunctionType;
             public IInvocableFunction CoreExternal => this;
+
+            public override void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
+                Span<StackValueItem> results)
+            {
+                results[0] = new StackValueItem(handles.AddOwn(type, parameters[0].ExpectValueI32()));
+            }
         }
     }
 
@@ -147,7 +158,8 @@ namespace WaaS.ComponentModel.Models
         public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstantiationContext context)
         {
             var resourceType = context.Resolve(ResourceType) as IResourceType ?? throw new InvalidModuleException();
-            return new DropFunction(resourceType);
+            var instance = context.Instance ?? throw new InvalidOperationException();
+            return new DropFunction(resourceType, HandleTable.Of(instance));
         }
 
         private class DropFunction : ExternalFunction, ICoreSortedExportable<IInvocableFunction>
@@ -155,11 +167,13 @@ namespace WaaS.ComponentModel.Models
             private static readonly WaaS.Models.FunctionType DropFunctionType =
                 new(new[] { ValueType.I32 }, Array.Empty<ValueType>());
 
+            private readonly HandleTable handles;
             private readonly IResourceType type;
 
-            public DropFunction(IResourceType type)
+            public DropFunction(IResourceType type, HandleTable handles)
             {
                 this.type = type;
+                this.handles = handles;
             }
 
             public override WaaS.Models.FunctionType Type => DropFunctionType;
@@ -168,7 +182,10 @@ namespace WaaS.ComponentModel.Models
             public override void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
                 Span<StackValueItem> results)
             {
-                type.Drop(parameters[0].ExpectValueI32());
+                var handle = handles.Remove(parameters[0].ExpectValueI32(), type);
+
+                // dropping a borrowed handle only ends the borrow
+                if (handle.IsOwn) type.Drop(handle.Rep);
             }
         }
     }
@@ -181,7 +198,8 @@ namespace WaaS.ComponentModel.Models
         public ICoreSortedExportable<IInvocableFunction> ResolveFirstTime(IInstantiationContext context)
         {
             var resourceType = context.Resolve(ResourceType) as IResourceType ?? throw new InvalidModuleException();
-            return new RepFunction(resourceType);
+            var instance = context.Instance ?? throw new InvalidOperationException();
+            return new RepFunction(resourceType, HandleTable.Of(instance));
         }
 
         private class RepFunction : ExternalFunction, ICoreSortedExportable<IInvocableFunction>
@@ -189,11 +207,13 @@ namespace WaaS.ComponentModel.Models
             private static readonly WaaS.Models.FunctionType DropFunctionType =
                 new(new[] { ValueType.I32 }, new[] { ValueType.I32 });
 
+            private readonly HandleTable handles;
             private readonly IResourceType type;
 
-            public RepFunction(IResourceType type)
+            public RepFunction(IResourceType type, HandleTable handles)
             {
                 this.type = type;
+                this.handles = handles;
             }
 
             public override WaaS.Models.FunctionType Type => DropFunctionType;
@@ -202,7 +222,7 @@ namespace WaaS.ComponentModel.Models
             public override void Invoke(ExecutionContext context, ReadOnlySpan<StackValueItem> parameters,
                 Span<StackValueItem> results)
             {
-                results[0] = new StackValueItem(type.Rep(parameters[0].ExpectValueI32()));
+                results[0] = new StackValueItem(handles.Get(parameters[0].ExpectValueI32(), type).Rep);
             }
         }
     }

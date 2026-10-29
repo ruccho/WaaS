@@ -7,7 +7,7 @@ using WaaS.Models;
 
 namespace WaaS.Unity.Editor
 {
-    [ScriptedImporter(1, "wasm")]
+    [ScriptedImporter(2, "wasm")]
     public class WasmImporter : ScriptedImporter
     {
         public override void OnImportAsset(AssetImportContext ctx)
@@ -30,6 +30,7 @@ namespace WaaS.Unity.Editor
                 var component = ScriptableObject.CreateInstance<ComponentAsset>();
 
                 component.SetData(data);
+                component.SetWit(ComponentWitDecoder.Decode(ctx, data));
 
                 ctx.AddObjectToAsset("component", component);
 

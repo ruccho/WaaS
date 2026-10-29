@@ -128,7 +128,7 @@ namespace WaaS.ComponentModel.Runtime
             PushListDataWithoutMoving(ptr, checked((uint)length));
 
             return SerializedLoweringPusher.Get(
-                    Context!.Options.MemoryToRealloc!.AsMemory().Slice(checked((int)ptr), checked((int)size)))
+                    Context!.Options.MemoryToRealloc!, checked((int)ptr), checked((int)size))
                 .Init(Context, ElementTypeSelector.FromList(listType, length))
                 .Wrap();
         }
@@ -154,7 +154,10 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType() is not IOwnedType owned) throw new InvalidOperationException();
             if (owned.Type != handle.Type) throw new InvalidOperationException();
-            PushU32Core(handle.GetValue());
+
+            // the ownership moves into the handle table of the component instance
+            var rep = handle.GetValue();
+            PushU32Core(HandleTable.Of(Context!.Instance).AddOwn(owned.Type, rep));
         }
 
         public void PushBorrowed(Borrowed handle)
@@ -162,9 +165,11 @@ namespace WaaS.ComponentModel.Runtime
             if (GetNextType() is not IBorrowedType borrowed) throw new InvalidOperationException();
             if (borrowed.Type != handle.Type) throw new InvalidOperationException();
             if (handle.Type.Instance == Context!.Instance)
-                PushU32Core(handle.Type.Rep(handle.GetValue()));
-            else
+                // a component receives the rep of the resources it defines
                 PushU32Core(handle.GetValue());
+            else
+                // the component drops the handle when the borrow ends
+                PushU32Core(HandleTable.Of(Context.Instance).AddBorrow(borrowed.Type, handle.GetValue()));
         }
 
         public void Push(ReadOnlySpan<char> value)
@@ -246,7 +251,7 @@ namespace WaaS.ComponentModel.Runtime
                 var ptr = context.Realloc(0, 0, checked((uint)(1 << type!.AlignmentRank)),
                     type.ElementSize);
                 result = SerializedLoweringPusher.Get(
-                    context.Options.MemoryToRealloc!.AsMemory().Slice(checked((int)ptr), type.ElementSize));
+                    context.Options.MemoryToRealloc!, checked((int)ptr), type.ElementSize);
                 values = new StackValueItems(new StackValueItem(ptr));
             }
 
@@ -258,10 +263,11 @@ namespace WaaS.ComponentModel.Runtime
             return result;
         }
 
-        public static LoweringPusherBase GetRootForSerializedResult(ICanonContext context, Memory<byte> dest)
+        public static LoweringPusherBase GetRootForSerializedResult(ICanonContext context, uint ptr)
         {
             var resultType = context.ComponentFunction.Type.Result!.Despecialize();
-            var pusher = SerializedLoweringPusher.Get(dest);
+            var pusher = SerializedLoweringPusher.Get(context.Options.MemoryToRealloc!, checked((int)ptr),
+                resultType.ElementSize);
 
             var selector = ElementTypeSelector.FromSingle(resultType);
             pusher.Init(context, selector);

@@ -1,0 +1,41 @@
+---
+title: Wukuro
+sidebar_position: 6
+---
+
+import DocCardList from '@theme/DocCardList';
+
+# Wukuro
+
+Wukuro is an event scripting framework for Unity based on WaaS. In-game events such as conversations, cutscenes and branches are written in Rust and run on Unity as WebAssembly components.
+
+:::warning
+Wukuro is **very experimental** and breaking changes can be made.
+:::
+
+## Features
+
+- **Write events in Rust**: events can be written with the features of the language as they are, such as conditions, loops and functions for common processes.
+- **Multiple entry points in a file**: a function with `#[entry]` becomes an entry point. Constants and functions in the same file can be shared by multiple events.
+- **Arguments set in the inspector**: objects in the scene and assets can be passed to the arguments of entry points from the Unity inspector. The types of the objects can also be constrained.
+- **Designed to be extended for each game**: Wukuro itself provides only basic features such as waiting, variables, logging and dialogs. Game-specific features such as camera, sound and items are added by the game as C# interfaces.
+
+## Components
+
+Wukuro consists of a Unity package and Rust crates.
+
+| Name | Kind | Contents |
+| --- | --- | --- |
+| `com.ruccho.wukuro` | Unity package | Running scripts, references to entry points, the inspector, and the host implementations of `wukuro:core` and `wukuro:dialog` |
+| `wukuro` | Rust crate | Bindings of `wukuro:core`, `#[entry]`, and helpers for texts and object types |
+| `wukuro-macro` | Rust crate | Procedural macros used by `wukuro` |
+| `wukuro-dialog` | Rust crate | Bindings of `wukuro:dialog` and helpers to show messages |
+
+The functions and types between the host and scripts are defined as WIT packages of the [Component Model](../component-model/index.mdx).
+
+- `wukuro:core`: basic features such as the context, arguments, variables, waiting and texts
+- `wukuro:dialog`: showing dialogs (messages, options and fades)
+
+Game-specific features are added as your own WIT packages in the same way ([Extending](./extending.mdx)).
+
+<DocCardList />

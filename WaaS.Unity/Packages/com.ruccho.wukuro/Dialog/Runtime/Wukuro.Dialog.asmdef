@@ -1,0 +1,18 @@
+{
+    "name": "Wukuro.Dialog",
+    "rootNamespace": "",
+    "references": [
+        "GUID:0c2fe5e7889c8ec47bedeb372de22442",
+        "GUID:f6d891364241fc34c944c7dd90297aac",
+        "GUID:93771d79ccdcc1a409850992fac32615"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

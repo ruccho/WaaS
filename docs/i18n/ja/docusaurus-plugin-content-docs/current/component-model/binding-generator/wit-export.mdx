@@ -1,0 +1,73 @@
+---
+title: WIT の書き出し
+sidebar_position: 3
+---
+
+# WIT の書き出し
+
+[属性の付与](./attributes.mdx) で定義した C# のインターフェースから、WIT ファイルを書き出すことができます。ホストが提供する関数や型を C# だけで定義し、ゲスト側（Rust など）のバインディングの生成にはその WIT を用いる、という流れで開発できます。
+
+## WIT が生成される仕組み
+
+`[ComponentInterface]` に `名前空間:パッケージ/インターフェース` の形式の名前を指定すると、Source Generator はそのインターフェースの WIT の定義を生成し、`[ComponentWitDefinition]` 属性としてインターフェースに付与します。
+
+```csharp
+[ComponentInterface(@"my-game:events/functions")]
+public partial interface IFunctions
+{
+    [ComponentApi(@"play-sound")]
+    ValueTask PlaySound(string @name);
+}
+```
+
+同じパッケージに属するインターフェースの定義はまとめられ、1 つのパッケージの WIT になります。
+
+```wit
+package my-game:events;
+
+interface functions {
+    play-sound: func(name: string);
+}
+```
+
+ほかのインターフェースやパッケージの型を参照している場合は、`use` が自動で出力されます。
+
+:::info
+WIT を C# から生成するためのコードは `WaaS.ComponentModel.Binding.WitPackageBuilder` にあります。Unity を用いない場合は、`WitPackageBuilder.Build` に型の一覧を渡して WIT を得ることができます。
+:::
+
+## Unity での書き出し
+
+Unity では、**WIT Export Settings** アセットで指定したパッケージを WIT ファイルとして書き出します。
+
+1. `Create` > `WaaS` > `WIT Export Settings` から設定アセットを作成します。
+2. 次の項目を設定します。
+   - **Output Directory**: 書き出し先のディレクトリを、Unity プロジェクトのルートからの相対パスで指定します。
+   - **Packages**: 書き出すパッケージの名前（`my-game:events` など）を指定します。
+
+パッケージは `<Output Directory>/<名前空間>-<パッケージ>/<名前空間>-<パッケージ>.wit` に書き出されます。上の例で Output Directory を `wit` とすると、`wit/my-game-events/my-game-events.wit` が作られます。
+
+書き出しはスクリプトのコンパイルのたびに自動で行われ、内容が変わった場合のみファイルを書き換えます。手動で書き出す場合は `Assets` > `Export WIT for WaaS` を選択します。
+
+設定アセットは複数作成できます。同じパッケージを複数の場所に書き出すこともできるため、WIT を同梱するクレートが複数ある場合などに利用できます。
+
+### Rust Importer との連携
+
+書き出した WIT ファイルは、[Rust Importer](../../unity-integration/rust.mdx) の外部ファイルの依存として登録されます。WIT が変わると、その WIT を読む Rust のソースファイルが自動で再インポートされます。
+
+Rust 側では、書き出した WIT を `wit_bindgen::generate!` の `path` に指定してバインディングを生成します。
+
+```rust
+wit_bindgen::generate!({
+    inline: r#"
+        package my-game:events-inline;
+
+        world imports {
+            import my-game:events/functions;
+        }
+    "#,
+    path: ["../wit/my-game-events"],
+    world: "my-game:events-inline/imports",
+    generate_all,
+});
+```

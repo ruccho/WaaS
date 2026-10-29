@@ -1,0 +1,76 @@
+---
+title: Object Types
+sidebar_position: 6
+---
+
+# Object Types
+
+Any `UnityEngine.Object` can be passed to a parameter `&Object` of an entry point. When the type of the parameter is `&ObjectOf<T>`, the inspector accepts only objects of type `T`. The types are defined starting from C#.
+
+## Declaring types
+
+Declare the types received as arguments of scripts with the assembly attribute `WukuroObjectType`.
+
+```csharp
+using UnityEngine;
+using UnityEngine.Playables;
+using Wukuro;
+
+[assembly: WukuroObjectType(typeof(Transform))]
+[assembly: WukuroObjectType(typeof(PlayableDirector))]
+[assembly: WukuroObjectType(typeof(MyGame.Door))]
+```
+
+## Generating Rust types
+
+For each declared type, generate a Rust type implementing `wukuro::ObjectType` and include it in the game-specific crate. Use `WukuroObjectTypeExporter` (`Wukuro.Editor`) to generate it.
+
+```csharp
+var types = WukuroObjectTypeExporter.CollectTypes();
+var source = WukuroObjectTypeExporter.GenerateRust(types, "// generated from WukuroObjectType\n");
+File.WriteAllText("rust/my-game/src/object_types.rs", source);
+```
+
+The generated code looks like the following. `TYPE_NAME` is the name of the C# type (`Namespace.TypeName, AssemblyName`).
+
+```rust
+/// `UnityEngine.Transform`
+pub struct Transform;
+
+impl ::wukuro::ObjectType for Transform {
+    const TYPE_NAME: &'static str = "UnityEngine.Transform, UnityEngine.CoreModule";
+}
+```
+
+Publish the generated file as a module of the crate.
+
+```rust title="rust/my-game/src/lib.rs"
+pub mod object_types;
+```
+
+To regenerate it automatically when the C# declarations change, prepare an editor extension that generates it after compilation, and register the generated file with `ExternalFileDependency.Register` ([Generating Rust code from the data of the game](./extending.mdx#generating-rust-code-from-the-data-of-the-game)).
+
+## Using typed parameters
+
+```rust
+use wukuro::{entry, ObjectOf};
+use wukuro::types::Context;
+use my_game::object_types::{Door, Transform};
+
+#[entry]
+fn open_door(cx: &Context, door: &ObjectOf<Door>, camera_target: &ObjectOf<Transform>) {
+    let game = my_game::functions::get_game_module(cx);
+    game.move_camera(camera_target, 1.0);
+    // ...
+}
+```
+
+`ObjectOf<T>` can be converted (Deref) to `Object`, so it can be passed as it is to functions taking `&Object`.
+
+In the inspector, the field of the parameter becomes an ObjectField of the type, and an error is shown when a value of a different type is set. A GameObject is accepted only when it has a component of the type.
+
+## How it works
+
+`#[entry]` records the type names of the `ObjectOf<T>` parameters in the custom section `wukuro-entry-types` of the WebAssembly binary. The inspector reads the records with `WukuroEntryPoints.GetObjectTypes(script)` and checks the types. The type of the parameter in WIT remains `borrow<object>`, and the type constraints are used only to check the input in the inspector.
+
+At runtime, the types are checked when host functions take out the objects with `WukuroObjects.Get<T>`.

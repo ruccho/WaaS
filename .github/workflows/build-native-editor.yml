@@ -1,0 +1,68 @@
+name: Build Native Editor Library
+
+# Builds waas-unity-native-editor for each platform and commits the libraries to
+# WaaS.Unity/Packages/com.ruccho.waas/Editor/Plugins on the branch the workflow runs on.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: build-native-editor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            file: waas_unity_native_editor.dll
+          # an older Ubuntu to keep the required glibc version low
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+            file: libwaas_unity_native_editor.so
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            file: libwaas_unity_native_editor.dylib
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            file: libwaas_unity_native_editor.dylib
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: WaaS/waas-unity-native-editor
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the Rust target
+        run: rustup target add ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.target }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.target }}
+          path: WaaS/waas-unity-native-editor/target/${{ matrix.target }}/release/${{ matrix.file }}
+          if-no-files-found: error
+
+  commit:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          path: WaaS.Unity/Packages/com.ruccho.waas/Editor/Plugins
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add WaaS.Unity/Packages/com.ruccho.waas/Editor/Plugins
+          if git diff --cached --quiet; then
+            echo "The libraries are up to date."
+            exit 0
+          fi
+          git commit -m "Update the native editor library (${GITHUB_SHA::7})"
+          git push

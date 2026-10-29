@@ -357,7 +357,7 @@ namespace WaaS.ComponentModel.Models
             Cases = cases;
         }
 
-        private byte MaxCaseAlignmentRank
+        public byte MaxCaseAlignmentRank
         {
             get
             {
@@ -381,25 +381,15 @@ namespace WaaS.ComponentModel.Models
             return this;
         }
 
-        public byte DiscriminantTypeSizeRank
+        /// <summary>
+        ///     log2 of the size of the discriminant: 0 (u8), 1 (u16) or 2 (u32).
+        /// </summary>
+        public byte DiscriminantTypeSizeRank => Cases.Length switch
         {
-            get
-            {
-                var length = Cases.Length;
-                var n = length >> 8;
-                var d = 0;
-                for (; n > 0; n >>= 1) d++;
-                if ((length & ((1 << 8) - 1)) != 0) d++; // ceil
-
-                return (d >> 3) switch
-                {
-                    0 or 1 => 1,
-                    2 => 2,
-                    3 => 4,
-                    _ => throw new InvalidOperationException()
-                };
-            }
-        }
+            <= 1 << 8 => 0,
+            <= 1 << 16 => 1,
+            _ => 2
+        };
 
         public byte AlignmentRank => Math.Max(DiscriminantTypeSizeRank, MaxCaseAlignmentRank);
 
@@ -803,13 +793,16 @@ namespace WaaS.ComponentModel.Models
 
         public bool ValidateEquals(IType other)
         {
-            return other is IResultType resultType &&
-                   ((Type == null && resultType.Type == null) ||
-                    (Type != null && resultType.Type != null &&
-                     Type.ValidateEquals(resultType.Type) &&
-                     ((ErrorType == null && resultType.ErrorType == null) ||
-                      (ErrorType != null && resultType.ErrorType != null &&
-                       ErrorType.ValidateEquals(resultType.ErrorType)))));
+            if (other is not IResultType resultType) return false;
+
+            static bool ValidateEqualsOptional(IValueType? lhs, IValueType? rhs)
+            {
+                if (lhs == null || rhs == null) return lhs == null && rhs == null;
+                return lhs.ValidateEquals(rhs);
+            }
+
+            return ValidateEqualsOptional(Type, resultType.Type) &&
+                   ValidateEqualsOptional(ErrorType, resultType.ErrorType);
         }
     }
 
@@ -1015,7 +1008,6 @@ namespace WaaS.ComponentModel.Models
         {
             [ThreadStatic] private static ExecutionContext? contextForDestructor;
             private readonly IInvocableFunction? destructor;
-            private readonly ResourceTable<uint> table = new();
 
             public ResolvedResourceType(IInvocableFunction? destructor, IInstance instance)
             {
@@ -1023,17 +1015,8 @@ namespace WaaS.ComponentModel.Models
                 Instance = instance;
             }
 
-            public uint New(uint rep)
+            public void Drop(uint rep)
             {
-                var index = unchecked((uint)table.Add(rep));
-                // Console.WriteLine($"new resource {index}: {rep}");
-                return index;
-            }
-
-            public void Drop(uint index)
-            {
-                var rep = table.RemoveAt(unchecked((int)index));
-
                 if (destructor != null)
                 {
                     var repValue = new StackValueItem(rep);
@@ -1041,15 +1024,6 @@ namespace WaaS.ComponentModel.Models
                     contextForDestructor.InterruptFrame(destructor, MemoryMarshal.CreateSpan(ref repValue, 1),
                         Span<StackValueItem>.Empty);
                 }
-
-                // Console.WriteLine($"drop resource {index}: {rep}");
-            }
-
-            public uint Rep(uint index)
-            {
-                var rep = table.Get(unchecked((int)index));
-                // Console.WriteLine($"rep resource {index}: {rep}");
-                return rep;
             }
 
             public IInstance? Instance { get; }
@@ -1428,6 +1402,33 @@ namespace WaaS.ComponentModel.Models
             instance?.TryGetExport(name, out result);
             return desc.ValidateArgument(context, result);
         }
+
+        /// <summary>
+        ///     Describes why <paramref name="argument" /> does not satisfy <paramref name="desc" />.
+        ///     This is intended to be called only after the validation failed, to build error messages.
+        /// </summary>
+        public static void DescribeMismatch(this IExportableDescriptor<ISortedExportable> desc,
+            IInstantiationContext context, ISortedExportable? argument, string path, List<string> output)
+        {
+            if (desc is ExportableDescriptorInstance instanceDescriptor)
+            {
+                instanceDescriptor.DescribeMismatch(context, argument, path, output);
+                return;
+            }
+
+            var kind = desc switch
+            {
+                ExportableDescriptorCoreModuleType => "core module",
+                ExportableDescriptorFunction => "function",
+                ExportableDescriptorType => "type",
+                ExportableDescriptorComponent => "component",
+                _ => desc.GetType().Name
+            };
+
+            output.Add(argument == null
+                ? $"{path}: {kind} is missing"
+                : $"{path}: {kind} does not match (provided: {argument.GetType().Name})");
+        }
     }
 
     internal class ExportableDescriptorFormatter : IFormatter<IExportableDescriptor<ISortedExportable>>
@@ -1541,6 +1542,37 @@ namespace WaaS.ComponentModel.Models
                     return false;
 
             return true;
+        }
+
+        internal void DescribeMismatch(IInstantiationContext context, ISortedExportable? argument, string path,
+            List<string> output)
+        {
+            var type = context.Resolve(Type);
+            if (type is not IInstanceType instanceType)
+            {
+                output.Add($"{path}: the expected type is not an instance type");
+                return;
+            }
+
+            if (argument is null)
+            {
+                output.Add($"{path}: instance is missing");
+                return;
+            }
+
+            if (argument is not IInstance instance)
+            {
+                output.Add($"{path}: instance does not match (provided: {argument.GetType().Name})");
+                return;
+            }
+
+            context = new InstantiationContext(null, context, null, instance);
+            foreach (var (key, desc) in instanceType.Exports)
+            {
+                if (desc.ValidateExported(context, instance, key)) continue;
+                instance.TryGetExport(key, out ISortedExportable? exported);
+                desc.DescribeMismatch(context, exported, $"{path}/{key}", output);
+            }
         }
     }
 

@@ -71,7 +71,8 @@ namespace WaaS.ComponentModel.Runtime
 
         uint ICanonContext.Realloc(uint originalPtr, uint originalSize, uint alignment, uint newSize)
         {
-            throw new NotImplementedException();
+            // lifting the arguments never allocates in the component memory
+            throw new InvalidOperationException();
         }
 
         public CanonOptionStringEncodingKind StringEncoding { get; }
@@ -117,32 +118,55 @@ namespace WaaS.ComponentModel.Runtime
                 }
             }
 
-            Memory<byte>? serializedResultMemory = null;
+            uint? serializedResultPtr = null;
             if (hasSerializedResult)
             {
                 var ptr = inputValues[^1].ExpectValueI32();
                 if (Utils.ElementSizeAlignTo(ptr, functionType.Result!.Despecialize().AlignmentRank) != ptr)
                     throw new TrapException("Result pointer is not aligned");
-                serializedResultMemory = MemoryToRealloc!.AsMemory()[(int)ptr..];
+                serializedResultPtr = ptr;
             }
 
             var binder = ComponentFunction.GetBinder(context);
             for (var i = 0; i < functionType.Parameters.Length; i++)
                 ValueTransfer.TransferNext(ref lifter, binder.ArgumentPusher);
-            return new StackFrame(Frame.Get(this, binder.CreateFrame(), binder,
-                serializedResultMemory));
+            return new StackFrame(Frame.Get(context, this, binder.CreateFrame(), binder,
+                serializedResultPtr));
         }
 
-        private class Frame : IStackFrameCore
+        private class Frame : IStackFrameCore, ICanonContext
         {
             [ThreadStatic] private static Stack<Frame>? pool;
             private FunctionBinder binder;
+            private ExecutionContext? context;
 
             private LoweredFunction? function;
             private StackFrame internalFrame;
-            private Memory<byte>? serializedResultMemory;
+            private uint? serializedResultPtr;
 
             public ushort Version { get; private set; }
+
+            public IInstance Instance => function?.Instance ?? throw new InvalidOperationException();
+            public ICanonOptions Options => function ?? throw new InvalidOperationException();
+            public IFunction ComponentFunction => function?.ComponentFunction ?? throw new InvalidOperationException();
+
+            // used to lower the results (e.g. strings and lists) into the component memory
+            public uint Realloc(uint originalPtr, uint originalSize, uint alignment, uint newSize)
+            {
+                var reallocFunction = function!.ReallocFunction ??
+                                      throw new TrapException("The realloc option is not specified.");
+
+                Span<StackValueItem> args = stackalloc StackValueItem[5];
+                args[0] = new StackValueItem(originalPtr);
+                args[1] = new StackValueItem(originalSize);
+                args[2] = new StackValueItem(alignment);
+                args[3] = new StackValueItem(newSize);
+                context!.InterruptFrame(reallocFunction, args[..4], args[4..]);
+                var ptr = args[4].ExpectValueI32();
+                if (alignment != 0 && (ptr & (alignment - 1)) != 0)
+                    throw new TrapException("Realloc returned unaligned pointer");
+                return ptr;
+            }
 
             public int GetResultLength(ushort version)
             {
@@ -160,6 +184,8 @@ namespace WaaS.ComponentModel.Runtime
 
                 binder.Dispose();
                 binder = default;
+                context = null;
+                function = null;
 
                 if (++Version == ushort.MaxValue) return;
                 pool ??= new Stack<Frame>();
@@ -178,13 +204,13 @@ namespace WaaS.ComponentModel.Runtime
                 if (function!.hasSerializedResult)
                 {
                     using var pusher = LoweringPusherBase
-                        .GetRootForSerializedResult(function, serializedResultMemory!.Value).Wrap();
+                        .GetRootForSerializedResult(this, serializedResultPtr!.Value).Wrap();
                     binder.TakeResults(pusher);
                 }
                 else
                 {
                     using var pusher = LoweringPusherBase
-                        .GetRoot(function ?? throw new InvalidOperationException(), false, 1, out var items).Wrap();
+                        .GetRoot(this, false, 1, out var items).Wrap();
                     binder.TakeResults(pusher);
                     items.UnsafeItems.CopyTo(dest);
                 }
@@ -202,21 +228,22 @@ namespace WaaS.ComponentModel.Runtime
                 internalFrame.PushResults(source);
             }
 
-            private void Reset(LoweredFunction function, StackFrame internalFrame, FunctionBinder binder,
-                Memory<byte>? serializedResultMemory)
+            private void Reset(ExecutionContext context, LoweredFunction function, StackFrame internalFrame,
+                FunctionBinder binder, uint? serializedResultPtr)
             {
+                this.context = context;
                 this.function = function;
                 this.internalFrame = internalFrame;
                 this.binder = binder;
-                this.serializedResultMemory = serializedResultMemory;
+                this.serializedResultPtr = serializedResultPtr;
             }
 
-            public static Frame Get(LoweredFunction function, StackFrame internalFrame, FunctionBinder binder,
-                Memory<byte>? serializedResultMemory)
+            public static Frame Get(ExecutionContext context, LoweredFunction function, StackFrame internalFrame,
+                FunctionBinder binder, uint? serializedResultPtr)
             {
                 pool ??= new Stack<Frame>();
                 if (!pool.TryPop(out var pooled)) pooled = new Frame();
-                pooled.Reset(function, internalFrame, binder, serializedResultMemory);
+                pooled.Reset(context, function, internalFrame, binder, serializedResultPtr);
                 return pooled;
             }
 

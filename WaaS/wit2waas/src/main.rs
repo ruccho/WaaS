@@ -6,7 +6,7 @@ use crate::utils::*;
 use anyhow::Result;
 use std::fs;
 use clap::Parser;
-use wit_parser::{Function, FunctionKind, PackageId, Resolve, Type, TypeDefKind, TypeOwner, WorldItem};
+use wit_parser::{Function, FunctionKind, PackageId, Param, Resolve, Type, TypeDefKind, TypeOwner, WorldItem};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -37,13 +37,9 @@ fn process_func(resolve: &Resolve, function: &Function, source: &mut Source) -> 
 
     let mut line: String = "".to_string();
     // return type
-    let results = &function.results;
-    match results.len() {
-        0 => line.push_str("global::System.Threading.Tasks.ValueTask"),
-        1 => line.push_str(&format!("global::System.Threading.Tasks.ValueTask<{}>", &results.iter_types().next().unwrap().to_waas(resolve)?)),
-        _ => {
-            return Err(anyhow::anyhow!("multiple return values not supported"))
-        }
+    match &function.result {
+        None => line.push_str("global::System.Threading.Tasks.ValueTask"),
+        Some(result) => line.push_str(&format!("global::System.Threading.Tasks.ValueTask<{}>", result.to_waas(resolve)?)),
     }
 
     // function name
@@ -73,6 +69,7 @@ fn process_func(resolve: &Resolve, function: &Function, source: &mut Source) -> 
                 name
             }
         }
+        kind => return Err(anyhow::anyhow!("{name}: {kind:?} functions are not supported")),
     };
 
     line.push(' ');
@@ -81,7 +78,7 @@ fn process_func(resolve: &Resolve, function: &Function, source: &mut Source) -> 
 
     // params
     let mut first = true;
-    for (name, ty) in &function.params {
+    for Param { name, ty, .. } in &function.params {
         if first {
             first = false;
         } else {
@@ -126,7 +123,7 @@ fn process_dir(resolve: &Resolve, package_id: PackageId, out_dir: &str) -> Resul
             {
                 for (_key, item) in &world.exports {
                     match item {
-                        WorldItem::Interface { id, stability: _stability } => {
+                        WorldItem::Interface { id, .. } => {
                             let interface = resolve.interfaces.get(*id).unwrap();
                             let name = &interface.name.clone().unwrap();
                             source.push_line(&format!("{0} {1} {{ get; }}", &interface.to_waas(resolve)?, to_upper_camel(name)));
@@ -138,7 +135,7 @@ fn process_dir(resolve: &Resolve, package_id: PackageId, out_dir: &str) -> Resul
                             process_func(resolve, function, &mut source)?;
                             source.push_line_empty();
                         }
-                        WorldItem::Type(_) => { /* TODO */ }
+                        WorldItem::Type { .. } => { /* TODO */ }
                     }
                 }
             }
@@ -232,6 +229,9 @@ fn process_dir(resolve: &Resolve, package_id: PackageId, out_dir: &str) -> Resul
                                             if type_id != method_type {
                                                 continue;
                                             }
+                                        }
+                                        kind => {
+                                            return Err(anyhow::anyhow!("{}: {kind:?} functions are not supported", function.name));
                                         }
                                     }
                                     process_func(resolve, function, &mut source)?;

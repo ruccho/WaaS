@@ -1,0 +1,26 @@
+{
+  "name": "com.ruccho.wukuro",
+  "version": "0.3.0",
+  "displayName": "Wukuro",
+  "description": "Event scripting framework for Unity based on WaaS. Scripts are written in Rust and run as WebAssembly components.",
+  "unity": "6000.0",
+  "dependencies": {
+    "com.ruccho.waas": "0.3.0"
+  },
+  "keywords": [
+    "scripting",
+    "event",
+    "webassembly"
+  ],
+  "author": {
+    "name": "ruccho",
+    "url": "https://ruccho.com"
+  },
+  "samples": [
+    {
+      "displayName": "IMGUI Dialog",
+      "description": "A minimal dialog implemented with IMGUI and a conversation script.",
+      "path": "Samples~/ImGuiDialog"
+    }
+  ]
+}

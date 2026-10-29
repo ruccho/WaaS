@@ -1,0 +1,175 @@
+---
+title: WIT Reference
+sidebar_position: 7
+---
+
+# WIT Reference
+
+The functions and types between the host of Wukuro and scripts are defined as the following WIT packages. The WIT is generated from the C# definitions in `Definitions/` of the Unity package and included in `wit/` of each crate.
+
+## wukuro:core
+
+Basic features used by all scripts. The implementation is included in the Wukuro package and registered automatically.
+
+### functions
+
+| Function | Description |
+| --- | --- |
+| `log` | Outputs a log to the Unity console. |
+| `delay` | Waits for the specified seconds. |
+| `delay-frame` | Waits for the specified number of frames. |
+| `schedule` | Runs `action` after `delay` seconds without waiting for it. The completion can be waited for with the returned `task`. |
+
+### types
+
+| Type | Description |
+| --- | --- |
+| `context` | The information of the running script. It gets the arguments and variables. Host functions get modules from the `context`. |
+| `variable` | A variable of the script. Where the value is stored is decided by the C# side that runs the script. |
+| `action` | A C# process that can be called from scripts. |
+| `task` | A process started by the host. Dropping it does not stop the process. |
+| `object` | A Unity object (`UnityEngine.Object`). |
+| `argument` | A value of an argument or a variable. |
+| `text` | A text shown to the player: a string written directly in the script (`plain`), or a reference to a localized text (`localized`). |
+| `text-id` | A reference to a localized text, consisting of a table name and a key. How to resolve it is decided by the host. |
+| `update-mode-kind` | How the time of waiting proceeds. `scaled` is affected by `Time.timeScale`, `unscaled` is not, and `realtime` is real time. |
+
+```wit
+package wukuro:core;
+
+interface functions {
+    use types.{action, task, update-mode-kind};
+
+    log: func(message: string);
+    delay: func(duration: f32, update-mode: update-mode-kind);
+    delay-frame: func(num-frames: u32);
+    schedule: func(action: borrow<action>, delay: f32, update-mode: update-mode-kind) -> task;
+}
+
+interface types {
+    resource context {
+        get-argument: func(name: string) -> option<argument>;
+        get-variable: func(name: string) -> variable;
+    }
+
+    resource variable {
+        get: func() -> option<argument>;
+        set: func(value: argument);
+    }
+
+    resource action {
+        run: func();
+        clone: func() -> action;
+    }
+
+    resource task {
+        wait: func();
+        is-completed: func() -> bool;
+    }
+
+    resource object {
+        clone: func() -> object;
+    }
+
+    variant argument {
+        ty-bool(bool),
+        ty-s8(s8),
+        ty-s16(s16),
+        ty-s32(s32),
+        ty-s64(s64),
+        ty-u8(u8),
+        ty-u16(u16),
+        ty-u32(u32),
+        ty-u64(u64),
+        ty-f32(f32),
+        ty-f64(f64),
+        ty-char(char),
+        ty-string(string),
+        ty-action(action),
+        ty-object(object),
+    }
+
+    variant text {
+        plain(string),
+        localized(text-id),
+    }
+
+    record text-id {
+        table: string,
+        key: string,
+    }
+
+    enum update-mode-kind {
+        unscaled,
+        scaled,
+        realtime,
+    }
+}
+```
+
+## wukuro:dialog
+
+Features to show dialogs. The implementation of the functions is included in the Wukuro package and registered with `DialogImports.Register()`. The dialogs themselves are shown by `IDialogModule` implemented by the game.
+
+| Function or type | Description |
+| --- | --- |
+| `get-dialog-module` | Gets the `IDialogModule` added to the `WukuroRunner`. |
+| `dialog-module.open-dialog` | Opens a dialog. `provider` is the kind of the dialog interpreted by the host. |
+| `dialog-module.close-dialog` | Closes the dialog. |
+| `dialog-module.show-message` | Shows a message and waits until the player proceeds. |
+| `dialog-module.show-options` | Shows options and returns the index of the chosen option. |
+| `dialog-module.fade-in`, `fade-out` | Fades the screen and reverts it. |
+| `message-info` | The settings of a message. `speaker` and `face` are the names of the speaker and the face, `auto` is whether to proceed without waiting for input, `forbid-skip` and `forbid-accel` are whether to forbid skipping and fast-forwarding, and `styles` is a list of the names of display styles interpreted by the host. |
+
+```wit
+package wukuro:dialog;
+
+interface functions {
+    use types.{dialog-module};
+    use wukuro:core/types.{context};
+
+    get-dialog-module: func(context: borrow<context>) -> dialog-module;
+}
+
+interface types {
+    use wukuro:core/types.{text};
+
+    resource dialog-module {
+        open-dialog: func(provider: option<string>);
+        close-dialog: func();
+        show-message: func(message: message-info);
+        show-options: func(options: list<text>) -> s32;
+        fade-in: func(duration: f32);
+        fade-out: func(duration: f32);
+    }
+
+    record message-info {
+        speaker: string,
+        face: string,
+        text: text,
+        auto: bool,
+        forbid-skip: bool,
+        forbid-accel: bool,
+        styles: list<string>,
+    }
+}
+```
+
+## Entry points
+
+An entry point `foo_bar` of a script is exported as the following interface. The parameters of `run` correspond to the parameters of the function of the entry point (including `&Context`), with the names in kebab-case.
+
+```rust
+#[entry]
+fn foo_bar(cx: &Context, camera_target: &Object, count: i32) { /* ... */ }
+```
+
+```wit
+package wukuro-entry:foo-bar;
+
+interface entry {
+    use wukuro:core/types.{context, action, object};
+
+    run: func(cx: borrow<context>, camera-target: borrow<object>, count: s32);
+}
+```

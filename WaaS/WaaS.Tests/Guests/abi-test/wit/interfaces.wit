@@ -1,0 +1,71 @@
+package waas:abi-test;
+
+interface host {
+    resource counter {
+        get: func() -> s32;
+        increment: func();
+    }
+
+    record point {
+        x: s32,
+        y-coord: f32,
+    }
+
+    variant shape {
+        circle(f32),
+        rect(point),
+        empty,
+    }
+
+    // cases with different alignments, followed by another field
+    variant mixed {
+        small(s32),
+        big(s64),
+        text(string),
+        nothing,
+    }
+
+    record tagged {
+        value: mixed,
+        after: s32,
+    }
+
+    enum color {
+        red,
+        green-blue,
+    }
+
+    flags permissions {
+        read,
+        write,
+    }
+
+    make-counter: func(initial: s32) -> counter;
+    read-counter: func(counter: borrow<counter>) -> s32;
+    echo: func(value: string) -> string;
+    sum: func(values: list<s32>) -> s64;
+    increment-optional: func(value: option<s32>) -> option<s32>;
+    checked-negate: func(value: s32) -> result<s32, string>;
+    shape-area: func(shape: shape) -> f32;
+    describe: func(color: color, permissions: permissions) -> string;
+    // completes asynchronously on the host
+    wait-ticks: func(ticks: u32) -> u32;
+    // returns a variant (and an option of it) from the host
+    make-shape: func(kind: u32) -> option<shape>;
+    make-tagged: func(kind: u32) -> tagged;
+    describe-tagged: func(value: tagged) -> string;
+}
+
+// resources defined by the guest
+interface guest-types {
+    resource accumulator {
+        constructor(start: s32);
+        add: func(value: s32);
+        total: func() -> s32;
+    }
+
+    // number of accumulators destroyed so far
+    destroyed-count: func() -> u32;
+    // takes the ownership of an accumulator back and returns its total
+    consume: func(accumulator: accumulator) -> s32;
+}

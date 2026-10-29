@@ -1,0 +1,126 @@
+---
+title: スクリプトの実行
+sidebar_position: 4
+---
+
+# スクリプトの実行
+
+## エントリポイントの参照
+
+`WukuroEntryReference` は、スクリプト（`ComponentAsset`）、エントリポイントの名前、引数の値をまとめて保持します。シリアライズ可能なクラスであり、MonoBehaviour や ScriptableObject のフィールドとして使います。
+
+```csharp
+[SerializeField] private WukuroEntryReference entry = new();
+```
+
+インスペクタでは、スクリプトを指定するとエントリポイントの一覧が表示されます。エントリポイントを選択すると、その引数に合わせて入力欄が作られます。スクリプトを編集して引数を変更した場合も、名前と型が一致する引数の値は保たれます。
+
+C# からエントリポイントを指定する場合は、コンストラクタを使います。
+
+```csharp
+var entry = new WukuroEntryReference(script, scriptId, "hello");
+```
+
+`scriptId` は、同じスクリプトのエントリポイントを識別するための文字列です。インスペクタで指定した場合は、スクリプトのアセットの GUID が設定されます。
+
+## WukuroRunner
+
+`WukuroRunner` はスクリプトを実行します。
+
+```csharp
+var runner = new WukuroRunner();
+runner.AddModule(dialogModule);
+await runner.RunAsync(entry, variables);
+```
+
+- `AddModule(module)`: スクリプトから使うモジュール（`IWukuroModule`）を追加します。モジュールは、ホストの関数がスクリプトのコンテキストから取得します（[機能の追加](./extending.mdx)）。
+- `RunAsync(entry, variables)`: エントリポイントを実行し、スクリプトが終了すると完了します。スクリプトで例外が発生した場合や、エントリポイントが見つからない場合は例外を送出します。
+
+`RunAsync` を呼ぶたびに、スクリプトのコンポーネントは新しくインスタンス化されます。Rust の `static` などのスクリプト内の状態は、実行の間で保たれません。実行をまたいで保ちたい値は、変数に保存してください。
+
+### 引数を C# から渡す
+
+`WukuroRuntimeArguments` を使うと、インスペクタで設定した引数に加えて、C# から引数を渡せます。同じ名前の引数がある場合は、C# から渡した値が優先されます。
+
+```csharp
+var arguments = new WukuroRuntimeArguments()
+    .Add("count", 3)
+    .Add("on-finished", () => Debug.Log("finished"));
+
+await runner.RunAsync(entry, variables, arguments);
+```
+
+引数の名前は、エントリポイントの引数名を kebab-case にしたものです。`Add` には `bool`、`int`、`float`、`string`、`UnityEngine.Object`、`System.Action` を渡せます。
+
+### ほかのイベントの再生中に実行する
+
+`RunAsync` は、ほかのスクリプトの実行中にも呼び出せます。たとえば、ホストの関数の実装の中から別のエントリポイントを実行し、その完了を待つことができます。
+
+## 変数
+
+スクリプトの変数（`cx.get_variable(name)`）の保存先は、`RunAsync` に渡す `IVariables` が決めます。
+
+- `MemoryVariables`: 値をメモリ上に保持する実装です。インスタンスを破棄すると値は失われます。
+- 値をセーブデータに保存するには、`IVariables` と `IVariable` を実装します。
+
+```csharp
+public class SaveDataVariables : IVariables
+{
+    private readonly Dictionary<string, object> store;
+
+    public SaveDataVariables(Dictionary<string, object> store)
+    {
+        this.store = store;
+    }
+
+    public IVariable GetVariable(string name)
+    {
+        return new Variable(store, name);
+    }
+
+    private class Variable : IVariable
+    {
+        private readonly Dictionary<string, object> store;
+        private readonly string name;
+
+        public Variable(Dictionary<string, object> store, string name)
+        {
+            this.store = store;
+            this.name = name;
+        }
+
+        public Wukuro.Core.ITypes.Argument? Get(IContext context)
+        {
+            if (!store.TryGetValue(name, out var value)) return null;
+            return value switch
+            {
+                bool b => Wukuro.Core.ITypes.Argument.CreateTyBool(b),
+                int i => Wukuro.Core.ITypes.Argument.CreateTyS32(i),
+                float f => Wukuro.Core.ITypes.Argument.CreateTyF32(f),
+                string s => Wukuro.Core.ITypes.Argument.CreateTyString(s),
+                _ => null
+            };
+        }
+
+        public void Set(IContext context, Wukuro.Core.ITypes.Argument value)
+        {
+            if (value.TyBool is { } b) store[name] = b;
+            else if (value.TyS32 is { } i) store[name] = i;
+            else if (value.TyF32 is { } f) store[name] = f;
+            else if (value.TyString is { } s) store[name] = s;
+        }
+    }
+}
+```
+
+変数の名前の範囲（スクリプトごとに分けるか、ゲーム全体で共有するか）も、`IVariables` の実装で決められます。たとえば `WukuroEntryReference.ScriptId` ごとに保存先を分けると、同じスクリプトのエントリポイントの間でだけ変数を共有できます。
+
+## インポートの登録
+
+スクリプトが import するインターフェースの実装は、`WukuroRunner.RegisterImportProvider` で登録します。登録はすべての `WukuroRunner` で共有されます。
+
+- `wukuro:core` は自動で登録されます。
+- `wukuro:dialog` は `DialogImports.Register()` で登録します。
+- ゲーム固有のインターフェースは、ゲーム側で登録します（[機能の追加](./extending.mdx#3-インポートを登録する)）。
+
+スクリプトの実行の前に、一度だけ登録してください。

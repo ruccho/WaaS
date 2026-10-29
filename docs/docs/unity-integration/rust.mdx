@@ -84,6 +84,11 @@ To disable Rust Importer, use `WAAS_DISABLE_RUST_IMPORTER` define symbol.
 Refer to [Component Model Tutorial](../getting-started/component-model) for more information on componentization.
 :::
 
+When **Componentize** is enabled, the following items can be set.
+
+- **WIT Directory**: the directory of the WIT that defines the world of the component, relative to the root of the Unity project. Leave it empty when the module already carries its component type, such as a module built with `wit_bindgen::generate!`. In that case the WIT is not embedded again.
+- **World**: the name of the world in the WIT. When it is empty, the world is selected automatically.
+
 ## Best Practices
 
 ### Version Control

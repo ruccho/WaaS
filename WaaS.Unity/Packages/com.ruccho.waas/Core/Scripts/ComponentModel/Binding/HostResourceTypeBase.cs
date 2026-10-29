@@ -11,6 +11,7 @@ namespace WaaS.ComponentModel.Binding
     /// <typeparam name="T"></typeparam>
     public abstract class HostResourceTypeBase<T> : IHostResourceType<T>
     {
+        // the index in this table is used as the rep of the resource
         private ResourceTable<T> resources = new();
 
         public T ToHostResource(uint resourceId)
@@ -23,22 +24,13 @@ namespace WaaS.ComponentModel.Binding
             return unchecked((uint)resources.Add(hostResource));
         }
 
-        public uint New(uint rep)
+        public void Drop(uint rep)
         {
-            throw new InvalidOperationException("resource.new is not supported for host resource types.");
+            OnDrop(resources.RemoveAt(unchecked((int)rep)));
         }
 
-        public void Drop(uint index)
-        {
-            OnDrop(resources.RemoveAt(unchecked((int)index)));
-        }
-
-        public uint Rep(uint index)
-        {
-            return index;
-        }
-
-        public virtual IInstance? Instance => throw new InvalidOperationException();
+        // host resource types are not defined by any component instance
+        public virtual IInstance? Instance => null;
 
         public bool ValidateEquals(IType other)
         {

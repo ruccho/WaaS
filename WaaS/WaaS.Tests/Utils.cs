@@ -17,6 +17,8 @@ internal static class Utils
         var watPath = Path.Combine(dir, "temp.wat");
         var wasmPath = Path.Combine(dir, "temp.wasm");
 
+        Directory.CreateDirectory(dir);
+
         File.WriteAllText(watPath, wat, Utf8NoBom);
 
         var psi = new ProcessStartInfo("wasm-tools", $"parse -o \"{wasmPath}\" \"{watPath}\"")

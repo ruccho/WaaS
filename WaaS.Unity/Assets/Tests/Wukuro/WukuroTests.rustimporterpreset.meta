@@ -1,0 +1,41 @@
+fileFormatVersion: 2
+guid: d4465ea2a03cfc243a0ca8df42f2fed9
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: f90bfd9334e241909e8cfc9612ef7ff7, type: 3}
+  settings:
+    dependencies:
+    - rid: 5494973850090209280
+    - rid: 5494973850090209281
+    - rid: 5494973850090209282
+    componentize: 1
+    componentizationSettings:
+      witDirectory: 
+      world: 
+  references:
+    version: 2
+    RefIds:
+    - rid: 5494973850090209280
+      type: {class: RustImporterSettings/PackageWorkspaceDependency, ns: WaaS.Unity.Editor.Rust, asm: WaaS.Unity.Editor}
+      data:
+        name: wukuro
+        versionRequirement: []
+        features: []
+    - rid: 5494973850090209281
+      type: {class: RustImporterSettings/PackageWorkspaceDependency, ns: WaaS.Unity.Editor.Rust, asm: WaaS.Unity.Editor}
+      data:
+        name: wukuro_dialog
+        versionRequirement: []
+        features: []
+    - rid: 5494973850090209282
+      type: {class: RustImporterSettings/PackageRegistryDependency, ns: WaaS.Unity.Editor.Rust, asm: WaaS.Unity.Editor}
+      data:
+        name: wit-bindgen
+        versionRequirement: []
+        features: []
+        registry: 

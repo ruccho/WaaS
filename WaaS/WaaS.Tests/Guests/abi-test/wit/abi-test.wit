@@ -1,0 +1,23 @@
+package waas:abi-test;
+
+world abi-test {
+    use host.{counter, point};
+
+    import host;
+    export guest-types;
+
+    export test-resource: func() -> s32;
+    export test-borrow-param: func(counter: borrow<counter>) -> s32;
+    export test-string: func(value: string) -> string;
+    export test-list: func() -> s64;
+    export test-option: func() -> s32;
+    export test-result: func() -> string;
+    export test-record: func(value: point) -> point;
+    export test-variant: func() -> f32;
+    export test-enum-flags: func() -> string;
+    export test-async: func() -> u32;
+    export test-variant-result: func() -> string;
+    export test-mixed-variant: func() -> string;
+    // uses a handle that was never passed to the component
+    export test-forged-handle: func(handle: u32) -> s32;
+}
