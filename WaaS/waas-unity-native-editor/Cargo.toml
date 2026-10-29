@@ -7,5 +7,9 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
+wasmparser = "0.262.0"
+wat = "1"
+wit-bindgen-core = "0.63.0"
+wit-bindgen-moonbit = "0.63.0"
 wit-component = "0.262.0"
 wit-parser = "0.262.0"
