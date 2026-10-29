@@ -96,8 +96,16 @@ namespace WaaS.Models
                         ExportSection = s;
                         break;
                     }
+                    case DataCountSection s:
+                    {
+                        DataCountSection = s;
+                        break;
+                    }
                 }
             }
+
+            if (DataCountSection != null && DataCountSection.Count != (DataSection?.Data.Length ?? 0))
+                throw new InvalidModuleException("data count and data section have inconsistent lengths");
 
             Preamble = preamble;
             Sections = sections.ToArray();
@@ -134,6 +142,7 @@ namespace WaaS.Models
         public ElementSection ElementSection { get; }
         public TableSection TableSection { get; }
         public DataSection DataSection { get; }
+        public DataCountSection DataCountSection { get; }
         public StartSection StartSection { get; }
         public ExportSection ExportSection { get; }
         public TypeSection TypeSection { get; }

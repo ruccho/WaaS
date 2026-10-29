@@ -13,6 +13,7 @@
         Start,
         Element,
         Code,
-        Data
+        Data,
+        DataCount
     }
 }
