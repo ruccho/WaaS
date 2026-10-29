@@ -22,7 +22,6 @@ namespace WaaS.Models
 
             {
                 var numResultTypes = reader.ReadVectorSize();
-                if (numResultTypes > 1) throw new InvalidModuleException("invalid result arity");
                 var resultTypes = new ValueType[numResultTypes];
                 for (var i = 0; i < numResultTypes; i++) resultTypes[i] = reader.ReadUnaligned<ValueType>();
 

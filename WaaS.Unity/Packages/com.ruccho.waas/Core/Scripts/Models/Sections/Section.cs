@@ -28,6 +28,7 @@ namespace WaaS.Models
                 SectionId.Element => new ElementSection(ref reader),
                 SectionId.Code => new CodeSection(ref reader),
                 SectionId.Data => new DataSection(ref reader),
+                SectionId.DataCount => new DataCountSection(ref reader),
                 _ => throw new ArgumentOutOfRangeException()
             };
 

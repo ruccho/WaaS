@@ -38,31 +38,6 @@ namespace WaaS.Models
             return stack[--Depth];
         }
 
-        internal void ValidateResults(in ValidationContext context, BlockResultType blockResultType, bool exact)
-        {
-            var arity = blockResultType.GetArity(context);
-
-            if (isUnreachable)
-            {
-                if (exact && Depth > arity) throw new InvalidCodeException();
-            }
-            else
-            {
-                if (!exact && Depth < arity) throw new InvalidCodeException();
-                if (exact && Depth != arity) throw new InvalidCodeException();
-            }
-
-            for (var i = 0; i < arity; i++)
-            {
-                var stackIndex = Depth - (int)arity + i;
-                if (isUnreachable && stackIndex < 0) continue;
-                var type = stack[stackIndex];
-                var resultType = blockResultType.GetElement(context, i);
-                if ((byte)type == 0 || type == resultType) continue;
-                throw new InvalidCodeException();
-            }
-        }
-
         public void ValidateResults(ReadOnlySpan<ValueType> resultTypes, bool exact)
         {
             if (isUnreachable)
