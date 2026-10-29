@@ -12,17 +12,17 @@ jobs:
       run:
         working-directory: WaaS
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Update submodules
         run: git submodule update --init --recursive
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 18
+          node-version: 24
           cache: yarn
           cache-dependency-path: ./docs/yarn.lock
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
       - name: Restore tools
         run: dotnet tool restore
       - name: Run docfx
@@ -36,7 +36,7 @@ jobs:
         run: yarn build
         working-directory: docs
       - name: Upload Build Artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: docs/build
 
@@ -56,4 +56,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
