@@ -46,6 +46,10 @@ MoonBit Importer は、スクリプトごとに `Library/com.ruccho.waas/moonbit
 ワークスペース内のファイルのパスは長くなります。Windows でパスの長さの制限のためにビルドが失敗する場合は、Unity プロジェクトを短いパスのディレクトリに置いてください。
 :::
 
+### IDE の機能
+
+Rust Importer と異なり、MoonBit Importer は、スクリプトそのものを IDE で開けるプロジェクトを提供しません。スクリプトはワークスペース内のコピーからビルドされるため、ワークスペース内のファイルを編集しても反映されません。現時点では、スクリプトで MoonBit の拡張機能のコード補完は使用できません。
+
 ## Componentization {#componentization}
 
 **Componentize** を有効にすると、モジュールがインポートするインターフェースを import し、生成器が追加したインターフェースを export する world で component に変換されます。インポートするインターフェースの WIT パッケージは、**WIT Directories** とローカルのモジュールの `wit` ディレクトリから探されます。文字列は、MoonBit の文字列のエンコーディングである UTF-16 で受け渡されます。

@@ -46,6 +46,10 @@ The script is built with `moon build --target wasm --release`. Compilation error
 The paths of the files in the workspace are long. On Windows, place the Unity project in a directory with a short path if the build fails because of the limit of the path length.
 :::
 
+### IDE support
+
+Unlike Rust Importer, MoonBit Importer does not provide a project that an IDE can open with the script itself: the script is built from a copy in the workspace, so editing the files in the workspace has no effect. Code completion of the MoonBit extension is not available for scripts at the moment.
+
 ## Componentization
 
 When **Componentize** is enabled, the module is componentized with a world that imports the interfaces imported by the module and exports the interfaces added by the generators. The WIT packages of the imported interfaces are looked up in **WIT Directories** and the `wit` directories of the local modules. Strings are passed in UTF-16, the string encoding of MoonBit.
