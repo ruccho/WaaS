@@ -18,7 +18,7 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.ruccho.waas": "0.2.4"
+        "com.ruccho.waas": "0.3.0"
       }
     },
     "com.unity.2d.animation": {
