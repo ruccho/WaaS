@@ -30,7 +30,7 @@ fn hello(cx: &Context, name: String, count: i32) {
 - `name` and `count` are arguments whose values are set in the inspector.
 - `log` and `delay` are functions provided by `wukuro:core`.
 
-In the import settings, add `wukuro` and `wit-bindgen` to Dependencies, enable **Componentize** and apply. When the import succeeds, the script becomes a component asset (`ComponentAsset`).
+In the import settings, add `wukuro` and `wit-bindgen` to Dependencies, enable **Componentize**, clear **WIT Directory** and apply. The WIT of a Wukuro script is embedded by `#[entry]`, so **WIT Directory** must be empty ([Componentization](../unity-integration/rust.mdx#componentization)). When the import succeeds, the script becomes a component asset (`ComponentAsset`).
 
 ## Creating a component to run the script
 

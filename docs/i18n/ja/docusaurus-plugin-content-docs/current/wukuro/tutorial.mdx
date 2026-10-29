@@ -30,7 +30,7 @@ fn hello(cx: &Context, name: String, count: i32) {
 - `name` と `count` は、インスペクタから値を設定する引数です。
 - `log` と `delay` は `wukuro:core` が提供する関数です。
 
-インポート設定で、Dependencies に `wukuro` と `wit-bindgen` を追加し、**Componentize** を有効にして Apply します。インポートが成功すると、スクリプトはコンポーネントのアセット（`ComponentAsset`）になります。
+インポート設定で、Dependencies に `wukuro` と `wit-bindgen` を追加し、**Componentize** を有効にし、**WIT Directory** を空にして Apply します。Wukuro のスクリプトの WIT は `#[entry]` が埋め込むため、**WIT Directory** は空にする必要があります（[コンポーネント化](../unity-integration/rust.mdx#コンポーネント化)）。インポートが成功すると、スクリプトはコンポーネントのアセット（`ComponentAsset`）になります。
 
 ## スクリプトを実行するコンポーネントを作成する
 

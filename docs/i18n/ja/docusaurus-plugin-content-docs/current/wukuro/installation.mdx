@@ -36,12 +36,16 @@ Wukuro のクレートは [crates.io](https://crates.io/) で公開していま�
 
 | Name | Version Requirements |
 | --- | --- |
-| `wukuro` | Unity パッケージと同じバージョン（例: Unity パッケージが `0.1.0` であれば `0.1.0`） |
+| `wukuro` | Unity パッケージと同じバージョン（例: Unity パッケージが `0.3.0` であれば `0.3.0`） |
 | `wukuro-dialog` | `wukuro` と同じバージョン |
-| `wit-bindgen` | `wukuro` が依存するバージョン（`0.42.1`） |
+| `wit-bindgen` | `wukuro` が依存するバージョン（`0.63.0`） |
 
 :::warning
 クレートに同梱されている WIT は、Unity パッケージの C# の定義から生成されたものです。Unity パッケージとクレートのバージョンが異なると、スクリプトとホストの関数の定義が一致せず、実行時にエラーになることがあります。両者のバージョンを揃えてください。
+:::
+
+:::warning
+Wukuro のスクリプトのインポート設定では、**Componentize** を有効にし、**WIT Directory** を空にしてください。スクリプトの WIT は `#[entry]` が埋め込みます。
 :::
 
 :::info
@@ -58,8 +62,8 @@ members = ["Library/com.ruccho.waas/rust/crates/*", "rust/*"] # Used by WaaS
 resolver = "2" # Used by WaaS
 
 [workspace.dependencies]
-wukuro = "0.1.0"
-wukuro_dialog = { package = "wukuro-dialog", version = "0.1.0" }
+wukuro = "0.3.0"
+wukuro_dialog = { package = "wukuro-dialog", version = "0.3.0" }
 my-game = { path = "./rust/my-game" }
 ```
 

@@ -15,5 +15,12 @@
   "author": {
     "name": "ruccho",
     "url": "https://ruccho.com"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "IMGUI Dialog",
+      "description": "A minimal dialog implemented with IMGUI and a conversation script.",
+      "path": "Samples~/ImGuiDialog"
+    }
+  ]
 }
