@@ -23,7 +23,9 @@ namespace WaaS.Models
         {
             while (true)
             {
+                var offset = reader.Position - reader.Origin;
                 var instruction = Read(ref reader, count++);
+                instruction.Offset = checked((uint)offset);
 
                 results.Add(instruction);
 

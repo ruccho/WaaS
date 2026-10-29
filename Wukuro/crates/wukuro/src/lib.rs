@@ -114,6 +114,22 @@ pub mod __private {
     /// Each record is `<entry>\t<parameter>\t<type name>\n` with names in kebab-case.
     pub const ENTRY_TYPES_SECTION: &str = "wukuro-entry-types";
 
+    /// Installs a panic hook that reports the panic message and its location to the host.
+    /// Called by every entry point before running the script. Only the first call installs the hook.
+    ///
+    /// Without the hook, the host sees only the `unreachable` instruction executed after a panic.
+    pub fn install_panic_hook() {
+        static INSTALL: std::sync::Once = std::sync::Once::new();
+        INSTALL.call_once(|| {
+            std::panic::set_hook(Box::new(|info| {
+                // e.g. "panicked at src/lib.rs:10:5:\nmessage"
+                let message = info.to_string();
+                // the host aborts the execution, so this does not return normally
+                crate::functions::panic(&message);
+            }));
+        });
+    }
+
     pub const fn record_len(entry: &str, parameter: &str, type_name: &str) -> usize {
         entry.len() + parameter.len() + type_name.len() + 3
     }

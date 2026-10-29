@@ -96,7 +96,7 @@ namespace WaaS.Models
     {
         public override void Execute(WasmStackFrame current)
         {
-            throw new TrapException();
+            throw new TrapException("unreachable");
         }
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)

@@ -21,6 +21,8 @@ namespace WaaS.Runtime
             core?.Dispose(version);
         }
 
+        internal IStackFrameCore Core => core;
+
         public int ResultLength => core.GetResultLength(version);
 
         public StackFrameState MoveNext(Waker waker)

@@ -140,8 +140,11 @@ namespace WaaS.Runtime
                             throw new ArgumentOutOfRangeException();
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    // capture the frames before they are disposed
+                    WasmStackTrace.Attach(ex, frames);
+
                     while (frames.TryPeek(out var f))
                     {
                         frames.Pop();

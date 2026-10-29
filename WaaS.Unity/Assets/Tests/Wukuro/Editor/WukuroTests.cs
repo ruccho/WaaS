@@ -114,6 +114,29 @@ namespace Wukuro.Tests
         }
 
         [Test]
+        public async Task PanicMessageIsReported()
+        {
+            var arguments = new WukuroRuntimeArguments().Add("message", "script failure");
+
+            WukuroPanicException exception = null;
+            try
+            {
+                await RunAsync(new WukuroRunner(), Entry("panics"), new MemoryVariables(), arguments);
+            }
+            catch (WukuroPanicException ex)
+            {
+                exception = ex;
+            }
+
+            Assert.That(exception, Is.Not.Null);
+            // e.g. "panicked at src/lib.rs:10:5:\nscript failure"
+            Assert.That(exception.PanicMessage, Does.StartWith("panicked at "));
+            Assert.That(exception.PanicMessage, Does.Contain("script failure"));
+            Assert.That(exception.WasmStackTrace, Is.Not.Null);
+            Assert.That(exception.Message, Does.Contain("wasm backtrace:"));
+        }
+
+        [Test]
         public async Task DialogsAreShownThroughTheModule()
         {
             var dialog = new RecordingDialogModule { ChosenOption = 1 };

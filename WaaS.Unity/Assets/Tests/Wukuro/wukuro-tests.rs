@@ -37,6 +37,12 @@ fn run_action(cx: &Context, callback: &Action) {
     callback.run();
 }
 
+/// panics with the message
+#[entry]
+fn panics(cx: &Context, message: String) {
+    panic!("{message}");
+}
+
 #[entry]
 fn typed_object(cx: &Context, target: &ObjectOf<TestTransform>, untyped: &Object) {}
 

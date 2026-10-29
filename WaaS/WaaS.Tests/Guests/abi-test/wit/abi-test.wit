@@ -20,4 +20,8 @@ world abi-test {
     export test-mixed-variant: func() -> string;
     // uses a handle that was never passed to the component
     export test-forged-handle: func(handle: u32) -> s32;
+    // panics in the guest
+    export test-panic: func(message: string);
+    // calls a host function which throws
+    export test-host-failure: func(message: string);
 }

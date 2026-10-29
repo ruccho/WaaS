@@ -45,6 +45,11 @@ internal static class Utils
         return wasmPath;
     }
 
+    public static byte[] GetModuleBinary(string wat)
+    {
+        return File.ReadAllBytes(ParseWat(wat));
+    }
+
     public static Instance GetInstance(string wat, Imports imports)
     {
 

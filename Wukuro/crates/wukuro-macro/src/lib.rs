@@ -150,6 +150,7 @@ fn expand_entry(func: &ItemFn) -> syn::Result<TokenStream> {
 
             impl exports::wukuro_entry::#package_module::entry::Guest for Entry {
                 fn run(#(#param_pats),*) {
+                    ::wukuro::__private::install_panic_hook();
                     super::#fn_name(#(#param_args),*);
                 }
             }
