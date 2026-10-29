@@ -1,7 +1,7 @@
 """Sets or checks the version shared by WaaS and the distributions derived from it.
 
-WaaS and its derived distributions (the NuGet packages, the Unity packages and the Rust crates) are released together
-with the same version.
+WaaS and its derived distributions (the NuGet packages, the Unity packages, the Rust crates and the MoonBit module) are
+released together with the same version.
 
     python scripts/version.py show
     python scripts/version.py set 0.3.0
@@ -22,10 +22,12 @@ UNITY_PACKAGES = [
     "WaaS.Unity/Packages/com.ruccho.wukuro/package.json",
 ]
 
-# [package] version of a crate, or [workspace.package] version of a workspace
+# [package] version of a crate, [workspace.package] version of a workspace, or version of a MoonBit module,
+# which are written in the same form
 CARGO_VERSIONS = [
     "WaaS/wit2waas/Cargo.toml",
     "Wukuro/Cargo.toml",
+    "Wukuro/moonbit/wukuro/moon.mod",
 ]
 
 # dependencies between the crates released together
