@@ -7,6 +7,7 @@ interface functions {
     delay: func(duration: f32, update-mode: update-mode-kind);
     delay-frame: func(num-frames: u32);
     schedule: func(action: borrow<action>, delay: f32, update-mode: update-mode-kind) -> task;
+    panic: func(message: string);
 }
 
 interface types {
