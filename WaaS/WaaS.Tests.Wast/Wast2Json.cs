@@ -1,18 +1,10 @@
 ﻿using System.Diagnostics;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 
 namespace WaaS.Tests.Wast;
 
 public class Wast2Json
 {
-    private readonly ILogger<Wast2Json> logger;
-
-    public Wast2Json(ILogger<Wast2Json> logger)
-    {
-        this.logger = logger;
-    }
-
     public async Task<WastProc> RunAsync(string wastPath, string binaryPath = "wast2json",
         CancellationToken ct = default)
     {

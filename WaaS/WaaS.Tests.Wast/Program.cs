@@ -1,30 +1,32 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using ConsoleAppFramework;
 using WaaS.Tests.Wast;
 
-var builder = ConsoleApp.CreateBuilder(args);
+await ConsoleApp.RunAsync(args, Commands.RunAsync);
 
-builder.ConfigureServices((ctx, services) => { services.AddSingleton<Wast2Json>(); });
-
-
-var app = builder.Build();
-app.AddRootCommand(async (Wast2Json wast2Json, [Option("d", "directory")] string dir) =>
+internal static class Commands
 {
-    foreach (var file in Directory.EnumerateFiles(dir, "*.wast", SearchOption.TopDirectoryOnly))
+    /// <summary>
+    ///     Runs the WebAssembly spec tests (*.wast) in a directory.
+    /// </summary>
+    /// <param name="directory">-d, Directory that contains the *.wast files.</param>
+    public static async Task RunAsync(string directory)
     {
-        var proc = await wast2Json.RunAsync(file);
-        Console.WriteLine($"{proc.SourceFilename}: running...");
-        try
+        var wast2Json = new Wast2Json();
+        foreach (var file in Directory.EnumerateFiles(directory, "*.wast", SearchOption.TopDirectoryOnly))
         {
-            WastRunner.Run(proc);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"{proc.SourceFilename}: {ex}");
-            throw;
-        }
+            var proc = await wast2Json.RunAsync(file);
+            Console.WriteLine($"{proc.SourceFilename}: running...");
+            try
+            {
+                WastRunner.Run(proc);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{proc.SourceFilename}: {ex}");
+                throw;
+            }
 
-        Console.WriteLine($"{proc.SourceFilename}: succeeded");
+            Console.WriteLine($"{proc.SourceFilename}: succeeded");
+        }
     }
-});
-
-app.Run();
+}

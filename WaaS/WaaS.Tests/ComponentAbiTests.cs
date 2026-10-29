@@ -262,7 +262,7 @@ public class ComponentAbiTests
     }
 
     [Test]
-    public void ComponentCannotAccessResourcesNotPassedToIt()
+    public async Task ComponentCannotAccessResourcesNotPassedToIt()
     {
         // a host resource that exists but was never passed to the component
         var owned = host.CounterType.Wrap(new Counter { Value = 1 });
@@ -270,7 +270,7 @@ public class ComponentAbiTests
 
         foreach (var handle in new[] { rep, 12345u })
         {
-            var exception = Assert.CatchAsync(async () => await Call(e => e.TestForgedHandle(handle)));
+            var exception = await Assert.CatchAsync(async () => await Call(e => e.TestForgedHandle(handle)));
             Assert.That(exception, Is.InstanceOf<TrapException>().Or.InnerException.InstanceOf<TrapException>(),
                 exception!.ToString());
         }
