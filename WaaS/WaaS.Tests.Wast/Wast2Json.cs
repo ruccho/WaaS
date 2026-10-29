@@ -15,7 +15,7 @@ public class Wast2Json
 
         Console.WriteLine($"output: {dir}");
 
-        var startInfo = new ProcessStartInfo(binaryPath, $@"--disable-bulk-memory -o ""out.json"" ""{path}""")
+        var startInfo = new ProcessStartInfo(binaryPath, $@"-o ""out.json"" ""{path}""")
         {
             UseShellExecute = false,
             WorkingDirectory = dir,

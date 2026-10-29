@@ -342,10 +342,41 @@ public class GetAction(string? module, string field) : Action(module, field)
 [JsonDerivedType(typeof(ConstI64), "i64")]
 [JsonDerivedType(typeof(ConstF32), "f32")]
 [JsonDerivedType(typeof(ConstF64), "f64")]
+[JsonDerivedType(typeof(ConstV128), "v128")]
+[JsonDerivedType(typeof(ConstFuncRef), "funcref")]
+[JsonDerivedType(typeof(ConstExternRef), "externref")]
 public abstract class Const
 {
     public abstract string Value { get; set; }
     public abstract StackValueItem GetValue();
+}
+
+/// <summary>
+///     A value of a type that WaaS does not support yet. Commands using it are reported as unsupported.
+/// </summary>
+public abstract class ConstUnsupported : Const
+{
+    [JsonIgnore] public override string Value { get; set; } = "";
+
+    // "value" can be an array (v128), so it is kept as is
+    [JsonExtensionData] public Dictionary<string, JsonElement>? Properties { get; set; }
+
+    public override StackValueItem GetValue()
+    {
+        throw new NotSupportedException();
+    }
+}
+
+public class ConstV128 : ConstUnsupported
+{
+}
+
+public class ConstFuncRef : ConstUnsupported
+{
+}
+
+public class ConstExternRef : ConstUnsupported
+{
 }
 
 public class ConstI32 : Const

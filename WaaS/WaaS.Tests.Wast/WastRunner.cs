@@ -59,32 +59,52 @@ public class WastRunner : IDisposable
         CurrentImports[name] = imports;
     }
 
-    public static void Run(WastProc proc)
+    /// <summary>
+    ///     Runs all commands in the script. A failed command is reported and does not stop the following ones.
+    /// </summary>
+    public static WastResult Run(WastProc proc)
     {
         var directory = Path.Combine(Path.GetTempPath(), "WaaS.Tests.Wast", "Wast2Json") ??
                         throw new InvalidOperationException();
 
         using var runner = new WastRunner(directory);
 
+        var result = new WastResult();
         foreach (var command in proc.Commands.Span)
             try
             {
-                if (command.Line == 323) Console.WriteLine($"command in line {command.Line}");
-
                 command.Execute(runner);
+                result.Passed++;
             }
             catch (NotSupportedException)
             {
                 Console.WriteLine($"command in line {command.Line} is not supported!");
+                result.Unsupported++;
             }
             catch (NotImplementedException)
             {
                 Console.WriteLine($"command in line {command.Line} is not supported!");
+                result.Unsupported++;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                Console.WriteLine($"command in line {command.Line} failed!");
-                throw;
+                Console.WriteLine($"command in line {command.Line} failed! {ex.GetType().Name}: {ex.Message}");
+                result.Failures.Add($"line {command.Line}: {ex.GetType().Name}: {FirstLine(ex.Message)}");
             }
+
+        return result;
     }
+
+    private static string FirstLine(string text)
+    {
+        var index = text.IndexOf('\n');
+        return index < 0 ? text : text[..index].TrimEnd('\r');
+    }
+}
+
+public class WastResult
+{
+    public int Passed { get; set; }
+    public int Unsupported { get; set; }
+    public List<string> Failures { get; } = new();
 }
