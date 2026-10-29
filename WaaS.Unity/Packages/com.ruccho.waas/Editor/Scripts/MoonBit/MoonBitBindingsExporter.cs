@@ -99,6 +99,9 @@ namespace WaaS.Unity.Editor.MoonBit
                                 : $"\"{packagePath}/{name}\"";
                         });
 
+                    // the helper functions are generated in an unstable order; sort them to keep the files unchanged
+                    if (segments[^1] == "ffi.mbt") text = SortTopLevelBlocks(text);
+
                     result[$"{packageName}/{string.Join("/", segments.Skip(4))}"] = text;
                 }
 
@@ -108,6 +111,24 @@ namespace WaaS.Unity.Editor.MoonBit
             {
                 if (Directory.Exists(temp)) Directory.Delete(temp, true);
             }
+        }
+
+        /// <summary>
+        ///     Sorts the top-level blocks, each of which starts with "///|". The order of the top-level declarations does
+        ///     not matter in MoonBit.
+        /// </summary>
+        private static string SortTopLevelBlocks(string text)
+        {
+            const string marker = "///|\n";
+            var normalized = text.Replace("\r\n", "\n");
+            var first = normalized.IndexOf(marker, StringComparison.Ordinal);
+            if (first < 0) return text;
+
+            var blocks = normalized.Substring(first)
+                .Split(new[] { marker }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(b => marker + b.TrimEnd('\n') + "\n")
+                .OrderBy(b => b, StringComparer.Ordinal);
+            return normalized.Substring(0, first) + string.Join("\n", blocks);
         }
 
         /// <summary>

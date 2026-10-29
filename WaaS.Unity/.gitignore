@@ -73,3 +73,8 @@ crashlytics-build.properties
 
 /.idea
 /target
+# MoonBit (created by moon and IDEs at the root of the project)
+/_build/
+/.mooncakes/
+pkg.generated.mbti
+pkg.generated.mbti.meta
