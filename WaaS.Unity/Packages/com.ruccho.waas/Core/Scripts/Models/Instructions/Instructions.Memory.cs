@@ -484,7 +484,7 @@ namespace WaaS.Models
         public override void Execute(WasmStackFrame current)
         {
             var n = current.Pop().ExpectValueI32();
-            if (current.Instance.TryGrowMemory(0, checked((int)n), out var oldNumPages))
+            if (current.Instance.TryGrowMemory(0, checked((int)n), current.MaxMemoryPages, out var oldNumPages))
                 current.Push(checked((uint)oldNumPages));
             else
                 current.Push(uint.MaxValue);

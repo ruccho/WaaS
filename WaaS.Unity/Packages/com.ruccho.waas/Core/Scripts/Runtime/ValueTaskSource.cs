@@ -11,6 +11,7 @@ namespace WaaS.Runtime
         private static readonly Stack<ValueTaskSource> Pool = new();
         private ManualResetValueTaskSourceCore<bool> core;
         private int isAlive = 1;
+        private int isCompleted;
 
         private ValueTaskSource()
         {
@@ -44,6 +45,7 @@ namespace WaaS.Runtime
             if (!Pool.TryPop(out var popped)) popped = new ValueTaskSource();
             popped.core.Reset();
             popped.isAlive = 1;
+            popped.isCompleted = 0;
             return popped;
         }
 
@@ -52,14 +54,26 @@ namespace WaaS.Runtime
             return new ValueTask(this, core.Version);
         }
 
-        public void SetResult()
+        public void TrySetResult()
         {
+            if (Interlocked.Exchange(ref isCompleted, 1) != 0) return;
             core.SetResult(false);
         }
 
-        public void SetException(Exception ex)
+        public void TrySetException(Exception ex)
         {
+            if (Interlocked.Exchange(ref isCompleted, 1) != 0) return;
             core.SetException(ex);
+        }
+
+        public void TrySetCanceled(CancellationToken cancellationToken)
+        {
+            if (Interlocked.Exchange(ref isCompleted, 1) != 0) return;
+
+            // the pending operation may still try to complete this source later,
+            // so it must not be returned to the pool and reused.
+            Volatile.Write(ref isAlive, 0);
+            core.SetException(new OperationCanceledException(cancellationToken));
         }
     }
 }

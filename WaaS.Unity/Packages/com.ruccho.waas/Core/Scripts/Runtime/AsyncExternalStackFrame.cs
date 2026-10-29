@@ -24,6 +24,15 @@ namespace WaaS.Runtime
         public void Dispose(ushort version)
         {
             if (version != Version) return;
+
+            if (state == StackFrameState.Pending)
+            {
+                // The host function is still running (e.g. the execution is canceled while suspended) and may write
+                // the results later. The buffers and this frame are left to GC instead of being reused.
+                Version++;
+                return;
+            }
+
             if (inputValuesArray != null)
             {
                 ArrayPool<StackValueItem>.Shared.Return(inputValuesArray);

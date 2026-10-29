@@ -63,9 +63,16 @@ namespace WaaS.Runtime
 
         public bool TryGrow(int numPagesToGrow)
         {
+            return TryGrow(numPagesToGrow, null);
+        }
+
+        /// <param name="maxNumPages">An additional limit on the number of pages imposed by the host.</param>
+        public bool TryGrow(int numPagesToGrow, uint? maxNumPages)
+        {
             var afterNumPages = NumPages + numPagesToGrow;
             if (afterNumPages > 1 << 16) return false;
             if (PageLimits.Max.HasValue && afterNumPages > PageLimits.Max) return false;
+            if (maxNumPages.HasValue && afterNumPages > maxNumPages) return false;
 
             var prevLength = Length;
             NumPages = afterNumPages;

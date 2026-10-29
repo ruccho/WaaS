@@ -39,4 +39,25 @@ context.TakeResults(results);
 Debug.Log(results[0]);
 ```
 
+## Limiting execution
 
+`ExecutionContext` has optional limits to stop runaway guest code, such as an infinite loop. All of them are disabled by default.
+
+```csharp
+using var context = new ExecutionContext
+{
+    // each executed instruction consumes one unit of fuel
+    Fuel = 1_000_000,
+    // or: reset the fuel at the start of an invocation and after each suspension on an async host function
+    FuelPerResume = 100_000,
+    // memory.grow fails (returns -1) once a memory would exceed this number of pages (64 KiB each)
+    MaxMemoryPages = 256,
+    // aborts the execution, also while it is suspended on an async host function
+    CancellationToken = cancellationToken,
+};
+```
+
+- When the fuel runs out, `FuelExhaustedException` (a `TrapException`) is thrown. As with other traps, it may be wrapped in a `WasmException` that tells where the execution stopped. The remaining fuel becomes 0, and the host can refill `Fuel` at any time to continue using the context.
+- When cancellation is requested, `OperationCanceledException` is thrown. Cancellation is observed at branches and calls while the guest code is running, and immediately while the execution is suspended.
+- In both cases the frames of the invocation are discarded, so the context can be used for another invocation.
+- An asynchronous host function that is still running when the execution is canceled is not stopped by WaaS. Its later completion is ignored.

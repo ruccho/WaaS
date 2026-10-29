@@ -39,3 +39,25 @@ context.TakeResults(results);
 Debug.Log(results[0]);
 ```
 
+## 実行の制限
+
+`ExecutionContext` には、無限ループなどで止まらなくなったゲストコードを停止するための制限を設定できます。いずれも既定では無効です。
+
+```csharp
+using var context = new ExecutionContext
+{
+    // 実行された命令ごとに 1 の燃料 (fuel) を消費する
+    Fuel = 1_000_000,
+    // または、呼び出しの開始時と非同期ホスト関数による中断からの再開時に燃料を再設定する
+    FuelPerResume = 100_000,
+    // メモリがこのページ数 (1 ページ 64 KiB) を超える場合、memory.grow は失敗する (-1 を返す)
+    MaxMemoryPages = 256,
+    // 非同期ホスト関数で中断している間も含めて実行を中止する
+    CancellationToken = cancellationToken,
+};
+```
+
+- 燃料が尽きると `FuelExhaustedException` (`TrapException` の派生クラス) がスローされます。ほかのトラップと同様に、停止した位置を示す `WasmException` に包まれる場合があります。残りの燃料は 0 になり、ホストはいつでも `Fuel` を再設定してコンテキストを使い続けることができます。
+- キャンセルが要求されると `OperationCanceledException` がスローされます。ゲストコードの実行中は分岐と呼び出しの時点で、中断中は直ちにキャンセルが検知されます。
+- いずれの場合も呼び出しのフレームは破棄されるため、同じコンテキストで別の呼び出しを行うことができます。
+- キャンセル時に実行中の非同期ホスト関数は WaaS によって停止されません。その後の完了は無視されます。

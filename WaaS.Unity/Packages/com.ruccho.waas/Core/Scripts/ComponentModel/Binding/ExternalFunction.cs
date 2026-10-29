@@ -27,6 +27,7 @@ namespace WaaS.ComponentModel.Binding
         private class Binder : IFunctionBinderCore, IStackFrameCore, ISTaskSource<ValuePusher>
         {
             private static readonly Stack<Binder> Pool = new();
+            private bool abandoned;
             private object? context;
             private Action<object>? continuation;
 
@@ -43,6 +44,17 @@ namespace WaaS.ComponentModel.Binding
             public void Dispose(ushort version)
             {
                 if (Version != version) return;
+
+                if (!resultPusher.HasValue)
+                {
+                    // The host function has not received the result pusher (e.g. the execution is canceled while
+                    // suspended). It may still await it, so this binder is never reused and awaiting it afterwards
+                    // throws OperationCanceledException.
+                    abandoned = true;
+                    Version++;
+                    return;
+                }
+
                 if (++Version == ushort.MaxValue) return;
                 ArgumentPusher.Dispose();
                 Pool.Push(this);
@@ -72,14 +84,37 @@ namespace WaaS.ComponentModel.Binding
                 pooled.resultPusher = default;
                 pooled.waker = default;
                 pooled.resultPusherRequestedState = 0;
+                pooled.abandoned = false;
 
-                function.InvokeAsync(
+                ForgetInvocation(function.InvokeAsync(
                     context,
                     new Pullable(pusher),
                     new STaskVoid(pooled.frameMoveSource.TaskSource),
-                    new STask<ValuePusher>(new STaskSource<ValuePusher>(pooled, pooled.Version))).Forget();
+                    new STask<ValuePusher>(new STaskSource<ValuePusher>(pooled, pooled.Version))));
 
                 return pooled;
+            }
+
+            private static void ForgetInvocation(STaskVoid task)
+            {
+                var awaiter = task.GetAwaiter();
+                if (awaiter.IsCompleted)
+                    ObserveInvocation(awaiter);
+                else
+                    awaiter.OnCompleted(InstantContinuation<STaskAwaiter>.Get(awaiter,
+                        static (in STaskAwaiter awaiter) => ObserveInvocation(awaiter)));
+            }
+
+            private static void ObserveInvocation(in STaskAwaiter awaiter)
+            {
+                try
+                {
+                    awaiter.GetResult();
+                }
+                catch (OperationCanceledException)
+                {
+                    // expected when the host function is abandoned (e.g. the execution is canceled while suspended)
+                }
             }
 
             private void ThrowIfOutdated(ushort version)
@@ -133,6 +168,12 @@ namespace WaaS.ComponentModel.Binding
             public void OnCompleted(ushort version, Action<object> continuation, object context)
             {
                 // on await
+                if (abandoned)
+                {
+                    continuation(context);
+                    return;
+                }
+
                 ThrowIfOutdated(version);
 
                 if (Interlocked.CompareExchange(ref this.continuation, continuation, null) != null)
@@ -160,11 +201,12 @@ namespace WaaS.ComponentModel.Binding
 
             public ValuePusher GetResult(ushort version)
             {
+                if (abandoned) throw new OperationCanceledException();
                 ThrowIfOutdated(version);
                 return resultPusher!.Value;
             }
 
-            public bool IsCompleted => resultPusher.HasValue;
+            public bool IsCompleted => resultPusher.HasValue || abandoned;
 
             #endregion
         }

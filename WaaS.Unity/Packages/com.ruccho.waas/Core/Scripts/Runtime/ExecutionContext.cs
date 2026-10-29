@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace WaaS.Runtime
@@ -15,12 +17,53 @@ namespace WaaS.Runtime
         private readonly object locker = new();
         private readonly uint? maxStackFrames;
         private ValueTaskSource currentPendingTaskSource;
+
+        // remaining fuel. it is long.MaxValue when the fuel is unlimited, and never runs out in practice.
+        internal long fuel = long.MaxValue;
+        private bool isFuelLimited;
         private bool moving;
 
         public ExecutionContext(uint? maxStackFrames = null)
         {
             this.maxStackFrames = maxStackFrames;
         }
+
+        /// <summary>
+        ///     The remaining fuel, or null if the fuel is unlimited (default).
+        ///     Each executed WebAssembly instruction consumes one unit of fuel, and <see cref="FuelExhaustedException" /> is
+        ///     thrown when an instruction is about to be executed with no fuel left.
+        ///     The host can refill the fuel at any time, e.g. between invocations or while the execution is suspended.
+        /// </summary>
+        public ulong? Fuel
+        {
+            get => isFuelLimited ? (ulong)Math.Max(fuel, 0) : null;
+            set
+            {
+                isFuelLimited = value.HasValue;
+                fuel = value.HasValue ? (long)Math.Min(value.Value, long.MaxValue) : long.MaxValue;
+            }
+        }
+
+        /// <summary>
+        ///     If set, <see cref="Fuel" /> is reset to this value each time the execution starts or resumes, that is, at the
+        ///     start of an invocation and after each suspension on an asynchronous host function.
+        ///     This limits the number of instructions executed between two suspensions.
+        /// </summary>
+        public ulong? FuelPerResume { get; set; }
+
+        /// <summary>
+        ///     If set, "memory.grow" executed on this context fails once the memory would exceed this number of pages,
+        ///     in addition to the maximum declared by the module.
+        /// </summary>
+        public uint? MaxMemoryPages { get; set; }
+
+        /// <summary>
+        ///     The token to abort the execution on this context. It is observed while WebAssembly code is running (at
+        ///     branches and calls) and while the execution is suspended on an asynchronous host function.
+        ///     When cancellation is requested, <see cref="OperationCanceledException" /> is thrown from the invocation and the
+        ///     frames of the invocation are discarded.
+        /// </summary>
+        public CancellationToken CancellationToken { get; set; }
 
         public StackFrame LastFrame { get; private set; }
 
@@ -59,6 +102,8 @@ namespace WaaS.Runtime
                     Loop:
                     var current = Current ?? throw new InvalidOperationException();
                     var depth = frames.Count - 1;
+
+                    CancellationToken.ThrowIfCancellationRequested();
 
                     if (isFirst)
                         // Console.WriteLine($"{new string(' ', depth * 4)}- {current}: resume");
@@ -142,16 +187,42 @@ namespace WaaS.Runtime
                 }
                 catch
                 {
-                    while (frames.TryPeek(out var f))
-                    {
-                        frames.Pop();
-                        f.Dispose();
-                        if (f == initial) break;
-                    }
-
+                    DiscardFrames(initial);
                     throw;
                 }
             }
+        }
+
+        private void DiscardFrames(StackFrame initial)
+        {
+            lock (locker)
+            {
+                while (frames.TryPeek(out var f))
+                {
+                    frames.Pop();
+                    f.Dispose();
+                    if (f == initial) break;
+                }
+            }
+        }
+
+        // called when the fuel counter goes below zero
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal void OnFuelExhausted()
+        {
+            if (!isFuelLimited)
+            {
+                fuel = long.MaxValue;
+                return;
+            }
+
+            fuel = 0;
+            throw new FuelExhaustedException();
+        }
+
+        private void RefillFuel()
+        {
+            if (FuelPerResume.HasValue) Fuel = FuelPerResume;
         }
 
         public void Invoke(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
@@ -233,6 +304,7 @@ namespace WaaS.Runtime
 
         private void Run()
         {
+            RefillFuel();
             MoveToEndOrPending(Current ?? throw new InvalidOperationException(), out var pending);
 
             if (pending)
@@ -247,6 +319,7 @@ namespace WaaS.Runtime
             var initial = Current ?? throw new InvalidOperationException();
             while (true)
             {
+                RefillFuel();
                 var source = currentPendingTaskSource ??= ValueTaskSource.Create();
                 MoveToEndOrPending(initial, out var pending);
 
@@ -254,8 +327,30 @@ namespace WaaS.Runtime
 
                 currentPendingTaskSource = null;
 
-                await source.AsValueTask().ConfigureAwait(false);
+                var registration = RegisterCancellation(source, CancellationToken);
+                try
+                {
+                    await source.AsValueTask().ConfigureAwait(false);
+                }
+                catch
+                {
+                    // the suspended frames are never resumed
+                    DiscardFrames(initial);
+                    throw;
+                }
+                finally
+                {
+                    registration.Dispose();
+                }
             }
+        }
+
+        private static CancellationTokenRegistration RegisterCancellation(ValueTaskSource source,
+            CancellationToken cancellationToken)
+        {
+            // kept out of RunAsync() so that the closure is allocated only for a cancelable token
+            if (!cancellationToken.CanBeCanceled) return default;
+            return cancellationToken.Register(() => source.TrySetCanceled(cancellationToken));
         }
 
         public void TakeResults(Span<StackValueItem> results)
@@ -276,12 +371,12 @@ namespace WaaS.Runtime
 
         public void Wake()
         {
-            source.SetResult();
+            source.TrySetResult();
         }
 
         public void Fail(Exception ex)
         {
-            source.SetException(ex);
+            source.TrySetException(ex);
         }
     }
 }
