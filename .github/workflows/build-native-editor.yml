@@ -2,16 +2,9 @@ name: Build Native Editor Library
 
 # Builds waas-unity-native-editor for each platform and commits the libraries to
 # WaaS.Unity/Packages/com.ruccho.waas/Editor/Plugins on the branch the workflow runs on.
-# It also runs when the source of the library changes. The commit made by this workflow uses
-# GITHUB_TOKEN and does not start the workflow again.
 
 on:
   workflow_dispatch:
-  push:
-    branches: ['**']
-    paths:
-      - WaaS/waas-unity-native-editor/**
-      - .github/workflows/build-native-editor.yml
 
 concurrency:
   group: build-native-editor-${{ github.ref }}
