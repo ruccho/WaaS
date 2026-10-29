@@ -1,4 +1,4 @@
-﻿use wit_parser::{Handle, Interface, Package, Resolve, Tuple, Type, TypeDef, TypeDefKind, TypeOwner, World};
+﻿use wit_parser::{Handle, InterfaceId, Package, Resolve, Tuple, Type, TypeDef, TypeDefKind, TypeOwner, World, WorldItem, WorldKey};
 
 pub fn to_upper_camel(name: &str) -> String {
     let mut result = String::new();
@@ -76,8 +76,7 @@ impl ToWaas for TypeDef {
                     Ok(format!("{}.{}{}", world.to_waas(resolve)?, prefix, to_upper_camel(&ty.name.clone().unwrap())))
                 }
                 TypeOwner::Interface(id) => {
-                    let interface = resolve.interfaces.get(*id).unwrap();
-                    Ok(format!("{}.{}{}", interface.to_waas(resolve)?, prefix, to_upper_camel(&ty.name.clone().unwrap())))
+                    Ok(format!("{}.{}{}", interface_to_waas(resolve, *id)?, prefix, to_upper_camel(&ty.name.clone().unwrap())))
                 }
                 TypeOwner::None => Err(anyhow::anyhow!("type owner not set"))?,
             }
@@ -142,16 +141,51 @@ impl ToWaas for World {
     }
 }
 
-impl ToWaas for Interface {
-    fn to_waas(&self, resolve: &Resolve) -> anyhow::Result<String> {
-        // TODO: support inline interfaces
-        let name = to_upper_camel(&self.name.clone().unwrap());
-        if let Some(package_id) = self.package {
-            let package = resolve.packages.get(package_id).unwrap();
-            Ok(format!("{}.I{}", package.to_waas(resolve)?, name))
-        } else {
-            Ok(format!("global::I{}", name))
+/// Finds the world that declares the inline interface.
+/// Returns the world, the name of the import / export and whether it is an export.
+pub fn find_inline_interface_owner(resolve: &Resolve, id: InterfaceId) -> Option<(&World, &str, bool)> {
+    for (_world_id, world) in &resolve.worlds {
+        for (is_export, items) in [(false, &world.imports), (true, &world.exports)] {
+            for (key, item) in items {
+                if let (WorldKey::Name(name), WorldItem::Interface { id: item_id, .. }) = (key, item) {
+                    if *item_id == id {
+                        return Some((world, name, is_export));
+                    }
+                }
+            }
         }
+    }
+    None
+}
+
+/// Returns the C# type name (without the `I` prefix) of an interface.
+///
+/// The name of an inline interface is derived from the name of the world and the name of the
+/// import / export, so that inline interfaces of different worlds do not conflict.
+pub fn interface_type_name(resolve: &Resolve, id: InterfaceId) -> anyhow::Result<String> {
+    let interface = resolve.interfaces.get(id).unwrap();
+    if let Some(name) = &interface.name {
+        return Ok(to_upper_camel(name));
+    }
+
+    let (world, name, is_export) = find_inline_interface_owner(resolve, id)
+        .ok_or_else(|| anyhow::anyhow!("inline interface is not owned by any world"))?;
+    let mut result = format!("{}{}", to_upper_camel(&world.name), to_upper_camel(name));
+    if is_export && world.imports.keys().any(|key| matches!(key, WorldKey::Name(n) if n == name)) {
+        // an import and an export in the same world can have the same name
+        result.push_str("Export");
+    }
+    Ok(result)
+}
+
+pub fn interface_to_waas(resolve: &Resolve, id: InterfaceId) -> anyhow::Result<String> {
+    let interface = resolve.interfaces.get(id).unwrap();
+    let name = interface_type_name(resolve, id)?;
+    if let Some(package_id) = interface.package {
+        let package = resolve.packages.get(package_id).unwrap();
+        Ok(format!("{}.I{}", package.to_waas(resolve)?, name))
+    } else {
+        Ok(format!("global::I{}", name))
     }
 }
 
