@@ -53,3 +53,10 @@ It can be used as a script to add plugins to applications created with Unity or 
 # Documentation
 
 ### See the [documentation](https://ruccho.com/WaaS) for installation and usage.
+
+# Wukuro
+
+[Wukuro](https://ruccho.com/WaaS/wukuro) is an event scripting framework for Unity based on WaaS, developed in this repository. Events are written in Rust and run as WebAssembly components.
+
+- Unity package: [`WaaS.Unity/Packages/com.ruccho.wukuro`](WaaS.Unity/Packages/com.ruccho.wukuro)
+- Rust crates: [`Wukuro/crates`](Wukuro/crates) (`wukuro`, `wukuro-macro`, `wukuro-dialog`)
