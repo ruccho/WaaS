@@ -1,0 +1,73 @@
+---
+title: Exporting WIT
+sidebar_position: 3
+---
+
+# Exporting WIT
+
+WIT files can be exported from the C# interfaces defined in [Attributes](./attributes.mdx). This lets you define the functions and types provided by the host only in C#, and use the exported WIT to generate the bindings on the guest side (such as Rust).
+
+## How WIT is generated
+
+When a name in the form of `namespace:package/interface` is given to `[ComponentInterface]`, the Source Generator generates the WIT definition of the interface and applies it to the interface as the `[ComponentWitDefinition]` attribute.
+
+```csharp
+[ComponentInterface(@"my-game:events/functions")]
+public partial interface IFunctions
+{
+    [ComponentApi(@"play-sound")]
+    ValueTask PlaySound(string @name);
+}
+```
+
+The definitions of the interfaces in the same package are combined into the WIT of the package.
+
+```wit
+package my-game:events;
+
+interface functions {
+    play-sound: func(name: string);
+}
+```
+
+When an interface refers to types of other interfaces or packages, `use` is emitted automatically.
+
+:::info
+The code to build WIT from C# is in `WaaS.ComponentModel.Binding.WitPackageBuilder`. Without Unity, you can get the WIT by passing a list of types to `WitPackageBuilder.Build`.
+:::
+
+## Exporting in Unity
+
+In Unity, the packages specified in a **WIT Export Settings** asset are exported as WIT files.
+
+1. Create a settings asset from `Create` > `WaaS` > `WIT Export Settings`.
+2. Set the following items.
+   - **Output Directory**: the directory to export to, relative to the root of the Unity project.
+   - **Packages**: the names of the packages to export, such as `my-game:events`.
+
+Each package is exported to `<Output Directory>/<namespace>-<package>/<namespace>-<package>.wit`. In the example above with `wit` as the Output Directory, `wit/my-game-events/my-game-events.wit` is created.
+
+The export runs automatically every time the scripts are compiled, and the files are rewritten only when their contents change. To export manually, select `Assets` > `Export WIT for WaaS`.
+
+You can create multiple settings assets. The same package can be exported to multiple locations, which is useful when multiple crates include the WIT.
+
+### Working with Rust Importer
+
+The exported WIT files are registered as external file dependencies of [Rust Importer](../../unity-integration/rust.mdx). When the WIT changes, the Rust source files that read it are reimported automatically.
+
+On the Rust side, specify the exported WIT in `path` of `wit_bindgen::generate!` to generate the bindings.
+
+```rust
+wit_bindgen::generate!({
+    inline: r#"
+        package my-game:events-inline;
+
+        world imports {
+            import my-game:events/functions;
+        }
+    "#,
+    path: ["../wit/my-game-events"],
+    world: "my-game:events-inline/imports",
+    generate_all,
+});
+```

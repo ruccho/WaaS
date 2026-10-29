@@ -1,0 +1,126 @@
+---
+title: Running Scripts
+sidebar_position: 4
+---
+
+# Running Scripts
+
+## References to entry points
+
+`WukuroEntryReference` holds a script (`ComponentAsset`), the name of an entry point and the values of the arguments together. It is a serializable class used as a field of MonoBehaviours and ScriptableObjects.
+
+```csharp
+[SerializeField] private WukuroEntryReference entry = new();
+```
+
+In the inspector, the list of entry points is shown when a script is specified. When an entry point is selected, the fields are created according to its parameters. Even when the parameters are changed by editing the script, the values of the arguments whose names and types match are kept.
+
+To specify an entry point from C#, use the constructor.
+
+```csharp
+var entry = new WukuroEntryReference(script, scriptId, "hello");
+```
+
+`scriptId` is a string to identify the entry points of the same script. When specified in the inspector, the GUID of the script asset is set.
+
+## WukuroRunner
+
+`WukuroRunner` runs scripts.
+
+```csharp
+var runner = new WukuroRunner();
+runner.AddModule(dialogModule);
+await runner.RunAsync(entry, variables);
+```
+
+- `AddModule(module)`: adds a module (`IWukuroModule`) used from scripts. Host functions get the modules from the context of the script ([Extending](./extending.mdx)).
+- `RunAsync(entry, variables)`: runs the entry point, and completes when the script ends. It throws when an exception occurs in the script or the entry point is not found.
+
+The component of the script is newly instantiated every time `RunAsync` is called. The states in the script, such as `static` in Rust, are not kept between runs. Store the values to be kept across runs in variables.
+
+### Passing arguments from C#
+
+With `WukuroRuntimeArguments`, arguments can be passed from C# in addition to those set in the inspector. When there are arguments with the same name, the values passed from C# take precedence.
+
+```csharp
+var arguments = new WukuroRuntimeArguments()
+    .Add("count", 3)
+    .Add("on-finished", () => Debug.Log("finished"));
+
+await runner.RunAsync(entry, variables, arguments);
+```
+
+The names of the arguments are the parameter names of the entry point in kebab-case. `Add` accepts `bool`, `int`, `float`, `string`, `UnityEngine.Object` and `System.Action`.
+
+### Running while another event is playing
+
+`RunAsync` can be called while another script is running. For example, the implementation of a host function can run another entry point and wait for its completion.
+
+## Variables
+
+Where the variables of scripts (`cx.get_variable(name)`) are stored is decided by the `IVariables` passed to `RunAsync`.
+
+- `MemoryVariables`: an implementation that keeps the values in memory. The values are lost when the instance is discarded.
+- To save the values in the save data, implement `IVariables` and `IVariable`.
+
+```csharp
+public class SaveDataVariables : IVariables
+{
+    private readonly Dictionary<string, object> store;
+
+    public SaveDataVariables(Dictionary<string, object> store)
+    {
+        this.store = store;
+    }
+
+    public IVariable GetVariable(string name)
+    {
+        return new Variable(store, name);
+    }
+
+    private class Variable : IVariable
+    {
+        private readonly Dictionary<string, object> store;
+        private readonly string name;
+
+        public Variable(Dictionary<string, object> store, string name)
+        {
+            this.store = store;
+            this.name = name;
+        }
+
+        public Wukuro.Core.ITypes.Argument? Get(IContext context)
+        {
+            if (!store.TryGetValue(name, out var value)) return null;
+            return value switch
+            {
+                bool b => Wukuro.Core.ITypes.Argument.CreateTyBool(b),
+                int i => Wukuro.Core.ITypes.Argument.CreateTyS32(i),
+                float f => Wukuro.Core.ITypes.Argument.CreateTyF32(f),
+                string s => Wukuro.Core.ITypes.Argument.CreateTyString(s),
+                _ => null
+            };
+        }
+
+        public void Set(IContext context, Wukuro.Core.ITypes.Argument value)
+        {
+            if (value.TyBool is { } b) store[name] = b;
+            else if (value.TyS32 is { } i) store[name] = i;
+            else if (value.TyF32 is { } f) store[name] = f;
+            else if (value.TyString is { } s) store[name] = s;
+        }
+    }
+}
+```
+
+The scope of the variable names (separated for each script, or shared by the whole game) can also be decided by the implementation of `IVariables`. For example, separating the storage for each `WukuroEntryReference.ScriptId` makes the variables shared only among the entry points of the same script.
+
+## Registering imports
+
+The implementations of the interfaces imported by scripts are registered with `WukuroRunner.RegisterImportProvider`. The registration is shared by all `WukuroRunner`s.
+
+- `wukuro:core` is registered automatically.
+- `wukuro:dialog` is registered with `DialogImports.Register()`.
+- Game-specific interfaces are registered by the game ([Extending](./extending.mdx#3-registering-the-imports)).
+
+Register them once before running scripts.

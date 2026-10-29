@@ -1,0 +1,374 @@
+---
+title: Extending
+sidebar_position: 5
+---
+
+# Extending
+
+Wukuro itself provides only basic features such as waiting, variables, logging and dialogs. Game-specific features such as playing sounds, controlling the camera and giving items are expected to be added by the game.
+
+This page explains the steps to add features through an example that makes playing sounds and moving the camera callable from scripts.
+
+## Overview
+
+1. **Define in C#**: define the functions and types provided to scripts as C# interfaces with attributes.
+2. **Implement in C#**: implement the defined interfaces and call the processes of the game.
+3. **Register the imports**: register the implementations to `WukuroRunner`.
+4. **Export WIT**: export WIT files from the definitions.
+5. **Create a Rust crate**: create a crate that generates the bindings from the WIT.
+6. **Use from scripts**: add the crate to the dependencies of scripts and call the functions.
+
+The definitions start from C#. WIT is generated automatically from the C# definitions, so you do not have to write it by hand.
+
+## Designing modules
+
+It is recommended to group game-specific features as **modules**. A module consists of the following two parts.
+
+- C# side: a class implementing `IWukuroModule`. It is added with `WukuroRunner.AddModule` for each run of a script.
+- WIT side: a resource representing the module, and a function to get the resource from the context of the script.
+
+```wit
+package my-game:events;
+
+interface types {
+    use wukuro:core/types.{object};
+
+    resource game-module {
+        play-sound: func(name: string);
+        move-camera: func(target: borrow<object>, duration: f32);
+    }
+}
+
+interface functions {
+    use types.{game-module};
+    use wukuro:core/types.{context};
+
+    get-game-module: func(context: borrow<context>) -> game-module;
+}
+```
+
+A script gets the module with `get_game_module(cx)` and calls its methods. Since a different instance of the module can be passed for each run, the module can hold the information of the playing event (which event it is, whether it is played for the first time, and so on) and references to the systems of the game.
+
+## 1. Defining in C#
+
+For each WIT interface, define a `partial` C# interface and give it [attributes](../component-model/binding-generator/attributes.mdx). Specify a name in the form of `namespace:package/interface` to `[ComponentInterface]`.
+
+```csharp title="MyGameTypes.cs"
+using System.Threading.Tasks;
+using WaaS.ComponentModel.Binding;
+
+namespace MyGame.Events
+{
+    [ComponentInterface(@"my-game:events/types")]
+    public partial interface ITypes
+    {
+        [ComponentResource("game-module")]
+        public partial interface IGameModuleResourceImpl : IResourceImpl
+        {
+            [ComponentApi(@"[method]game-module.play-sound")]
+            ValueTask PlaySound(Borrowed<IGameModuleResourceImpl> self, string name);
+
+            [ComponentApi(@"[method]game-module.move-camera")]
+            ValueTask MoveCamera(Borrowed<IGameModuleResourceImpl> self,
+                Borrowed<Wukuro.Core.ITypes.IObjectResourceImpl> target, float duration);
+        }
+    }
+}
+```
+
+```csharp title="MyGameFunctions.cs"
+using System.Threading.Tasks;
+using WaaS.ComponentModel.Binding;
+
+namespace MyGame.Events
+{
+    [ComponentInterface(@"my-game:events/functions")]
+    public partial interface IFunctions
+    {
+        [ComponentApi(@"get-game-module")]
+        ValueTask<Owned<ITypes.IGameModuleResourceImpl>> GetGameModule(
+            Borrowed<Wukuro.Core.ITypes.IContextResourceImpl> context);
+    }
+}
+```
+
+- Unity objects are received as the `object` resource of `wukuro:core` (`Wukuro.Core.ITypes.IObjectResourceImpl`).
+- Texts are received as `Wukuro.Core.ITypes.Text`. The host resolves localized texts.
+- When the return type of a function is `ValueTask`, the script waits until the process completes. A function that waits for the end of a cutscene should return a `ValueTask` that completes at the end.
+
+## 2. Implementing in C#
+
+### The module
+
+Write the processes of the game in the module class. Keeping it independent of the binding types of WaaS makes it easy to test and reuse.
+
+```csharp title="GameModule.cs"
+using Cysharp.Threading.Tasks;
+using UnityEngine;
+using Wukuro;
+
+namespace MyGame.Events
+{
+    public class GameModule : IWukuroModule
+    {
+        private readonly SoundPlayer sound;
+        private readonly CameraController camera;
+
+        public GameModule(SoundPlayer sound, CameraController camera)
+        {
+            this.sound = sound;
+            this.camera = camera;
+        }
+
+        public void PlaySound(string name)
+        {
+            sound.Play(name);
+        }
+
+        public UniTask MoveCamera(Transform target, float duration)
+        {
+            return camera.MoveAsync(target.position, duration);
+        }
+    }
+}
+```
+
+### Resources and functions
+
+From the C# interface definitions, the Source Generator generates the members to be implemented. A resource is implemented by deriving `HostResourceTypeBase<T>`, and `Unwrap(self)` takes out the C# object corresponding to the resource (the module here).
+
+```csharp title="MyGameImports.cs"
+using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
+using UnityEngine;
+using WaaS.ComponentModel.Binding;
+using WaaS.ComponentModel.Runtime;
+using Wukuro;
+using CoreTypes = Wukuro.Core.ITypes;
+
+namespace MyGame.Events
+{
+    public static class MyGameImports
+    {
+        public static void Register()
+        {
+            var types = ITypes.CreateWaaSInstance(new Types());
+            var functions = IFunctions.CreateWaaSInstance(new Functions());
+            WukuroRunner.RegisterImportProvider(
+                new DelegateImportProvider<ISortedExportable>("my-game:events/types", () => types));
+            WukuroRunner.RegisterImportProvider(
+                new DelegateImportProvider<ISortedExportable>("my-game:events/functions", () => functions));
+        }
+
+        private class Types : ITypes
+        {
+            public ITypes.IGameModuleResourceImpl GameModule => GameModuleType.Instance;
+            public CoreTypes.IObjectResourceImpl Object => WukuroObjects.ResourceType;
+        }
+
+        private class Functions : IFunctions
+        {
+            public CoreTypes.IContextResourceImpl Context => WukuroContexts.ResourceType;
+            public ITypes.IGameModuleResourceImpl GameModule => GameModuleType.Instance;
+
+            public ValueTask<Owned<ITypes.IGameModuleResourceImpl>> GetGameModule(
+                Borrowed<CoreTypes.IContextResourceImpl> context)
+            {
+                // get the module added with AddModule from the context of the script
+                var module = WukuroContexts.GetModule<GameModule>(context);
+                return new ValueTask<Owned<ITypes.IGameModuleResourceImpl>>(
+                    (Owned<ITypes.IGameModuleResourceImpl>)GameModuleType.Instance.Wrap(module));
+            }
+        }
+
+        private class GameModuleType : HostResourceTypeBase<GameModule>, ITypes.IGameModuleResourceImpl
+        {
+            public static new readonly GameModuleType Instance = new();
+            public IResourceType Type => this;
+
+            public ValueTask PlaySound(Borrowed<ITypes.IGameModuleResourceImpl> self, string name)
+            {
+                Unwrap(self).PlaySound(name);
+                return default;
+            }
+
+            public ValueTask MoveCamera(Borrowed<ITypes.IGameModuleResourceImpl> self,
+                Borrowed<CoreTypes.IObjectResourceImpl> target, float duration)
+            {
+                return Unwrap(self).MoveCamera(WukuroObjects.Get<Transform>(target), duration).AsValueTask();
+            }
+        }
+    }
+}
+```
+
+- `Types` and `Functions` need properties returning the implementations of the resources referred to by the interfaces. For the resources of `wukuro:core`, use `WukuroObjects.ResourceType`, `WukuroContexts.ResourceType` and `WukuroTasks.ResourceType`.
+- `WukuroObjects.Get<T>(handle)` takes out an object passed from the script as type `T`. When `T` is a component type and the passed object is a GameObject, it returns the component of the GameObject. It throws when the type does not match.
+- `WukuroContexts.GetModule<T>(handle)` returns the module added to the `WukuroRunner` running the script.
+
+### Processes that proceed without waiting
+
+To let a script proceed without waiting for a process and wait for it later, return the `task` resource of `wukuro:core`. `WukuroTasks.Wrap(uniTask)` converts a UniTask to a `task`.
+
+```csharp
+[ComponentApi(@"[method]game-module.play-cutscene")]
+ValueTask<Owned<Wukuro.Core.ITypes.ITaskResourceImpl>> PlayCutscene(Borrowed<IGameModuleResourceImpl> self,
+    string name);
+```
+
+```csharp
+public ValueTask<Owned<CoreTypes.ITaskResourceImpl>> PlayCutscene(Borrowed<ITypes.IGameModuleResourceImpl> self,
+    string name)
+{
+    return new ValueTask<Owned<CoreTypes.ITaskResourceImpl>>(WukuroTasks.Wrap(Unwrap(self).PlayCutsceneAsync(name)));
+}
+```
+
+The script can wait for the completion with `wait()` of the returned `Task`.
+
+## 3. Registering the imports
+
+Call `MyGameImports.Register()` once before running scripts. When running a script, add the module with `AddModule`.
+
+```csharp
+MyGameImports.Register();
+
+var runner = new WukuroRunner();
+runner.AddModule(new GameModule(soundPlayer, cameraController));
+await runner.RunAsync(entry, variables);
+```
+
+An error occurs at runtime when the implementation of an interface imported by the script is not registered, or when a module obtained by the script is not added.
+
+## 4. Exporting WIT
+
+Create a settings asset from `Create` > `WaaS` > `WIT Export Settings` and export the WIT files from the C# definitions ([Exporting WIT](../component-model/binding-generator/wit-export.mdx)).
+
+To include the WIT in the Rust crate, specify a directory in the crate as the destination. The WIT of the crate refers to the types of `wukuro:core`, so export `wukuro:core` to the same place as well.
+
+- **Output Directory**: `rust/my-game/wit`
+- **Packages**: `wukuro:core`, `my-game:events`
+
+`rust/my-game/wit/wukuro-core/wukuro-core.wit` and `rust/my-game/wit/my-game-events/my-game-events.wit` are created. When the C# definitions change, they are exported automatically on every compilation, and the scripts depending on the crate are reimported.
+
+## 5. Creating a Rust crate
+
+Add the crate to the members and dependencies of the workspace in `Cargo.toml` at the root of the Unity project ([Using workspace dependencies](./installation.mdx#using-workspace-dependencies)).
+
+```toml title="Cargo.toml"
+[workspace]
+members = ["Library/com.ruccho.waas/rust/crates/*", "rust/*"] # Used by WaaS
+resolver = "2" # Used by WaaS
+
+[workspace.dependencies]
+wukuro = "0.1.0"
+wukuro_dialog = { package = "wukuro-dialog", version = "0.1.0" }
+my-game = { path = "./rust/my-game" }
+```
+
+```toml title="rust/my-game/Cargo.toml"
+[package]
+name = "my-game"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+wit-bindgen = "0.42.1"
+wukuro = { workspace = true }
+```
+
+In the crate, generate the bindings from the exported WIT with `wit_bindgen::generate!`. Specify with `with` to use the types of `wukuro:core` generated by the `wukuro` crate.
+
+```rust title="rust/my-game/src/lib.rs"
+pub use bindings::my_game::events::{functions, types};
+
+mod bindings {
+    wit_bindgen::generate!({
+        inline: r#"
+            package my-game:events-inline;
+
+            world imports {
+                import my-game:events/functions;
+                import my-game:events/types;
+            }
+        "#,
+        path: ["wit/wukuro-core", "wit/my-game-events"],
+        world: "my-game:events-inline/imports",
+        with: {
+            "wukuro:core/types": ::wukuro::wukuro::core::types,
+            "my-game:events/types": generate,
+            "my-game:events/functions": generate,
+        },
+    });
+}
+```
+
+:::warning
+Without `wukuro:core/types` in `with`, the types of `wukuro:core` (`Context`, `Object` and so on) are generated in the crate as different types. Then they cannot be used together with the types of the `wukuro` crate.
+:::
+
+:::info
+`wit_bindgen::generate!` generates a module corresponding to the namespace of the WIT package (`my_game` here). If this module is public, it may shadow the names of other crates when a script uses `use my_game::*`. As in the example above, it is recommended to put the generated code in a private module and publish only what is needed.
+:::
+
+The crate can also contain helpers to make it easier to use from scripts, such as constants, functions and types.
+
+## 6. Using from scripts
+
+Add `my-game` **via Workspace** to Dependencies of the import settings of scripts.
+
+```rust
+use wukuro::entry;
+use wukuro::types::{Context, Object};
+use my_game::functions::*;
+
+#[entry]
+fn arrival(cx: &Context, camera_target: &Object) {
+    let game = get_game_module(cx);
+    game.play_sound("door");
+    game.move_camera(camera_target, 1.5);
+}
+```
+
+## Implementing dialogs
+
+The functions of `wukuro:dialog` are provided by the Wukuro package, but the dialogs themselves are shown by the UI of the game. Implement `IDialogModule` and add it as a module.
+
+```csharp
+public class MyDialogModule : IDialogModule
+{
+    public ValueTask OpenDialog(Option<string> provider) { /* open the dialog */ }
+    public ValueTask CloseDialog() { /* close the dialog */ }
+    public ValueTask ShowMessage(Wukuro.Dialog.ITypes.MessageInfo message) { /* show the message and wait until the player proceeds */ }
+    public ValueTask<int> ShowOptions(ReadOnlyMemory<Wukuro.Core.ITypes.Text> options) { /* show the options and return the chosen index */ }
+    public ValueTask FadeIn(float duration) { /* fade the screen */ }
+    public ValueTask FadeOut(float duration) { /* revert the fade */ }
+}
+```
+
+```csharp
+DialogImports.Register();
+
+var runner = new WukuroRunner();
+runner.AddModule(new MyDialogModule());
+```
+
+`Speaker` and `Face` of `MessageInfo` are the names of the speaker and the face specified in the script. `Styles` is a list of the names of display styles that the host can interpret freely. A text (`Text`) is shown as it is if it is `Plain`, and if it is `Localized`, the localized string is obtained from the table name and the key.
+
+## Generating Rust code from the data of the game
+
+When scripts refer to names in the data of the game, such as the list of speakers, the progress of the scenario and the IDs of items, generating the names as constants or types in Rust code lets mistakes in the names be detected at compile time.
+
+Generate the code with an editor extension and write it out as a source of the game-specific crate. Registering the written file with `ExternalFileDependency.Register(path)` (`WaaS.Unity.Editor`) makes the scripts depending on the file reimported when it changes.
+
+```csharp
+var source = GenerateSpeakers(); // make Rust code from the data of the game
+if (!File.Exists(path) || File.ReadAllText(path) != source)
+{
+    File.WriteAllText(path, source);
+    AssetDatabase.Refresh();
+}
+ExternalFileDependency.Register(path);
+```
+
+Generating Rust types from the declarations of object types is included in Wukuro ([Object Types](./object-types.mdx)).

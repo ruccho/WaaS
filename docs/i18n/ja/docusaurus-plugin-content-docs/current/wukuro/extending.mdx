@@ -261,8 +261,8 @@ members = ["Library/com.ruccho.waas/rust/crates/*", "rust/*"] # Used by WaaS
 resolver = "2" # Used by WaaS
 
 [workspace.dependencies]
-wukuro = { git = "https://github.com/ruccho/WaaS.git" }
-wukuro_dialog = { package = "wukuro-dialog", git = "https://github.com/ruccho/WaaS.git" }
+wukuro = "0.1.0"
+wukuro_dialog = { package = "wukuro-dialog", version = "0.1.0" }
 my-game = { path = "./rust/my-game" }
 ```
 

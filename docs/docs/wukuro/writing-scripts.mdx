@@ -1,0 +1,197 @@
+---
+title: Writing Scripts
+sidebar_position: 3
+---
+
+# Writing Scripts
+
+## Entry points
+
+A function with `#[entry]` becomes an entry point. A file can have multiple entry points, and they can share the constants and functions in the same file.
+
+```rust
+use wukuro::entry;
+use wukuro::functions::*;
+use wukuro::types::Context;
+
+const GREETING: &str = "Hello";
+
+fn greet(name: &str) {
+    log(&format!("{GREETING}, {name}"));
+}
+
+#[entry]
+fn morning(cx: &Context) {
+    greet("early bird");
+}
+
+#[entry]
+fn night(cx: &Context) {
+    greet("night owl");
+}
+```
+
+An entry point `foo_bar` is exported as the function `run` of the component interface `wukuro-entry:foo-bar/entry`. The name of the entry point is the function name in kebab-case, with `_` replaced by `-`.
+
+### Parameters
+
+The first parameter of an entry point is `&Context`. The following parameters can have the types below.
+
+| Rust type | WIT type | Input in the inspector |
+| --- | --- | --- |
+| `bool` | `bool` | Checkbox |
+| `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64` | `s8` to `u64` | Integer |
+| `f32`, `f64` | `f32`, `f64` | Decimal |
+| `char` | `char` | Character |
+| `String` | `string` | String |
+| `&wukuro::types::Action` | `borrow<action>` | UnityEvent |
+| `&wukuro::types::Object` | `borrow<object>` | Any `UnityEngine.Object` |
+| `&wukuro::ObjectOf<T>` | `borrow<object>` | An object of type `T` ([Object Types](./object-types.mdx)) |
+
+The values of the parameters are matched with the values set in the inspector or passed from C# by the parameter name in kebab-case (`camera-target` for `camera_target`).
+
+`Action` is a C# process that can be called with `run()`. It is set as a UnityEvent in the inspector.
+
+## Context
+
+The arguments and variables can be obtained from `&Context`.
+
+```rust
+use wukuro::types::Argument;
+
+#[entry]
+fn counter(cx: &Context) {
+    // get and set a variable
+    let variable = cx.get_variable("count");
+    let count = match variable.get() {
+        Some(Argument::TyS32(value)) => value,
+        _ => 0,
+    };
+    variable.set(Argument::TyS32(count + 1));
+    log(&format!("count: {}", count + 1));
+}
+```
+
+- `get_argument(name)`: gets the value of an argument by its name. Values not declared as parameters of the entry point can also be obtained.
+- `get_variable(name)`: gets a variable. Where the variables are stored is decided by the C# side that runs the script ([Running Scripts](./running-scripts.mdx#variables)).
+
+Values are represented by `wukuro::types::Argument`. It has cases such as `TyBool`, `TyS32`, `TyF32`, `TyString`, `TyAction` and `TyObject`.
+
+## Functions
+
+`wukuro::functions` provides the following functions.
+
+| Function | Description |
+| --- | --- |
+| `log(message)` | Outputs a log to the Unity console. |
+| `delay(duration, update_mode)` | Waits for the specified seconds. `update_mode` is one of `UpdateModeKind::Scaled` (affected by `Time.timeScale`), `Unscaled` (not affected) and `Realtime` (real time). |
+| `delay_frame(num_frames)` | Waits for the specified number of frames. |
+| `schedule(action, delay, update_mode)` | Runs `action` after `delay` seconds without waiting for it. With the returned `Task`, you can wait for the completion (`wait()`) or check whether it has completed (`is_completed()`). |
+
+:::info
+A call to a function in a script does not return until the process on the host side completes. Waiting for a delay or the end of a cutscene can be written as ordinary function calls in order.
+:::
+
+## Texts
+
+Texts shown to the player are represented by `wukuro::types::Text`. There are two kinds: a string written directly in the script (`Text::Plain`), and a reference to a localized text (`Text::Localized`).
+
+A localized text is created with the `l10n!` macro. The arguments are a table name and a key, and the source text can optionally be written as the third argument. The source text is not used at runtime and is only for the readability of the script.
+
+```rust
+use wukuro::{l10n, IntoText};
+
+let greeting = l10n!("Dialogs", "greeting", "Hello");
+let plain = "Hello".into_text();
+```
+
+Functions taking texts take `impl IntoText`, so `&str`, `String` and `Text` can all be passed. How a localized text is resolved to an actual string is decided by the host implementation.
+
+## Dialogs
+
+The `wukuro-dialog` crate shows messages and options in dialogs. The dialogs are shown by the host implementation (`IDialogModule`) ([Extending](./extending.mdx#implementing-dialogs)).
+
+```rust
+use wukuro::entry;
+use wukuro::types::Context;
+use wukuro_dialog::functions::*;
+use wukuro_dialog::*;
+
+#[entry]
+fn shopkeeper(cx: &Context) {
+    let dialog = get_dialog_module(cx);
+    let d = DialogSession::new(&dialog, None);
+
+    d.msg::<Shopkeeper>("Welcome!");
+    d.show(MessageInfo::new::<Shopkeeper>("Would you like to buy something?").face(&ShopkeeperFace::Smile));
+
+    match d.opts(["Buy", "Leave"]) {
+        0 => d.msg::<Shopkeeper>("Thank you!"),
+        _ => d.msg::<Shopkeeper>("Come again!"),
+    }
+}
+```
+
+### Dialog sessions
+
+`DialogSession::new` opens a dialog, and the dialog is closed when the session is dropped. The second argument can specify the kind of the dialog interpreted by the host.
+
+- `msg::<T>(text)`: shows a message of the speaker `T` with the default face, and waits until the player proceeds.
+- `show(message)`: shows a message configured with `MessageInfo`.
+- `opts(options)`: shows options and returns the index of the chosen option.
+
+### Configuring messages
+
+`MessageInfo::new::<T>(text)` creates a message with only the speaker `T` and the text. Other settings are changed by chaining methods.
+
+```rust
+d.show(
+    MessageInfo::new::<Shopkeeper>("...")
+        .face(&ShopkeeperFace::Sad) // face
+        .auto(true) // proceed without waiting for input
+        .forbid_skip(true) // forbid skipping
+        .forbid_accel(true) // forbid fast-forwarding
+        .style("whisper"), // a display style interpreted by the host
+);
+```
+
+### Speakers and faces
+
+A speaker is represented by a type implementing `DialogSpeaker`, and a face by a type implementing `DialogFace`. The names are passed to the host as strings, and the host shows the corresponding speaker and face.
+
+```rust
+pub struct Shopkeeper;
+
+impl DialogSpeaker for Shopkeeper {
+    type FaceKind = ShopkeeperFace;
+
+    fn get_name() -> String {
+        "shopkeeper".to_string()
+    }
+}
+
+#[derive(Default)]
+pub enum ShopkeeperFace {
+    #[default]
+    Normal,
+    Smile,
+    Sad,
+}
+
+impl DialogFace for ShopkeeperFace {
+    fn get_name(&self) -> String {
+        match self {
+            ShopkeeperFace::Normal => "normal",
+            ShopkeeperFace::Smile => "smile",
+            ShopkeeperFace::Sad => "sad",
+        }
+        .to_string()
+    }
+}
+```
+
+If the list of speakers is generated from the data of the game and included in a game-specific crate, mistakes in the names of speakers and faces are detected at compile time. Use `NoSpeaker` for messages without a speaker, such as narrations.
+
+### Fades
+
+`FadeSession::new(&dialog, duration_in, duration_out)` fades the screen, and the fade is reverted when the session is dropped.

@@ -1,0 +1,78 @@
+---
+title: Installation
+sidebar_position: 1
+---
+
+# Installation
+
+## Requirements
+
+- Unity 6000.0 or later
+- [UniTask](https://github.com/Cysharp/UniTask) (`com.cysharp.unitask`)
+- WaaS (`com.ruccho.waas`), and the Rust toolchain and the `wasm32-unknown-unknown` target to use [Rust Importer](../unity-integration/rust.mdx)
+
+## Adding the Unity package
+
+Install UniTask and WaaS first, then add Wukuro by entering the following URL in `Add package from git URL...` of the Package Manager.
+
+```
+https://github.com/ruccho/WaaS.git?path=/WaaS.Unity/Packages/com.ruccho.wukuro
+```
+
+UniTask is not declared as a dependency in `package.json` because it is not in the Unity package registry. Install it separately following [the installation of UniTask](https://github.com/Cysharp/UniTask#upm-package).
+
+## Setting up the Rust crates
+
+Rust scripts are built with the crates specified in **Dependencies** of the import settings of Rust Importer. Wukuro scripts require the following crates.
+
+| Crate | Usage |
+| --- | --- |
+| `wukuro` | Required by all scripts. |
+| `wit-bindgen` | Required by all scripts, because `wit_bindgen::generate!` expanded by `#[entry]` refers to it directly. Use the version that `wukuro` depends on. |
+| `wukuro-dialog` | Required by scripts that show dialogs. |
+| Game-specific crates | Required by scripts that use the features added by the game ([Extending](./extending.mdx)). |
+
+The Wukuro crates are published on [crates.io](https://crates.io/). Specify them **via Registry** as follows.
+
+| Name | Version Requirements |
+| --- | --- |
+| `wukuro` | The same version as the Unity package (e.g. `0.1.0` for the Unity package `0.1.0`) |
+| `wukuro-dialog` | The same version as `wukuro` |
+| `wit-bindgen` | The version that `wukuro` depends on (`0.42.1`) |
+
+:::warning
+The WIT included in the crates is generated from the C# definitions in the Unity package. If the versions of the Unity package and the crates differ, the definitions of the functions in scripts and the host may not match and cause errors at runtime. Keep both versions the same.
+:::
+
+:::info
+It is convenient to put the dependencies in a [preset](../unity-integration/rust.mdx#using-presets) to set the same dependencies to all scripts.
+:::
+
+### Using workspace dependencies
+
+To develop a game-specific crate in the Unity project, or to manage the versions of dependencies in one place, add `[workspace.dependencies]` to `Cargo.toml` at the root of the Unity project and select **via Workspace** in Dependencies of Rust Importer.
+
+```toml
+[workspace]
+members = ["Library/com.ruccho.waas/rust/crates/*", "rust/*"] # Used by WaaS
+resolver = "2" # Used by WaaS
+
+[workspace.dependencies]
+wukuro = "0.1.0"
+wukuro_dialog = { package = "wukuro-dialog", version = "0.1.0" }
+my-game = { path = "./rust/my-game" }
+```
+
+For a dependency **via Workspace**, specify the key in `[workspace.dependencies]` as **Name**.
+
+### Using unpublished versions
+
+To try changes not yet published on crates.io, the crates can be fetched from the WaaS repository with git. Cargo finds the crates in the repository by their names, so the paths in the repository do not have to be specified.
+
+```toml
+[workspace.dependencies]
+wukuro = { git = "https://github.com/ruccho/WaaS.git", rev = "<commit hash>" }
+wukuro_dialog = { package = "wukuro-dialog", git = "https://github.com/ruccho/WaaS.git", rev = "<commit hash>" }
+```
+
+In this case, cargo fetches the whole repository including the submodules, so the first fetch takes time. Use the Unity package of the same commit as well.

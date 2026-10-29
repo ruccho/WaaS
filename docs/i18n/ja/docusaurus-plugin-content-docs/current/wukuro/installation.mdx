@@ -32,10 +32,17 @@ Rust のスクリプトは、Rust Importer のインポート設定の **Depende
 | `wukuro-dialog` | ダイアログを表示するスクリプトで必要です。 |
 | ゲーム固有のクレート | ゲーム側で追加した機能を使うスクリプトで必要です（[機能の追加](./extending.mdx)）。 |
 
-Wukuro のクレートは、**via Git** で WaaS のリポジトリから取得できます。
+Wukuro のクレートは [crates.io](https://crates.io/) で公開しています。**via Registry** で、次のように指定します。
 
-- **Git Url**: `https://github.com/ruccho/WaaS.git`
-- **Name**: `wukuro`、`wukuro-dialog`
+| Name | Version Requirements |
+| --- | --- |
+| `wukuro` | Unity パッケージと同じバージョン（例: Unity パッケージが `0.1.0` であれば `0.1.0`） |
+| `wukuro-dialog` | `wukuro` と同じバージョン |
+| `wit-bindgen` | `wukuro` が依存するバージョン（`0.42.1`） |
+
+:::warning
+クレートに同梱されている WIT は、Unity パッケージの C# の定義から生成されたものです。Unity パッケージとクレートのバージョンが異なると、スクリプトとホストの関数の定義が一致せず、実行時にエラーになることがあります。両者のバージョンを揃えてください。
+:::
 
 :::info
 すべてのスクリプトに同じ依存を設定するため、依存を [プリセット](../unity-integration/rust.mdx#プリセットの利用) にまとめておくと便利です。
@@ -43,7 +50,7 @@ Wukuro のクレートは、**via Git** で WaaS のリポジトリから取得�
 
 ### ワークスペースの依存を利用する
 
-クレートをローカルのパスから参照する場合や、ゲーム固有のクレートを Unity プロジェクト内で開発する場合は、Unity プロジェクトのルートの `Cargo.toml` に `[workspace.dependencies]` を追加し、Rust Importer の Dependencies で **via Workspace** を選択します。
+ゲーム固有のクレートを Unity プロジェクト内で開発する場合や、依存のバージョンを 1 か所で管理したい場合は、Unity プロジェクトのルートの `Cargo.toml` に `[workspace.dependencies]` を追加し、Rust Importer の Dependencies で **via Workspace** を選択します。
 
 ```toml
 [workspace]
@@ -51,9 +58,21 @@ members = ["Library/com.ruccho.waas/rust/crates/*", "rust/*"] # Used by WaaS
 resolver = "2" # Used by WaaS
 
 [workspace.dependencies]
-wukuro = { git = "https://github.com/ruccho/WaaS.git" }
-wukuro_dialog = { package = "wukuro-dialog", git = "https://github.com/ruccho/WaaS.git" }
+wukuro = "0.1.0"
+wukuro_dialog = { package = "wukuro-dialog", version = "0.1.0" }
 my-game = { path = "./rust/my-game" }
 ```
 
 **via Workspace** の依存では、**Name** に `[workspace.dependencies]` のキーを指定します。
+
+### 未公開のバージョンを使う
+
+crates.io に公開されていない変更を試す場合は、WaaS のリポジトリから git で取得できます。cargo はリポジトリ内のクレートを名前で探すため、リポジトリ内のパスを指定する必要はありません。
+
+```toml
+[workspace.dependencies]
+wukuro = { git = "https://github.com/ruccho/WaaS.git", rev = "<コミットハッシュ>" }
+wukuro_dialog = { package = "wukuro-dialog", git = "https://github.com/ruccho/WaaS.git", rev = "<コミットハッシュ>" }
+```
+
+この場合、cargo はリポジトリ全体をサブモジュールを含めて取得するため、初回の取得に時間がかかります。Unity パッケージも同じコミットのものを使ってください。
