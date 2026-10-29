@@ -58,6 +58,7 @@ impl ToWaas for Type {
             Type::F64 => "double".into(),
             Type::Char => "global::WaaS.ComponentModel.Binding.ComponentChar".into(),
             Type::String => "string".into(),
+            Type::ErrorContext => Err(anyhow::anyhow!("error-context is not supported"))?,
             Type::Id(id) => {
                 let ty = resolve.types.get(*id).unwrap();
                 ty.to_waas(resolve)?
@@ -117,6 +118,8 @@ impl ToWaas for TypeDef {
                 }))
             }
             TypeDefKind::List(element) => Ok(format!("global::System.ReadOnlyMemory<{}>", element.to_waas(resolve)?)),
+            TypeDefKind::Map(_, _) => Err(anyhow::anyhow!("map is not supported"))?,
+            TypeDefKind::FixedLengthList(_, _) => Err(anyhow::anyhow!("fixed-length list is not supported"))?,
             TypeDefKind::Future(_) => todo!(),
             TypeDefKind::Stream(_) => todo!(),
             TypeDefKind::Type(element) => {
