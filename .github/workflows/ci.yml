@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  dotnet-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: WaaS
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      # the component tests build a Rust guest and componentize it with wasm-tools
+      - name: Install the Rust target
+        run: rustup target add wasm32-unknown-unknown
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-tools
+      - name: Test
+        run: dotnet test WaaS.Tests -c Release
+
+  wukuro-crates:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Wukuro
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the Rust target
+        run: rustup target add wasm32-unknown-unknown
+      - name: Build
+        run: cargo build --locked --target wasm32-unknown-unknown
+      # checks that the packages include the files needed to build them, such as the WIT
+      - name: Publish (dry run)
+        run: cargo publish --workspace --dry-run --locked
+
+  rust-tools:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crate: [wit2waas, waas-unity-native-editor]
+    defaults:
+      run:
+        working-directory: WaaS/${{ matrix.crate }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build
+        run: cargo build --locked
+
+  versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check that all distributions have the same version
+        run: |
+          version=$(python scripts/version.py show | head -n 1 | cut -f 1)
+          python scripts/version.py check "$version"
