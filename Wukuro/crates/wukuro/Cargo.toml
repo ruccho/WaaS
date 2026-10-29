@@ -10,4 +10,4 @@ readme = "../../README.md"
 
 [dependencies]
 wit-bindgen = "0.42.1"
-wukuro-macro = { path = "../wukuro-macro", version = "0.1.0" }
+wukuro-macro = { path = "../wukuro-macro", version = "0.3.0" }

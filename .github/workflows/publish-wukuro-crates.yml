@@ -2,6 +2,8 @@ name: Publish Wukuro Crates
 
 on:
   workflow_dispatch:
+  release:
+    types: [published]
 
 jobs:
   publish-crates:
@@ -13,6 +15,10 @@ jobs:
         working-directory: Wukuro
     steps:
       - uses: actions/checkout@v4
+      - name: Check versions
+        if: github.event_name == 'release'
+        run: python scripts/version.py check "${{ github.event.release.tag_name }}"
+        working-directory: .
       - uses: rust-lang/crates-io-auth-action@v1
         id: auth
       - name: Publish
