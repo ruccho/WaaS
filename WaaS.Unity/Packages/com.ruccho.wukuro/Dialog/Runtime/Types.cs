@@ -38,7 +38,7 @@ namespace Wukuro.Dialog
 
         public ValueTask ShowMessage(ITypes.MessageInfo message);
 
-        public ValueTask<int> ShowOptions(ReadOnlyMemory<ITypes.Text> options);
+        public ValueTask<int> ShowOptions(ReadOnlyMemory<Core.ITypes.Text> options);
 
         public ValueTask FadeIn(float duration);
 
@@ -65,7 +65,7 @@ namespace Wukuro.Dialog
         }
 
         public ValueTask<int> ShowOptions(Borrowed<ITypes.IDialogModuleResourceImpl> self,
-            ReadOnlyMemory<ITypes.Text> options)
+            ReadOnlyMemory<Core.ITypes.Text> options)
         {
             return Unwrap(self).ShowOptions(options);
         }

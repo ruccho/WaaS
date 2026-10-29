@@ -1,13 +1,12 @@
 package wukuro:core;
 
 interface functions {
-    use types.{action, context, task, update-mode-kind};
+    use types.{action, task, update-mode-kind};
 
     log: func(message: string);
     delay: func(duration: f32, update-mode: update-mode-kind);
     delay-frame: func(num-frames: u32);
     schedule: func(action: borrow<action>, delay: f32, update-mode: update-mode-kind) -> task;
-    is-first-time: func(context: borrow<context>) -> bool;
 }
 
 interface types {
@@ -51,6 +50,16 @@ interface types {
         ty-string(string),
         ty-action(action),
         ty-object(object),
+    }
+
+    variant text {
+        plain(string),
+        localized(text-id),
+    }
+
+    record text-id {
+        table: string,
+        key: string,
     }
 
     enum update-mode-kind {

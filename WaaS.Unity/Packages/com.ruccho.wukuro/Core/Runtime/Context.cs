@@ -25,16 +25,12 @@ namespace Wukuro
         public Context(
             IArguments arguments,
             IVariables variables,
-            IEnumerable<IWukuroModule> modules,
-            bool isFirstTime)
+            IEnumerable<IWukuroModule> modules)
         {
             _arguments = arguments;
             _variables = variables;
             _modules = modules.ToList();
-            IsFirstTime = isFirstTime;
         }
-
-        public bool IsFirstTime { get; }
 
         public ITypes.Argument? GetArgument(string name)
         {

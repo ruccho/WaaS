@@ -53,10 +53,10 @@ namespace Wukuro
             _modules.Add(module);
         }
 
-        public UniTask RunAsync(WukuroEntryReference entry, IVariables variables, bool isFirstTime = true,
+        public UniTask RunAsync(WukuroEntryReference entry, IVariables variables,
             bool loadComponentAsync = true)
         {
-            return RunAsync(entry, variables, null, isFirstTime, loadComponentAsync);
+            return RunAsync(entry, variables, null, loadComponentAsync);
         }
 
         /// <summary>
@@ -64,7 +64,7 @@ namespace Wukuro
         ///     take precedence over them if given.
         /// </summary>
         public async UniTask RunAsync(WukuroEntryReference entry, IVariables variables, IArguments runtimeArguments,
-            bool isFirstTime = true, bool loadComponentAsync = true)
+            bool loadComponentAsync = true)
         {
             if (!entry.IsValid) throw new ArgumentException("The entry point is not specified.", nameof(entry));
 
@@ -76,7 +76,7 @@ namespace Wukuro
             var arguments = runtimeArguments != null
                 ? new WukuroRuntimeArguments.Combined(runtimeArguments, entry.Arguments)
                 : entry.Arguments;
-            await RunAsync(component, entry.Entry, arguments, variables, isFirstTime);
+            await RunAsync(component, entry.Entry, arguments, variables);
         }
 
         internal static IInstance Instantiate(IComponent component)
@@ -99,8 +99,7 @@ namespace Wukuro
         ///     Runs an entry point of the script. The parameters of the entry point are given by <paramref name="arguments" />
         ///     matched by the parameter name, except the context.
         /// </summary>
-        public async UniTask RunAsync(IComponent component, string entry, IArguments arguments, IVariables variables,
-            bool isFirstTime = true)
+        public async UniTask RunAsync(IComponent component, string entry, IArguments arguments, IVariables variables)
         {
             var instance = Instantiate(component);
 
@@ -111,7 +110,7 @@ namespace Wukuro
 
             using var executionContext = new ExecutionContext();
 
-            var context = new Context(arguments, variables, _modules, isFirstTime);
+            var context = new Context(arguments, variables, _modules);
             var ownedContext = ContextImpl.Instance.Wrap(context);
 
             // resources passed as borrowed arguments, released after the call

@@ -23,60 +23,56 @@ wit_bindgen::generate!({
 });
 
 
-/// A value that can be shown to the player as a text: a string written directly in the script, or a localized text
-/// created by [`l10n!`].
-pub trait IntoText {
-    fn into_text(self) -> types::Text;
-}
+pub use ::wukuro::{IntoText, l10n};
+pub use types::MessageInfo;
 
-impl IntoText for types::Text {
-    fn into_text(self) -> types::Text {
+impl MessageInfo {
+    /// Creates a message of the speaker `T` with its default face. The other settings can be changed by the methods
+    /// chained to it, such as [`MessageInfo::face`].
+    ///
+    /// ```ignore
+    /// d.show(MessageInfo::new::<Alice>("Hello").face(&AliceFace::Smile).forbid_skip(true));
+    /// ```
+    pub fn new<T: DialogSpeaker>(text: impl IntoText) -> Self {
+        MessageInfo {
+            speaker: T::get_name(),
+            face: T::FaceKind::default().get_name(),
+            text: text.into_text(),
+            auto: false,
+            forbid_skip: false,
+            forbid_accel: false,
+            styles: Vec::new(),
+        }
+    }
+
+    pub fn face(mut self, face: &impl DialogFace) -> Self {
+        self.face = face.get_name();
         self
     }
-}
 
-impl IntoText for &types::Text {
-    fn into_text(self) -> types::Text {
-        self.clone()
+    /// Whether the message proceeds automatically without input.
+    pub fn auto(mut self, auto: bool) -> Self {
+        self.auto = auto;
+        self
     }
-}
 
-impl IntoText for &str {
-    fn into_text(self) -> types::Text {
-        types::Text::Plain(self.to_string())
+    /// Whether the player cannot skip the message.
+    pub fn forbid_skip(mut self, forbid_skip: bool) -> Self {
+        self.forbid_skip = forbid_skip;
+        self
     }
-}
 
-impl IntoText for &&str {
-    fn into_text(self) -> types::Text {
-        types::Text::Plain(self.to_string())
+    /// Whether the player cannot accelerate the message.
+    pub fn forbid_accel(mut self, forbid_accel: bool) -> Self {
+        self.forbid_accel = forbid_accel;
+        self
     }
-}
 
-impl IntoText for String {
-    fn into_text(self) -> types::Text {
-        types::Text::Plain(self)
+    /// Adds a host-specific display style of the message.
+    pub fn style(mut self, style: &str) -> Self {
+        self.styles.push(style.to_string());
+        self
     }
-}
-
-impl IntoText for &String {
-    fn into_text(self) -> types::Text {
-        types::Text::Plain(self.clone())
-    }
-}
-
-/// Creates a reference to a localized text from a table name and a key.
-///
-/// The optional third argument is the source text at the time of localization. It is not used at runtime and is kept
-/// only to make the script readable.
-#[macro_export]
-macro_rules! l10n {
-    ($table:expr, $key:expr $(, $source:expr)? $(,)?) => {
-        $crate::types::Text::Localized($crate::types::TextId {
-            table: ::std::string::ToString::to_string($table),
-            key: ::std::string::ToString::to_string($key),
-        })
-    };
 }
 
 pub struct DialogSession<'a> {
@@ -89,45 +85,15 @@ impl<'a> DialogSession<'a> {
         DialogSession { module }
     }
 
-    pub fn msg_full(&self, message: &types::MessageInfo) {
-        self.module.show_message(message);
+    /// Shows a message and waits until the player proceeds.
+    pub fn show(&self, message: MessageInfo) {
+        self.module.show_message(&message);
     }
 
+    /// Shows a message of the speaker `T` with its default face. The same as
+    /// `show(MessageInfo::new::<T>(text))`.
     pub fn msg<T: DialogSpeaker>(&self, text: impl IntoText) {
-        self.module.show_message(&types::MessageInfo {
-            text: text.into_text(),
-            speaker: T::get_name(),
-            face: T::FaceKind::default().get_name(),
-            auto: false,
-            forbid_skip: false,
-            forbid_accel: false,
-            styles: Vec::new(),
-        });
-    }
-
-    pub fn msg_face<T: DialogSpeaker>(&self, text: impl IntoText, face: &T::FaceKind) {
-        self.module.show_message(&types::MessageInfo {
-            text: text.into_text(),
-            speaker: T::get_name(),
-            face: face.get_name(),
-            auto: false,
-            forbid_skip: false,
-            forbid_accel: false,
-            styles: Vec::new(),
-        });
-    }
-
-    /// Shows a message with host-specific display styles.
-    pub fn msg_styled<T: DialogSpeaker>(&self, text: impl IntoText, face: &T::FaceKind, styles: &[&str]) {
-        self.module.show_message(&types::MessageInfo {
-            text: text.into_text(),
-            speaker: T::get_name(),
-            face: face.get_name(),
-            auto: false,
-            forbid_skip: false,
-            forbid_accel: false,
-            styles: styles.iter().map(|s| s.to_string()).collect(),
-        });
+        self.show(MessageInfo::new::<T>(text));
     }
 
     pub fn opts<I>(&self, options: I) -> i32

@@ -19,7 +19,7 @@ namespace Wukuro.Dialog
             global::System.Threading.Tasks.ValueTask ShowMessage(global::WaaS.ComponentModel.Binding.Borrowed<Wukuro.Dialog.ITypes.IDialogModuleResourceImpl> @self, Wukuro.Dialog.ITypes.MessageInfo @message);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]dialog-module.show-options")]
-            global::System.Threading.Tasks.ValueTask<int> ShowOptions(global::WaaS.ComponentModel.Binding.Borrowed<Wukuro.Dialog.ITypes.IDialogModuleResourceImpl> @self, global::System.ReadOnlyMemory<Wukuro.Dialog.ITypes.Text> @options);
+            global::System.Threading.Tasks.ValueTask<int> ShowOptions(global::WaaS.ComponentModel.Binding.Borrowed<Wukuro.Dialog.ITypes.IDialogModuleResourceImpl> @self, global::System.ReadOnlyMemory<Wukuro.Core.ITypes.Text> @options);
 
             [global::WaaS.ComponentModel.Binding.ComponentApi(@"[method]dialog-module.fade-in")]
             global::System.Threading.Tasks.ValueTask FadeIn(global::WaaS.ComponentModel.Binding.Borrowed<Wukuro.Dialog.ITypes.IDialogModuleResourceImpl> @self, float @duration);
@@ -37,7 +37,7 @@ namespace Wukuro.Dialog
             [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public string Face { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
-            public Wukuro.Dialog.ITypes.Text Text { get; init; }
+            public Wukuro.Core.ITypes.Text Text { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
             public bool Auto { get; init; }
             [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
@@ -51,29 +51,6 @@ namespace Wukuro.Dialog
             public global::System.ReadOnlyMemory<string> Styles { get; init; }
         }
 
-        /// <summary>
-        ///     Text shown to the player: either the text written directly in the script, or a reference to a localized text.
-        /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentVariant, global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Auto)]
-        public readonly partial struct Text
-        {
-            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
-            public string? Plain { get; init; }
-            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
-            public Wukuro.Dialog.ITypes.TextId? Localized { get; init; }
-        }
-
-        /// <summary>
-        ///     A reference to a localized text. The host decides how to resolve it.
-        /// </summary>
-        [global::WaaS.ComponentModel.Binding.ComponentRecord]
-        public readonly partial struct TextId
-        {
-            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
-            public string Table { get; init; }
-            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
-            public string Key { get; init; }
-        }
 
     }
 }

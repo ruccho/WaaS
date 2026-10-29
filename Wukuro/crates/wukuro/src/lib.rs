@@ -16,9 +16,65 @@ wit_bindgen::generate!({
         }
     "#,
     path: "wit/wukuro-core",
-    generate_all
+    generate_all,
+    generate_unused_types: true,
 });
 
+/// A value that can be shown to the player as a text: a string written directly in the script, or a localized text
+/// created by [`l10n!`].
+pub trait IntoText {
+    fn into_text(self) -> types::Text;
+}
+
+impl IntoText for types::Text {
+    fn into_text(self) -> types::Text {
+        self
+    }
+}
+
+impl IntoText for &types::Text {
+    fn into_text(self) -> types::Text {
+        self.clone()
+    }
+}
+
+impl IntoText for &str {
+    fn into_text(self) -> types::Text {
+        types::Text::Plain(self.to_string())
+    }
+}
+
+impl IntoText for &&str {
+    fn into_text(self) -> types::Text {
+        types::Text::Plain(self.to_string())
+    }
+}
+
+impl IntoText for String {
+    fn into_text(self) -> types::Text {
+        types::Text::Plain(self)
+    }
+}
+
+impl IntoText for &String {
+    fn into_text(self) -> types::Text {
+        types::Text::Plain(self.clone())
+    }
+}
+
+/// Creates a reference to a localized text from a table name and a key.
+///
+/// The optional third argument is the source text at the time of localization. It is not used at runtime and is kept
+/// only to make the script readable.
+#[macro_export]
+macro_rules! l10n {
+    ($table:expr, $key:expr $(, $source:expr)? $(,)?) => {
+        $crate::types::Text::Localized($crate::types::TextId {
+            table: ::std::string::ToString::to_string($table),
+            key: ::std::string::ToString::to_string($key),
+        })
+    };
+}
 
 /// A type of Unity objects that can be passed to scripts. Implemented by marker types generated from C#
 /// (`[assembly: WukuroObjectType(typeof(...))]`).

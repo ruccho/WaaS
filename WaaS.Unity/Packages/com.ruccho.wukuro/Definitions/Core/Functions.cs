@@ -21,8 +21,6 @@ namespace Wukuro.Core
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"schedule")]
         global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wukuro.Core.ITypes.ITaskResourceImpl>> Schedule(global::WaaS.ComponentModel.Binding.Borrowed<Wukuro.Core.ITypes.IActionResourceImpl> @action, float @delay, Wukuro.Core.ITypes.UpdateModeKind @updateMode);
 
-        [global::WaaS.ComponentModel.Binding.ComponentApi(@"is-first-time")]
-        global::System.Threading.Tasks.ValueTask<bool> IsFirstTime(global::WaaS.ComponentModel.Binding.Borrowed<Wukuro.Core.ITypes.IContextResourceImpl> @context);
 
     }
 }

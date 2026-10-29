@@ -99,6 +99,30 @@ namespace Wukuro.Core
             public global::WaaS.ComponentModel.Binding.Owned<Wukuro.Core.ITypes.IObjectResourceImpl>? TyObject { get; init; }
         }
 
+        /// <summary>
+        ///     Text shown to the player: either the text written directly in the script, or a reference to a localized text.
+        /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentVariant, global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Auto)]
+        public readonly partial struct Text
+        {
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
+            public string? Plain { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentCaseAttribute]
+            public Wukuro.Core.ITypes.TextId? Localized { get; init; }
+        }
+
+        /// <summary>
+        ///     A reference to a localized text. The host decides how to resolve it.
+        /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentRecord]
+        public readonly partial struct TextId
+        {
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
+            public string Table { get; init; }
+            [global::WaaS.ComponentModel.Binding.ComponentFieldAttribute]
+            public string Key { get; init; }
+        }
+
         public enum UpdateModeKind : uint
         {
             Unscaled,

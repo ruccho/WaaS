@@ -8,6 +8,8 @@ interface functions {
 }
 
 interface types {
+    use wukuro:core/types.{text};
+
     resource dialog-module {
         open-dialog: func(provider: option<string>);
         close-dialog: func();
@@ -25,15 +27,5 @@ interface types {
         forbid-skip: bool,
         forbid-accel: bool,
         styles: list<string>,
-    }
-
-    variant text {
-        plain(string),
-        localized(text-id),
-    }
-
-    record text-id {
-        table: string,
-        key: string,
     }
 }

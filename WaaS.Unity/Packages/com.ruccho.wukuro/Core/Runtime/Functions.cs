@@ -47,11 +47,6 @@ namespace Wukuro
             }
         }
 
-        public ValueTask<bool> IsFirstTime(Borrowed<ITypes.IContextResourceImpl> context)
-        {
-            return new ValueTask<bool>(ContextImpl.Instance.Unwrap(context.handle).IsFirstTime);
-        }
-
         public ITypes.IContextResourceImpl Context => ContextImpl.Instance;
         public ITypes.IActionResourceImpl Action => ActionImpl.Instance;
         public ITypes.ITaskResourceImpl Task => WukuroTasks.ResourceType;
