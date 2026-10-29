@@ -5,7 +5,7 @@ sidebar_position: 2
 
 # MoonBit Importer の使用
 
-[MoonBit](https://www.moonbitlang.com/) の `*.mbt` ファイルをアセットとしてインポートすると、WebAssembly に直接コンパイルできます。各ファイルが 1 つのスクリプトであり、既定では component にコンパイルされます。
+[MoonBit](https://www.moonbitlang.com/) のコードをアセットとしてインポートすると、WebAssembly に直接コンパイルできます。スクリプトは 1 つの `*.mbt` ファイル、またはプロジェクト内の MoonBit のパッケージ（[スクリプトパッケージ](#script-packages)）であり、既定では component にコンパイルされます。
 
 :::info
 MoonBit Importer を利用するには、[MoonBit のツールチェイン](https://www.moonbitlang.com/download)（`PATH` 上の `moon`）が必要です。`wasm` バックエンド（`wasm-gc` ではない）を使用します。
@@ -46,9 +46,42 @@ MoonBit Importer は、スクリプトごとに `Library/com.ruccho.waas/moonbit
 ワークスペース内のファイルのパスは長くなります。Windows でパスの長さの制限のためにビルドが失敗する場合は、Unity プロジェクトを短いパスのディレクトリに置いてください。
 :::
 
-### IDE の機能
+## スクリプトパッケージ {#script-packages}
 
-Rust Importer と異なり、MoonBit Importer は、スクリプトそのものを IDE で開けるプロジェクトを提供しません。スクリプトはワークスペース内のコピーからビルドされるため、ワークスペース内のファイルを編集しても反映されません。現時点では、スクリプトで MoonBit の拡張機能のコード補完は使用できません。
+`Assets` 内の `moon.pkg` のあるディレクトリは MoonBit のパッケージであり、スクリプトとしてインポートされます。`moon.pkg` のアセットが component になります。ディレクトリ内のすべての `*.mbt` ファイルがスクリプトのソースであり、インポートするパッケージは、インポート設定の **Imports** ではなく `moon.pkg` に記述します。
+
+```text title="Assets/Scripts/Villager/moon.pkg"
+import {
+  "ruccho/wukuro" @wukuro,
+}
+```
+
+パッケージは、Unity プロジェクトのルートの `moon.mod` である**プロジェクトモジュール**に属します。プロジェクトモジュールのソースディレクトリは `Assets` です。パッケージ `Assets/Scripts/Villager` は `<モジュール名>/Scripts/Villager` となるため、ディレクトリの名前には英数字、`_`、`-` のみを使用してください。スクリプトパッケージをインポートすると、MoonBit Importer は、プロジェクトモジュールとワークスペース `moon.work` がなければプロジェクトのルートに作成し、インポート設定の **Dependencies** を追加します。
+
+```text title="moon.mod"
+name = "unity/project"
+
+source = "Assets"
+
+preferred_target = "wasm"
+
+import {
+  "ruccho/wukuro@0.0.0",
+}
+```
+
+```text title="moon.work"
+members = [
+  "../WaaS/Wukuro/moonbit/wukuro",
+  ".",
+]
+```
+
+### IDE の機能の使用
+
+MoonBit に対応した IDE でプロジェクトのルートフォルダを開くと、Rust Importer と `Cargo.toml` の場合と同じく、スクリプトパッケージでコード補完や診断などの機能を使用できます。1 つの `*.mbt` ファイルのスクリプトはワークスペース内のコピーからビルドされるため、これらの機能を使用できません。IDE でスクリプトを編集する場合は、スクリプトパッケージを使用してください。
+
+`moon.mod` と `moon.work` はバージョン管理に追加し、IDE が作成するルートの `_build/` と `pkg.generated.mbti` は無視することを推奨します。
 
 ## Componentization {#componentization}
 

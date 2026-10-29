@@ -5,7 +5,7 @@ sidebar_position: 2
 
 # Using MoonBit Importer
 
-WaaS allows you to directly compile `*.mbt` files of [MoonBit](https://www.moonbitlang.com/) to WebAssembly by importing them as assets. Each file is a script, and it is compiled to a component by default.
+WaaS allows you to directly compile [MoonBit](https://www.moonbitlang.com/) code to WebAssembly by importing it as assets. A script is a single `*.mbt` file, or a MoonBit package in the project ([Script packages](#script-packages)), and it is compiled to a component by default.
 
 :::info
 To use MoonBit Importer, you need the [MoonBit toolchain](https://www.moonbitlang.com/download) (`moon` on `PATH`). The `wasm` backend (not `wasm-gc`) is used.
@@ -46,9 +46,42 @@ The script is built with `moon build --target wasm --release`. Compilation error
 The paths of the files in the workspace are long. On Windows, place the Unity project in a directory with a short path if the build fails because of the limit of the path length.
 :::
 
-### IDE support
+## Script packages
 
-Unlike Rust Importer, MoonBit Importer does not provide a project that an IDE can open with the script itself: the script is built from a copy in the workspace, so editing the files in the workspace has no effect. Code completion of the MoonBit extension is not available for scripts at the moment.
+A directory in `Assets` with `moon.pkg` is a MoonBit package, and it is imported as a script: the `moon.pkg` asset is the component. All `*.mbt` files in the directory are the source of the script, and the packages it imports are written in `moon.pkg` instead of **Imports** of the import settings.
+
+```text title="Assets/Scripts/Villager/moon.pkg"
+import {
+  "ruccho/wukuro" @wukuro,
+}
+```
+
+The packages belong to the **project module**, `moon.mod` at the root of the Unity project, whose source directory is `Assets`. The package `Assets/Scripts/Villager` is `<module name>/Scripts/Villager`, so the names of the directories must consist of letters, digits, `_` and `-`. When a script package is imported, MoonBit Importer creates the project module and the workspace `moon.work` at the root of the project if they do not exist, and adds the **Dependencies** of the import settings to them.
+
+```text title="moon.mod"
+name = "unity/project"
+
+source = "Assets"
+
+preferred_target = "wasm"
+
+import {
+  "ruccho/wukuro@0.0.0",
+}
+```
+
+```text title="moon.work"
+members = [
+  "../WaaS/Wukuro/moonbit/wukuro",
+  ".",
+]
+```
+
+### Using IDE functionality
+
+Open the root folder of the project with an IDE which supports MoonBit, and you can use its features such as code completion and diagnostics for script packages, as with Rust Importer and `Cargo.toml`. A single `*.mbt` script is built from a copy in its workspace, so these features are not available for it; use a script package to edit a script with an IDE.
+
+It is recommended to add `moon.mod` and `moon.work` to version control, and to ignore `_build/` at the root and `pkg.generated.mbti`, which are created by the IDE.
 
 ## Componentization
 

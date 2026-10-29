@@ -9,7 +9,7 @@ Wukuro scripts can also be written in [MoonBit](https://www.moonbitlang.com/). A
 
 ## Setting up
 
-MoonBit scripts are imported with [MoonBit Importer](../unity-integration/moonbit.mdx). Install the [MoonBit toolchain](https://www.moonbitlang.com/download) so that `moon` is on `PATH`.
+MoonBit scripts are imported with [MoonBit Importer](../unity-integration/moonbit.mdx). A script is a single `*.mbt` file, or a [script package](../unity-integration/moonbit.mdx#script-packages), which can be edited with an IDE. Install the [MoonBit toolchain](https://www.moonbitlang.com/download) so that `moon` is on `PATH`.
 
 The guest library of Wukuro is the MoonBit module `ruccho/wukuro`. It contains the following packages.
 
@@ -21,7 +21,7 @@ The guest library of Wukuro is the MoonBit module `ruccho/wukuro`. It contains t
 The module is in `Wukuro/moonbit/wukuro` of the [WaaS repository](https://github.com/ruccho/WaaS). Specify it in the import settings, preferably in a [preset](../unity-integration/moonbit.mdx#using-presets), as follows.
 
 - **Dependencies**: `ruccho/wukuro` with **Local Path** set to the directory of the module (e.g. `../WaaS/Wukuro/moonbit/wukuro` when the repository is cloned next to the Unity project).
-- **Imports**: `ruccho/wukuro` as `wukuro`, and `ruccho/wukuro/dialog` as `dialog`.
+- **Imports**: `ruccho/wukuro` as `wukuro`, and `ruccho/wukuro/dialog` as `dialog`. For a script package, write them in its `moon.pkg` instead.
 - **Componentize**: enabled. **WIT Directories** can be empty, because the WIT of `wukuro:core` and `wukuro:dialog` is in the `wit` directory of the module.
 - **Generators**: add **Wukuro Entry Points**.
 
@@ -64,7 +64,7 @@ The first parameter of an entry point is `@wukuro.Context`. The following parame
 | MoonBit type | WIT type | Input in the inspector |
 | --- | --- | --- |
 | `Bool` | `bool` | Checkbox |
-| `Byte`, `Int`, `UInt`, `Int64`, `UInt64` | `u8`, `s32`, `u32`, `s64`, `u64` | Integer |
+| `Byte`, `Int16`, `UInt16`, `Int`, `UInt`, `Int64`, `UInt64` | `u8`, `s16`, `u16`, `s32`, `u32`, `s64`, `u64` | Integer |
 | `Float`, `Double` | `f32`, `f64` | Decimal |
 | `Char` | `char` | Character |
 | `String` | `string` | String |
@@ -72,7 +72,7 @@ The first parameter of an entry point is `@wukuro.Context`. The following parame
 | `@wukuro.Object` | `borrow<object>` | Any `UnityEngine.Object` |
 | `@wukuro.ObjectOf[T]` | `borrow<object>` | An object of type `T` ([Object types](#object-types)) |
 
-MoonBit has no types for `s8`, `s16` and `u16`. The values of the parameters are matched by the parameter name in kebab-case, as in Rust.
+MoonBit has no type for `s8`. The values of the parameters are matched by the parameter name in kebab-case, as in Rust.
 
 ## Context and functions
 
@@ -91,6 +91,8 @@ pub fn counter(cx : @wukuro.Context) -> Unit {
   @wukuro.log("count: \{count + 1}")
 }
 ```
+
+Resources a script obtains, such as `Variable`, are dropped when the run of the entry point ends, as they are dropped at the end of their scope in Rust. Call `drop()` to release them earlier.
 
 `ruccho/wukuro` provides `log`, `delay`, `delay_frame` and `schedule`, and the types `Context`, `Variable`, `Action`, `Task`, `Object`, `Argument`, `Text`, `TextId` and `UpdateModeKind`.
 

@@ -9,7 +9,7 @@ Wukuro のスクリプトは [MoonBit](https://www.moonbitlang.com/) でも記�
 
 ## 準備 {#setting-up}
 
-MoonBit のスクリプトは [MoonBit Importer](../unity-integration/moonbit.mdx) でインポートします。`moon` が `PATH` 上にあるように [MoonBit のツールチェイン](https://www.moonbitlang.com/download)をインストールしてください。
+MoonBit のスクリプトは [MoonBit Importer](../unity-integration/moonbit.mdx) でインポートします。スクリプトは 1 つの `*.mbt` ファイル、または IDE で編集できる[スクリプトパッケージ](../unity-integration/moonbit.mdx#script-packages)です。`moon` が `PATH` 上にあるように [MoonBit のツールチェイン](https://www.moonbitlang.com/download)をインストールしてください。
 
 Wukuro のゲスト用のライブラリは、MoonBit のモジュール `ruccho/wukuro` です。次のパッケージを含みます。
 
@@ -21,7 +21,7 @@ Wukuro のゲスト用のライブラリは、MoonBit のモジュール `ruccho
 モジュールは [WaaS のリポジトリ](https://github.com/ruccho/WaaS)の `Wukuro/moonbit/wukuro` にあります。インポート設定（[プリセット](../unity-integration/moonbit.mdx#using-presets)に設定すると便利です）に次のように指定します。
 
 - **Dependencies**: `ruccho/wukuro` を追加し、**Local Path** にモジュールのディレクトリを指定します（例: リポジトリを Unity プロジェクトの隣に clone した場合は `../WaaS/Wukuro/moonbit/wukuro`）。
-- **Imports**: `ruccho/wukuro` を `wukuro`、`ruccho/wukuro/dialog` を `dialog` として追加します。
+- **Imports**: `ruccho/wukuro` を `wukuro`、`ruccho/wukuro/dialog` を `dialog` として追加します。スクリプトパッケージでは、代わりにその `moon.pkg` に記述します。
 - **Componentize**: 有効にします。`wukuro:core` と `wukuro:dialog` の WIT はモジュールの `wit` ディレクトリにあるため、**WIT Directories** は空で構いません。
 - **Generators**: **Wukuro Entry Points** を追加します。
 
@@ -64,7 +64,7 @@ Rust と同じく、エントリポイント `foo_bar` はインターフェー�
 | MoonBit の型 | WIT の型 | インスペクタでの入力 |
 | --- | --- | --- |
 | `Bool` | `bool` | チェックボックス |
-| `Byte`、`Int`、`UInt`、`Int64`、`UInt64` | `u8`、`s32`、`u32`、`s64`、`u64` | 整数 |
+| `Byte`、`Int16`、`UInt16`、`Int`、`UInt`、`Int64`、`UInt64` | `u8`、`s16`、`u16`、`s32`、`u32`、`s64`、`u64` | 整数 |
 | `Float`、`Double` | `f32`、`f64` | 小数 |
 | `Char` | `char` | 文字 |
 | `String` | `string` | 文字列 |
@@ -72,7 +72,7 @@ Rust と同じく、エントリポイント `foo_bar` はインターフェー�
 | `@wukuro.Object` | `borrow<object>` | 任意の `UnityEngine.Object` |
 | `@wukuro.ObjectOf[T]` | `borrow<object>` | 型 `T` のオブジェクト（[オブジェクトの型](#object-types)） |
 
-MoonBit には `s8`、`s16`、`u16` に対応する型がありません。引数の値は、Rust と同じく kebab-case の引数名で対応付けられます。
+MoonBit には `s8` に対応する型がありません。引数の値は、Rust と同じく kebab-case の引数名で対応付けられます。
 
 ## コンテキストと関数
 
@@ -91,6 +91,8 @@ pub fn counter(cx : @wukuro.Context) -> Unit {
   @wukuro.log("count: \{count + 1}")
 }
 ```
+
+`Variable` など、スクリプトが取得した resource は、Rust でスコープの終わりに破棄されるのと同じく、エントリポイントの実行の終了時に破棄されます。早く解放する場合は `drop()` を呼んでください。
 
 `ruccho/wukuro` は、関数 `log`、`delay`、`delay_frame`、`schedule` と、型 `Context`、`Variable`、`Action`、`Task`、`Object`、`Argument`、`Text`、`TextId`、`UpdateModeKind` を提供します。
 
