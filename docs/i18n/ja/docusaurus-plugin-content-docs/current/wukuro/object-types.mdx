@@ -1,0 +1,76 @@
+---
+title: オブジェクトの型
+sidebar_position: 6
+---
+
+# オブジェクトの型
+
+エントリポイントの引数 `&Object` には、任意の `UnityEngine.Object` を渡せます。引数の型を `&ObjectOf<T>` にすると、インスペクタは型 `T` のオブジェクトだけを受け付けるようになります。型の定義の起点は C# です。
+
+## 型を宣言する
+
+スクリプトの引数として受け取る型を、アセンブリ属性 `WukuroObjectType` で宣言します。
+
+```csharp
+using UnityEngine;
+using UnityEngine.Playables;
+using Wukuro;
+
+[assembly: WukuroObjectType(typeof(Transform))]
+[assembly: WukuroObjectType(typeof(PlayableDirector))]
+[assembly: WukuroObjectType(typeof(MyGame.Door))]
+```
+
+## Rust の型を生成する
+
+宣言した型ごとに、`wukuro::ObjectType` を実装した Rust の型を生成し、ゲーム固有のクレートに含めます。生成には `WukuroObjectTypeExporter`（`Wukuro.Editor`）を使います。
+
+```csharp
+var types = WukuroObjectTypeExporter.CollectTypes();
+var source = WukuroObjectTypeExporter.GenerateRust(types, "// generated from WukuroObjectType\n");
+File.WriteAllText("rust/my-game/src/object_types.rs", source);
+```
+
+生成されるコードは次のようになります。`TYPE_NAME` は C# の型の名前（`名前空間.型名, アセンブリ名`）です。
+
+```rust
+/// `UnityEngine.Transform`
+pub struct Transform;
+
+impl ::wukuro::ObjectType for Transform {
+    const TYPE_NAME: &'static str = "UnityEngine.Transform, UnityEngine.CoreModule";
+}
+```
+
+生成したファイルをクレートのモジュールとして公開します。
+
+```rust title="rust/my-game/src/lib.rs"
+pub mod object_types;
+```
+
+C# の宣言を変えたときに自動で生成し直すには、コンパイルの後に生成を行うエディタ拡張を用意し、生成したファイルを `ExternalFileDependency.Register` で登録します（[ゲームのデータから Rust のコードを生成する](./extending.mdx#ゲームのデータから-rust-のコードを生成する)）。
+
+## 型付きの引数を使う
+
+```rust
+use wukuro::{entry, ObjectOf};
+use wukuro::types::Context;
+use my_game::object_types::{Door, Transform};
+
+#[entry]
+fn open_door(cx: &Context, door: &ObjectOf<Door>, camera_target: &ObjectOf<Transform>) {
+    let game = my_game::functions::get_game_module(cx);
+    game.move_camera(camera_target, 1.0);
+    // ...
+}
+```
+
+`ObjectOf<T>` は `Object` に変換（Deref）できるため、`&Object` を受け取る関数にそのまま渡せます。
+
+インスペクタでは、引数の入力欄がその型の ObjectField になり、型に合わない値が設定されているとエラーを表示します。GameObject は、その型のコンポーネントを持つ場合に限り受け付けます。
+
+## 仕組み
+
+`#[entry]` は、`ObjectOf<T>` の引数の型の名前を、WebAssembly のカスタムセクション `wukuro-entry-types` に記録します。インスペクタは `WukuroEntryPoints.GetObjectTypes(script)` でこの記録を読み、型を検査します。WIT 上の引数の型は `borrow<object>` のままであり、型の制約はインスペクタでの入力の検査にのみ用いられます。
+
+実行時には、ホストの関数が `WukuroObjects.Get<T>` でオブジェクトを取り出す際に型が検査されます。

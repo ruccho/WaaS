@@ -1,0 +1,197 @@
+---
+title: スクリプトの記述
+sidebar_position: 3
+---
+
+# スクリプトの記述
+
+## エントリポイント
+
+関数に `#[entry]` を付けると、その関数がエントリポイントになります。1 つのファイルに複数のエントリポイントを置くことができ、同じファイル内の定数や関数を共有できます。
+
+```rust
+use wukuro::entry;
+use wukuro::functions::*;
+use wukuro::types::Context;
+
+const GREETING: &str = "こんにちは";
+
+fn greet(name: &str) {
+    log(&format!("{GREETING}、{name}"));
+}
+
+#[entry]
+fn morning(cx: &Context) {
+    greet("朝の人");
+}
+
+#[entry]
+fn night(cx: &Context) {
+    greet("夜の人");
+}
+```
+
+エントリポイント `foo_bar` は、コンポーネントのインターフェース `wukuro-entry:foo-bar/entry` の関数 `run` として export されます。エントリポイントの名前は、関数名の `_` を `-` に置き換えた kebab-case になります。
+
+### 引数
+
+エントリポイントの第 1 引数は `&Context` です。それ以降の引数には、次の型を使用できます。
+
+| Rust の型 | WIT の型 | インスペクタでの入力 |
+| --- | --- | --- |
+| `bool` | `bool` | チェックボックス |
+| `i8`、`i16`、`i32`、`i64`、`u8`、`u16`、`u32`、`u64` | `s8` 〜 `u64` | 整数 |
+| `f32`、`f64` | `f32`、`f64` | 小数 |
+| `char` | `char` | 文字 |
+| `String` | `string` | 文字列 |
+| `&wukuro::types::Action` | `borrow<action>` | UnityEvent |
+| `&wukuro::types::Object` | `borrow<object>` | 任意の `UnityEngine.Object` |
+| `&wukuro::ObjectOf<T>` | `borrow<object>` | 型 `T` のオブジェクト（[オブジェクトの型](./object-types.mdx)） |
+
+引数の値は、引数名を kebab-case にした名前（`camera_target` であれば `camera-target`）で、インスペクタで設定した値や C# から渡した値と対応付けられます。
+
+`Action` は、`run()` で呼び出せる C# の処理です。インスペクタでは UnityEvent として設定します。
+
+## コンテキスト
+
+`&Context` から、引数と変数を取得できます。
+
+```rust
+use wukuro::types::Argument;
+
+#[entry]
+fn counter(cx: &Context) {
+    // 変数の取得と設定
+    let variable = cx.get_variable("count");
+    let count = match variable.get() {
+        Some(Argument::TyS32(value)) => value,
+        _ => 0,
+    };
+    variable.set(Argument::TyS32(count + 1));
+    log(&format!("{} 回目", count + 1));
+}
+```
+
+- `get_argument(name)`: 引数の値を名前で取得します。エントリポイントの引数として宣言していない値も取得できます。
+- `get_variable(name)`: 変数を取得します。変数の保存先は、スクリプトを実行する C# 側が決めます（[スクリプトの実行](./running-scripts.mdx#変数)）。
+
+値は `wukuro::types::Argument` で表されます。`TyBool`、`TyS32`、`TyF32`、`TyString`、`TyAction`、`TyObject` などのケースがあります。
+
+## 関数
+
+`wukuro::functions` は次の関数を提供します。
+
+| 関数 | 内容 |
+| --- | --- |
+| `log(message)` | Unity のコンソールにログを出力します。 |
+| `delay(duration, update_mode)` | 指定した秒数だけ待機します。`update_mode` は `UpdateModeKind::Scaled`（`Time.timeScale` の影響を受ける）、`Unscaled`（受けない）、`Realtime`（実時間）のいずれかです。 |
+| `delay_frame(num_frames)` | 指定したフレーム数だけ待機します。 |
+| `schedule(action, delay, update_mode)` | `action` を、待機せずに `delay` 秒後に実行します。戻り値の `Task` で、完了を待つ（`wait()`）か、完了したかを調べる（`is_completed()`）ことができます。 |
+
+:::info
+スクリプトの関数の呼び出しは、ホスト側の処理が完了するまで戻りません。待機や演出の完了を待つ処理も、通常の関数の呼び出しとして順に記述できます。
+:::
+
+## テキスト
+
+プレイヤーに表示するテキストは `wukuro::types::Text` で表します。スクリプトに直接書いた文字列（`Text::Plain`）と、ローカライズされたテキストへの参照（`Text::Localized`）の 2 種類があります。
+
+ローカライズされたテキストは `l10n!` マクロで作成します。引数はテーブル名とキーで、3 番目の引数には任意で原文を書けます。原文は実行時には使われず、スクリプトを読みやすくするためのものです。
+
+```rust
+use wukuro::{l10n, IntoText};
+
+let greeting = l10n!("Dialogs", "greeting", "こんにちは");
+let plain = "こんにちは".into_text();
+```
+
+テキストを受け取る関数は `impl IntoText` を引数に取るため、`&str`、`String`、`Text` のいずれも渡せます。ローカライズされたテキストを実際の文字列に解決する方法は、ホスト側の実装が決めます。
+
+## ダイアログ
+
+`wukuro-dialog` クレートを用いると、ダイアログにメッセージや選択肢を表示できます。ダイアログの表示はホスト側の実装（`IDialogModule`）が行います（[機能の追加](./extending.mdx#ダイアログを実装する)）。
+
+```rust
+use wukuro::entry;
+use wukuro::types::Context;
+use wukuro_dialog::functions::*;
+use wukuro_dialog::*;
+
+#[entry]
+fn shopkeeper(cx: &Context) {
+    let dialog = get_dialog_module(cx);
+    let d = DialogSession::new(&dialog, None);
+
+    d.msg::<Shopkeeper>("いらっしゃい！");
+    d.show(MessageInfo::new::<Shopkeeper>("何か買っていくかい？").face(&ShopkeeperFace::Smile));
+
+    match d.opts(["買う", "やめる"]) {
+        0 => d.msg::<Shopkeeper>("まいど！"),
+        _ => d.msg::<Shopkeeper>("また来てくれよな"),
+    }
+}
+```
+
+### ダイアログのセッション
+
+`DialogSession::new` はダイアログを開き、セッションが破棄されるとダイアログを閉じます。2 番目の引数には、ホストが解釈するダイアログの種類を指定できます。
+
+- `msg::<T>(text)`: 話者 `T` の既定の表情でメッセージを表示し、プレイヤーが進めるまで待機します。
+- `show(message)`: `MessageInfo` で設定したメッセージを表示します。
+- `opts(options)`: 選択肢を表示し、選ばれた選択肢の番号を返します。
+
+### メッセージの設定
+
+`MessageInfo::new::<T>(text)` は、話者 `T` とテキストだけを指定してメッセージを作ります。その他の設定は、メソッドをつなげて変更します。
+
+```rust
+d.show(
+    MessageInfo::new::<Shopkeeper>("……")
+        .face(&ShopkeeperFace::Sad) // 表情
+        .auto(true) // 入力を待たずに進める
+        .forbid_skip(true) // スキップを禁止する
+        .forbid_accel(true) // 早送りを禁止する
+        .style("whisper"), // ホストが解釈する表示のスタイル
+);
+```
+
+### 話者と表情
+
+話者は `DialogSpeaker` を、表情は `DialogFace` を実装した型で表します。名前の文字列はホストに渡され、ホストが対応する話者と表情を表示します。
+
+```rust
+pub struct Shopkeeper;
+
+impl DialogSpeaker for Shopkeeper {
+    type FaceKind = ShopkeeperFace;
+
+    fn get_name() -> String {
+        "shopkeeper".to_string()
+    }
+}
+
+#[derive(Default)]
+pub enum ShopkeeperFace {
+    #[default]
+    Normal,
+    Smile,
+    Sad,
+}
+
+impl DialogFace for ShopkeeperFace {
+    fn get_name(&self) -> String {
+        match self {
+            ShopkeeperFace::Normal => "normal",
+            ShopkeeperFace::Smile => "smile",
+            ShopkeeperFace::Sad => "sad",
+        }
+        .to_string()
+    }
+}
+```
+
+話者の一覧をゲームのデータから生成し、ゲーム固有のクレートに含めておくと、話者や表情の名前の誤りをコンパイル時に検出できます。話者のいないメッセージ（ナレーションなど）には `NoSpeaker` を使います。
+
+### フェード
+
+`FadeSession::new(&dialog, duration_in, duration_out)` は画面をフェードし、セッションが破棄されるとフェードを戻します。

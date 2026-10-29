@@ -1,0 +1,175 @@
+---
+title: WIT リファレンス
+sidebar_position: 7
+---
+
+# WIT リファレンス
+
+Wukuro のホストとスクリプトの間の関数と型は、次の WIT のパッケージとして定義されています。WIT は Unity パッケージの `Definitions/` にある C# の定義から生成されたもので、各クレートの `wit/` に同梱されています。
+
+## wukuro:core
+
+すべてのスクリプトが使う基本的な機能です。実装は Wukuro のパッケージに含まれ、自動で登録されます。
+
+### functions
+
+| 関数 | 内容 |
+| --- | --- |
+| `log` | Unity のコンソールにログを出力します。 |
+| `delay` | 指定した秒数だけ待機します。 |
+| `delay-frame` | 指定したフレーム数だけ待機します。 |
+| `schedule` | `action` を、待機せずに `delay` 秒後に実行します。返される `task` で完了を待てます。 |
+
+### types
+
+| 型 | 内容 |
+| --- | --- |
+| `context` | スクリプトの実行の情報。引数と変数を取得します。ホストの関数は、`context` からモジュールを取得します。 |
+| `variable` | スクリプトの変数。値の保存先は、スクリプトを実行する C# 側が決めます。 |
+| `action` | スクリプトから呼び出せる C# の処理。 |
+| `task` | ホストが開始した処理。破棄しても処理は止まりません。 |
+| `object` | Unity のオブジェクト（`UnityEngine.Object`）。 |
+| `argument` | 引数と変数の値。 |
+| `text` | プレイヤーに表示するテキスト。スクリプトに直接書いた文字列（`plain`）か、ローカライズされたテキストへの参照（`localized`）です。 |
+| `text-id` | ローカライズされたテキストへの参照。テーブル名とキーからなり、解決の方法はホストが決めます。 |
+| `update-mode-kind` | 待機の時間の進み方。`scaled` は `Time.timeScale` の影響を受け、`unscaled` は受けず、`realtime` は実時間です。 |
+
+```wit
+package wukuro:core;
+
+interface functions {
+    use types.{action, task, update-mode-kind};
+
+    log: func(message: string);
+    delay: func(duration: f32, update-mode: update-mode-kind);
+    delay-frame: func(num-frames: u32);
+    schedule: func(action: borrow<action>, delay: f32, update-mode: update-mode-kind) -> task;
+}
+
+interface types {
+    resource context {
+        get-argument: func(name: string) -> option<argument>;
+        get-variable: func(name: string) -> variable;
+    }
+
+    resource variable {
+        get: func() -> option<argument>;
+        set: func(value: argument);
+    }
+
+    resource action {
+        run: func();
+        clone: func() -> action;
+    }
+
+    resource task {
+        wait: func();
+        is-completed: func() -> bool;
+    }
+
+    resource object {
+        clone: func() -> object;
+    }
+
+    variant argument {
+        ty-bool(bool),
+        ty-s8(s8),
+        ty-s16(s16),
+        ty-s32(s32),
+        ty-s64(s64),
+        ty-u8(u8),
+        ty-u16(u16),
+        ty-u32(u32),
+        ty-u64(u64),
+        ty-f32(f32),
+        ty-f64(f64),
+        ty-char(char),
+        ty-string(string),
+        ty-action(action),
+        ty-object(object),
+    }
+
+    variant text {
+        plain(string),
+        localized(text-id),
+    }
+
+    record text-id {
+        table: string,
+        key: string,
+    }
+
+    enum update-mode-kind {
+        unscaled,
+        scaled,
+        realtime,
+    }
+}
+```
+
+## wukuro:dialog
+
+ダイアログの表示の機能です。関数の実装は Wukuro のパッケージに含まれ、`DialogImports.Register()` で登録します。表示そのものは、ゲーム側で実装した `IDialogModule` が行います。
+
+| 関数・型 | 内容 |
+| --- | --- |
+| `get-dialog-module` | `WukuroRunner` に追加された `IDialogModule` を取得します。 |
+| `dialog-module.open-dialog` | ダイアログを開きます。`provider` は、ホストが解釈するダイアログの種類です。 |
+| `dialog-module.close-dialog` | ダイアログを閉じます。 |
+| `dialog-module.show-message` | メッセージを表示し、プレイヤーが進めるまで待機します。 |
+| `dialog-module.show-options` | 選択肢を表示し、選ばれた選択肢の番号を返します。 |
+| `dialog-module.fade-in`、`fade-out` | 画面をフェードし、また戻します。 |
+| `message-info` | メッセージの設定。`speaker` と `face` は話者と表情の名前、`auto` は入力を待たずに進めるか、`forbid-skip` と `forbid-accel` はスキップと早送りを禁止するか、`styles` はホストが解釈する表示のスタイルの名前の一覧です。 |
+
+```wit
+package wukuro:dialog;
+
+interface functions {
+    use types.{dialog-module};
+    use wukuro:core/types.{context};
+
+    get-dialog-module: func(context: borrow<context>) -> dialog-module;
+}
+
+interface types {
+    use wukuro:core/types.{text};
+
+    resource dialog-module {
+        open-dialog: func(provider: option<string>);
+        close-dialog: func();
+        show-message: func(message: message-info);
+        show-options: func(options: list<text>) -> s32;
+        fade-in: func(duration: f32);
+        fade-out: func(duration: f32);
+    }
+
+    record message-info {
+        speaker: string,
+        face: string,
+        text: text,
+        auto: bool,
+        forbid-skip: bool,
+        forbid-accel: bool,
+        styles: list<string>,
+    }
+}
+```
+
+## エントリポイント
+
+スクリプトのエントリポイント `foo_bar` は、次のインターフェースとして export されます。`run` の引数は、エントリポイントの関数の引数（`&Context` を含む）に、名前を kebab-case にして対応します。
+
+```rust
+#[entry]
+fn foo_bar(cx: &Context, camera_target: &Object, count: i32) { /* ... */ }
+```
+
+```wit
+package wukuro-entry:foo-bar;
+
+interface entry {
+    use wukuro:core/types.{context, action, object};
+
+    run: func(cx: borrow<context>, camera-target: borrow<object>, count: s32);
+}
+```

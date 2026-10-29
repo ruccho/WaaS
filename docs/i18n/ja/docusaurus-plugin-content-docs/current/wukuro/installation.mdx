@@ -1,0 +1,59 @@
+---
+title: 導入
+sidebar_position: 1
+---
+
+# 導入
+
+## 必要なもの
+
+- Unity 6000.0 以降
+- [UniTask](https://github.com/Cysharp/UniTask)（`com.cysharp.unitask`）
+- WaaS（`com.ruccho.waas`）と、[Rust Importer](../unity-integration/rust.mdx) を利用するための Rust のツールチェインと `wasm32-unknown-unknown` ターゲット
+
+## Unity パッケージの追加
+
+UniTask と WaaS を先に導入してから、Package Manager の `Add package from git URL...` に次の URL を入力して Wukuro を追加します。
+
+```
+https://github.com/ruccho/WaaS.git?path=/WaaS.Unity/Packages/com.ruccho.wukuro
+```
+
+UniTask は Unity のパッケージレジストリにないため、`package.json` の依存として宣言していません。[UniTask の導入方法](https://github.com/Cysharp/UniTask#upm-package) に従って、別途導入してください。
+
+## Rust のクレートの設定
+
+Rust のスクリプトは、Rust Importer のインポート設定の **Dependencies** に指定したクレートに依存してビルドされます。Wukuro のスクリプトには、次のクレートが必要です。
+
+| クレート | 用途 |
+| --- | --- |
+| `wukuro` | すべてのスクリプトで必要です。 |
+| `wit-bindgen` | すべてのスクリプトで必要です。`#[entry]` が展開する `wit_bindgen::generate!` が直接参照するためです。バージョンは `wukuro` が依存するものと合わせてください。 |
+| `wukuro-dialog` | ダイアログを表示するスクリプトで必要です。 |
+| ゲーム固有のクレート | ゲーム側で追加した機能を使うスクリプトで必要です（[機能の追加](./extending.mdx)）。 |
+
+Wukuro のクレートは、**via Git** で WaaS のリポジトリから取得できます。
+
+- **Git Url**: `https://github.com/ruccho/WaaS.git`
+- **Name**: `wukuro`、`wukuro-dialog`
+
+:::info
+すべてのスクリプトに同じ依存を設定するため、依存を [プリセット](../unity-integration/rust.mdx#プリセットの利用) にまとめておくと便利です。
+:::
+
+### ワークスペースの依存を利用する
+
+クレートをローカルのパスから参照する場合や、ゲーム固有のクレートを Unity プロジェクト内で開発する場合は、Unity プロジェクトのルートの `Cargo.toml` に `[workspace.dependencies]` を追加し、Rust Importer の Dependencies で **via Workspace** を選択します。
+
+```toml
+[workspace]
+members = ["Library/com.ruccho.waas/rust/crates/*", "rust/*"] # Used by WaaS
+resolver = "2" # Used by WaaS
+
+[workspace.dependencies]
+wukuro = { git = "https://github.com/ruccho/WaaS.git" }
+wukuro_dialog = { package = "wukuro-dialog", git = "https://github.com/ruccho/WaaS.git" }
+my-game = { path = "./rust/my-game" }
+```
+
+**via Workspace** の依存では、**Name** に `[workspace.dependencies]` のキーを指定します。
