@@ -9,5 +9,5 @@ repository.workspace = true
 readme = "../../README.md"
 
 [dependencies]
-wit-bindgen = "0.42.1"
+wit-bindgen = "0.63.0"
 wukuro = { path = "../wukuro", version = "0.3.0" }
