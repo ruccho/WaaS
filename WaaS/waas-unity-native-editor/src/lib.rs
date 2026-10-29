@@ -43,7 +43,7 @@ unsafe fn componentize_inner(
         let mut resolve = Resolve::default();
         let (id, _) = resolve.push_dir(wit_path)?;
         let world = resolve
-            .select_world(id, if world.is_empty() { None } else { Some(world) })?;
+            .select_world(&[id], if world.is_empty() { None } else { Some(world) })?;
 
         wit_component::embed_component_metadata(
             &mut wasm,
@@ -54,11 +54,12 @@ unsafe fn componentize_inner(
                 StringEncoding::UTF16 => wit_component::StringEncoding::UTF16,
                 StringEncoding::CompactUTF16 => wit_component::StringEncoding::CompactUTF16,
             },
+            false,
         )?;
     }
 
     let mut encoder = ComponentEncoder::default();
-    encoder = encoder.module(&wasm)?;
+    encoder.module(&wasm)?;
 
     let result = encoder.encode()?;
     Ok(result)
@@ -100,5 +101,7 @@ fn decode_wit_inner(bytes: &[u8]) -> Result<String, Box<dyn Error>> {
         .map(|(id, _)| id)
         .filter(|id| *id != main)
         .collect::<Vec<_>>();
-    Ok(wit_component::WitPrinter::default().print(resolve, main, &nested)?)
+    let mut printer = wit_component::WitPrinter::default();
+    printer.print(resolve, main, &nested)?;
+    Ok(printer.output.to_string())
 }
