@@ -84,9 +84,15 @@ namespace WaaS.Runtime
 
         public bool TryGrowMemory(uint index, int numPages, out int oldNumPages)
         {
+            return TryGrowMemory(index, numPages, null, out oldNumPages);
+        }
+
+        /// <param name="maxNumPages">An additional limit on the number of pages imposed by the host.</param>
+        public bool TryGrowMemory(uint index, int numPages, uint? maxNumPages, out int oldNumPages)
+        {
             var memory = MemoryInstance.Memories.Span[checked((int)index)];
             oldNumPages = memory.NumPages;
-            return memory.TryGrow(numPages);
+            return memory.TryGrow(numPages, maxNumPages);
         }
 
         private void DisposeCore()

@@ -69,6 +69,7 @@ namespace WaaS.Runtime
             if (isEnd) return StackFrameState.Completed;
 
             var instrs = Function.function.Body.Instructions.Span;
+            var context = Context;
 
             while (true)
             {
@@ -79,9 +80,10 @@ namespace WaaS.Runtime
                 isFramePushed = false;
                 try
                 {
+                    if (--context.fuel < 0) context.OnFuelExhausted();
                     instr.Execute(this);
                 }
-                catch (Exception ex) when (ex is not WasmException)
+                catch (Exception ex) when (ex is not WasmException and not OperationCanceledException)
                 {
                     throw new WasmException(Function, instr, innerException: ex);
                 }
@@ -226,6 +228,8 @@ namespace WaaS.Runtime
             isEnd = true;
         }
 
+        internal uint? MaxMemoryPages => Context.MaxMemoryPages;
+
         public void PushFrame(IInvocableFunction function, Span<StackValueItem> parameters)
         {
             isFramePushed = true;
@@ -333,6 +337,9 @@ namespace WaaS.Runtime
 
         public void JumpLabel(uint depth)
         {
+            // every loop iteration takes a branch, so this is enough to abort a running loop
+            Context.CancellationToken.ThrowIfCancellationRequested();
+
             for (var i = 0; i < depth; i++) PopLabelDepth();
 
             if (labelDepthStackPointer == 0)
