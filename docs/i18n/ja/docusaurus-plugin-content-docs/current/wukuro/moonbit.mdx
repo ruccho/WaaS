@@ -151,7 +151,7 @@ let shopkeeper : Shopkeeper = Shopkeeper
 
 ## 失敗
 
-`@wukuro.fail(message)` はスクリプトを停止し、Rust のスクリプトの panic と同じく、メッセージを WebAssembly のスタックトレースとともに `WukuroPanicException` としてホストに報告します。MoonBit の `abort` と `panic` もスクリプトを停止しますが、メッセージは報告されません。
+`abort(message)` はスクリプトを停止し、Rust のスクリプトの panic と同じく、メッセージを WebAssembly のスタックトレースとともに `WukuroPanicException` としてホストに報告します。MoonBit のコンパイラは `abort` のメッセージを捨てるため、**Wukuro Entry Points** は、ビルドされるスクリプトのコピーで `abort` を置き換えます。`@wukuro.fail(message)` も同じ動作をし、ライブラリの中でも使用できます。`panic()` や範囲外のインデックスなど、それ以外の失敗では、メッセージなしでスクリプトが停止します。
 
 ## オブジェクトの型 {#object-types}
 

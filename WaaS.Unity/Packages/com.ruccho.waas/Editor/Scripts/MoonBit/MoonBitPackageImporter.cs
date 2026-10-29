@@ -79,23 +79,39 @@ namespace WaaS.Unity.Editor.MoonBit
                 return;
             }
 
-            // the source files of the package are the script
+            // the source files of the package are the script, which is built from a copy in the workspace so that
+            // the generators can add files to it; the project module is in the workspace for the other packages
+            var copyDirectory = Path.Combine(MoonBitScriptBuilder.GetWorkspace(assetPath), "module", "script");
+            var fullDirectory = Path.GetFullPath(directory);
             var source = new StringBuilder();
-            foreach (var file in Directory.GetFiles(directory, "*.mbt").OrderBy(f => f, StringComparer.Ordinal))
+            var files = Directory.GetFiles(directory, "*.mbt")
+                .Where(f => !f.EndsWith("_test.mbt", StringComparison.Ordinal) &&
+                            !f.EndsWith("_wbtest.mbt", StringComparison.Ordinal))
+                .OrderBy(f => f, StringComparer.Ordinal)
+                .ToArray();
+            foreach (var file in files)
             {
-                if (file.EndsWith("_test.mbt", StringComparison.Ordinal) ||
-                    file.EndsWith("_wbtest.mbt", StringComparison.Ordinal))
-                    continue;
                 ctx.DependsOnSourceAsset(file.Replace('\\', '/'));
                 source.Append(File.ReadAllText(file)).Append('\n');
             }
 
             MoonBitScriptBuilder.Build(ctx, settings,
-                new MoonBitScriptInput(assetPath, source.ToString(), $"{projectModuleName}/{relative}",
-                    Path.GetFullPath(directory))
+                new MoonBitScriptInput(assetPath, source.ToString(), $"{MoonBitScriptBuilder.ModuleName}/script",
+                    copyDirectory)
                 {
                     ExtraMembers = new[] { Directory.GetCurrentDirectory() },
-                    ExtraImports = new[] { projectModuleName }
+                    ExtraImports = new[] { projectModuleName },
+                    PrepareModule = _ =>
+                    {
+                        if (Directory.Exists(copyDirectory)) Directory.Delete(copyDirectory, true);
+                        Directory.CreateDirectory(copyDirectory);
+                        foreach (var file in files)
+                            File.Copy(file, Path.Combine(copyDirectory, Path.GetFileName(file)));
+                        File.Copy(assetPath, Path.Combine(copyDirectory, "moon.pkg"));
+                    },
+                    // diagnostics refer to the copy of the package
+                    MapPaths = text => text.Replace(copyDirectory, fullDirectory)
+                        .Replace(copyDirectory.Replace('\\', '/'), directory)
                 });
         }
 

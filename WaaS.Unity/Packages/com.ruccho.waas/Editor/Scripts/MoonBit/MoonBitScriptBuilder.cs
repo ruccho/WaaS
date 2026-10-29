@@ -134,6 +134,8 @@ namespace WaaS.Unity.Editor.MoonBit
             }
 
             WriteEntryPackage(entryDirectory, input.ScriptPackage, context);
+            foreach (var (fileName, source) in context.scriptSources)
+                File.WriteAllText(Path.Combine(input.ScriptDirectory, fileName), source, Utf8NoBom);
 
             if (!RunMoon(ctx, assetPath, workspace, $"build \"{entryDirectory}\" --target wasm --release",
                     input.MapPaths))

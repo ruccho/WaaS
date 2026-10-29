@@ -56,7 +56,7 @@ import {
 }
 ```
 
-The packages belong to the **project module**, `moon.mod` at the root of the Unity project, whose source directory is `Assets`. The package `Assets/Scripts/Villager` is `<module name>/Scripts/Villager`, so the names of the directories must consist of letters, digits, `_` and `-`. When a script package is imported, MoonBit Importer creates the project module and the workspace `moon.work` at the root of the project if they do not exist, and adds the **Dependencies** of the import settings to them.
+A script package is built from a copy in its workspace, as a single `*.mbt` script is, so that the generators can add files to it. The packages belong to the **project module**, `moon.mod` at the root of the Unity project, whose source directory is `Assets`. The package `Assets/Scripts/Villager` is `<module name>/Scripts/Villager`, so the names of the directories must consist of letters, digits, `_` and `-`. When a script package is imported, MoonBit Importer creates the project module and the workspace `moon.work` at the root of the project if they do not exist, and adds the **Dependencies** of the import settings to them.
 
 ```text title="moon.mod"
 name = "unity/project"

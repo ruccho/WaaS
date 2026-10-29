@@ -24,6 +24,7 @@ namespace WaaS.Unity.Editor.MoonBit
         internal readonly Dictionary<string, string> imports = new();
         internal readonly List<(string Name, byte[] Data)> customSections = new();
         internal readonly Dictionary<string, string> sources = new();
+        internal readonly Dictionary<string, string> scriptSources = new();
         internal readonly List<string> worldExports = new();
         internal readonly Dictionary<string, string> witPackages = new();
 
@@ -60,6 +61,15 @@ namespace WaaS.Unity.Editor.MoonBit
         public void AddSource(string fileName, string source)
         {
             sources.Add(fileName, source);
+        }
+
+        /// <summary>
+        ///     Adds a source file to the package of the script. The file is added to the copy of the script that is
+        ///     built, so it can override the definitions of the prelude for the script (e.g. <c>abort</c>).
+        /// </summary>
+        public void AddScriptSource(string fileName, string source)
+        {
+            scriptSources.Add(fileName, source);
         }
 
         /// <summary>

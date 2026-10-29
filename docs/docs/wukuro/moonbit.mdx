@@ -151,7 +151,7 @@ let shopkeeper : Shopkeeper = Shopkeeper
 
 ## Failures
 
-`@wukuro.fail(message)` stops the script, and the message is reported to the host as `WukuroPanicException` with the WebAssembly stack trace, as a panic of a Rust script is. `abort` and `panic` of MoonBit also stop the script, but their messages are not reported.
+`abort(message)` stops the script, and the message is reported to the host as `WukuroPanicException` with the WebAssembly stack trace, as a panic of a Rust script is. **Wukuro Entry Points** overrides `abort` in the copy of the script that is built, because the MoonBit compiler drops the messages of `abort`. `@wukuro.fail(message)` does the same and can also be used in libraries. The other failures, such as `panic()` and an index out of bounds, stop the script without a message.
 
 ## Object types
 

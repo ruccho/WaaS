@@ -37,10 +37,10 @@ pub fn run_action(_cx : @wukuro.Context, callback : @wukuro.Action) -> Unit {
 }
 
 ///|
-/// fails with the message
+/// aborts with the message, which is reported to the host as a panic of a Rust script is
 #wukuro.entry
 pub fn panics(_cx : @wukuro.Context, message : String) -> Unit {
-  @wukuro.fail(message)
+  abort(message)
 }
 
 ///|
