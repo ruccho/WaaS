@@ -1,0 +1,4 @@
+import {
+  "ruccho/wukuro/bindings/wukuro_core_functions" @functions,
+  "ruccho/wukuro/bindings/wukuro_core_types" @types,
+}
