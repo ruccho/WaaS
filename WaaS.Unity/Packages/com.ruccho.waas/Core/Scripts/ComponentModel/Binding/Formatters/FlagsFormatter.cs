@@ -7,6 +7,8 @@ using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
+    // instantiated via Activator.CreateInstance in FlagsFormatterProvider
+    [Preserve]
     internal class FlagsFormatter<TEnum> : IFormatter<TEnum> where TEnum : unmanaged, Enum
     {
         public async STask<TEnum> PullAsync(Pullable adapter)

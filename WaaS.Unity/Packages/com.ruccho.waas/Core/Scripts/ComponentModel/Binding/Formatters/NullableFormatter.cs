@@ -3,6 +3,8 @@ using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
+    // instantiated via Activator.CreateInstance in NullableFormatterProvider
+    [Preserve]
     internal class NullableFormatter<T> : IFormatter<T?> where T : struct
     {
         public async STask<T?> PullAsync(Pullable adapter)
