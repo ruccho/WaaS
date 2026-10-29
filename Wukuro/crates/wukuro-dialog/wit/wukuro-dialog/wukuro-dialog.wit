@@ -1,0 +1,39 @@
+package wukuro:dialog;
+
+interface functions {
+    use types.{dialog-module};
+    use wukuro:core/types.{context};
+
+    get-dialog-module: func(context: borrow<context>) -> dialog-module;
+}
+
+interface types {
+    resource dialog-module {
+        open-dialog: func(provider: option<string>);
+        close-dialog: func();
+        show-message: func(message: message-info);
+        show-options: func(options: list<text>) -> s32;
+        fade-in: func(duration: f32);
+        fade-out: func(duration: f32);
+    }
+
+    record message-info {
+        speaker: string,
+        face: string,
+        text: text,
+        auto: bool,
+        forbid-skip: bool,
+        forbid-accel: bool,
+        styles: list<string>,
+    }
+
+    variant text {
+        plain(string),
+        localized(text-id),
+    }
+
+    record text-id {
+        table: string,
+        key: string,
+    }
+}

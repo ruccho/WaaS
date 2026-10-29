@@ -1,0 +1,13 @@
+[package]
+name = "wukuro-dialog"
+description = "Dialog functions of Wukuro"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+readme = "../../README.md"
+
+[dependencies]
+wit-bindgen = "0.42.1"
+wukuro = { path = "../wukuro", version = "0.1.0" }

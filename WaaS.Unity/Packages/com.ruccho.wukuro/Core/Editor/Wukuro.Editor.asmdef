@@ -1,0 +1,21 @@
+{
+    "name": "Wukuro.Editor",
+    "rootNamespace": "Wukuro.Editor",
+    "references": [
+        "GUID:0c2fe5e7889c8ec47bedeb372de22442",
+        "GUID:c8b029b087bf86b45acb8436e0a7d988",
+        "GUID:93771d79ccdcc1a409850992fac32615",
+        "GUID:f6d891364241fc34c944c7dd90297aac"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,61 @@
+package wukuro:core;
+
+interface functions {
+    use types.{action, context, task, update-mode-kind};
+
+    log: func(message: string);
+    delay: func(duration: f32, update-mode: update-mode-kind);
+    delay-frame: func(num-frames: u32);
+    schedule: func(action: borrow<action>, delay: f32, update-mode: update-mode-kind) -> task;
+    is-first-time: func(context: borrow<context>) -> bool;
+}
+
+interface types {
+    resource context {
+        get-argument: func(name: string) -> option<argument>;
+        get-variable: func(name: string) -> variable;
+    }
+
+    resource variable {
+        get: func() -> option<argument>;
+        set: func(value: argument);
+    }
+
+    resource action {
+        run: func();
+        clone: func() -> action;
+    }
+
+    resource task {
+        wait: func();
+        is-completed: func() -> bool;
+    }
+
+    resource object {
+        clone: func() -> object;
+    }
+
+    variant argument {
+        ty-bool(bool),
+        ty-s8(s8),
+        ty-s16(s16),
+        ty-s32(s32),
+        ty-s64(s64),
+        ty-u8(u8),
+        ty-u16(u16),
+        ty-u32(u32),
+        ty-u64(u64),
+        ty-f32(f32),
+        ty-f64(f64),
+        ty-char(char),
+        ty-string(string),
+        ty-action(action),
+        ty-object(object),
+    }
+
+    enum update-mode-kind {
+        unscaled,
+        scaled,
+        realtime,
+    }
+}

@@ -1,0 +1,22 @@
+name: Publish Wukuro Crates
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish-crates:
+    permissions:
+      id-token: write     # Required for OIDC token exchange
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Wukuro
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+      - name: Publish
+        # publishes wukuro-macro, wukuro and wukuro-dialog in the order of the dependencies
+        run: cargo publish --workspace
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}

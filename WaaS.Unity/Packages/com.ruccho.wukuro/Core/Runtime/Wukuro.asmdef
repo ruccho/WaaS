@@ -1,0 +1,19 @@
+{
+    "name": "Wukuro",
+    "rootNamespace": "",
+    "references": [
+        "GUID:f6d891364241fc34c944c7dd90297aac",
+        "GUID:f51ebe6a0ceec4240a699833d6309b23",
+        "GUID:93771d79ccdcc1a409850992fac32615",
+        "GUID:c8b029b087bf86b45acb8436e0a7d988"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
