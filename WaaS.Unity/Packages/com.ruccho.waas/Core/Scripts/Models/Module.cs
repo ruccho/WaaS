@@ -9,6 +9,8 @@ namespace WaaS.Models
     /// </summary>
     public class Module
     {
+        private NameSection names;
+
         internal Module(ref ModuleReader reader, long? size = null)
         {
             long rest = 0;
@@ -20,6 +22,9 @@ namespace WaaS.Models
 
             if (rest < 0) throw new ArgumentException(nameof(size));
 
+            // offsets of the instructions are recorded relative to the start of this module
+            var previousOrigin = reader.Origin;
+            reader.Origin = reader.Position;
 
             var preamble = reader.ReadUnaligned<Preamble>();
 
@@ -99,6 +104,8 @@ namespace WaaS.Models
                 }
             }
 
+            reader.Origin = previousOrigin;
+
             Preamble = preamble;
             Sections = sections.ToArray();
 
@@ -121,6 +128,13 @@ namespace WaaS.Models
 
             InternalFunctions = functionInstances;
 
+            var numImportedFunctions = 0;
+            if (ImportSection != null)
+                foreach (var import in ImportSection.Imports.Span)
+                    if (import.Descriptor.Kind == ImportKind.Type)
+                        numImportedFunctions++;
+            ImportedFunctionCount = numImportedFunctions;
+
             foreach (var functionInstance in functionInstances)
                 functionInstance.Validate(new ValidationContext(this, functionInstance));
         }
@@ -139,6 +153,18 @@ namespace WaaS.Models
         public TypeSection TypeSection { get; }
 
         public string SourceDescription { get; set; }
+
+        /// <summary>
+        ///     Number of the imported functions. The index of an internal function in the function index space is
+        ///     <c>ImportedFunctionCount + Function.FunctionIndex</c>.
+        /// </summary>
+        public int ImportedFunctionCount { get; }
+
+        /// <summary>
+        ///     Names in the "name" custom section. Empty if the module does not have the section.
+        ///     The section is parsed when this property is accessed first.
+        /// </summary>
+        public NameSection Names => names ??= NameSection.Create(Sections.Span);
 
         public static Module Create(ReadOnlySpan<byte> buffer)
         {

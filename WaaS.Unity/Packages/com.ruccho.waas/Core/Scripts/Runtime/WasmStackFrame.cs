@@ -191,6 +191,26 @@ namespace WaaS.Runtime
             inputValues.CopyTo(localsSpan.Slice(0, numParams));
         }
 
+        /// <summary>
+        ///     Gets the instruction being executed. Used to build the stack trace on failure.
+        /// </summary>
+        /// <param name="isInnermost">
+        ///     Whether the frame is the innermost one. Otherwise, the frame is suspended after the instruction which
+        ///     pushed the next frame, and the program counter already points to the instruction after it.
+        /// </param>
+        internal Instruction GetCurrentInstruction(bool isInnermost)
+        {
+            if (Function == null) return null;
+            var instrs = Function.function.Body.Instructions.Span;
+            if (instrs.IsEmpty) return null;
+
+            var index = (long)programCounter;
+            if (!isInnermost && isFramePushed) index--;
+            if (index < 0) index = 0;
+            if (index >= instrs.Length) index = instrs.Length - 1;
+            return instrs[(int)index];
+        }
+
         private void ThrowIfOutdated(ushort version)
         {
             if (version != Version) throw new InvalidOperationException();

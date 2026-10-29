@@ -54,6 +54,8 @@ interface host {
     make-shape: func(kind: u32) -> option<shape>;
     make-tagged: func(kind: u32) -> tagged;
     describe-tagged: func(value: tagged) -> string;
+    // throws an exception on the host
+    fail: func(message: string);
 }
 
 // resources defined by the guest

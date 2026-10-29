@@ -35,7 +35,7 @@ namespace WaaS.Models
                 var memory = current.Instance.GetMemory(0);
 
                 if (ea + readSize > memory.Length)
-                    throw new TrapException();
+                    throw new TrapException("out of bounds memory access");
 
                 var slice = memory[ea..];
                 ref var asRef = ref MemoryMarshal.GetReference(slice);
@@ -47,7 +47,7 @@ namespace WaaS.Models
             }
             catch (OverflowException)
             {
-                throw new TrapException();
+                throw new TrapException("out of bounds memory access");
             }
         }
 
@@ -289,7 +289,7 @@ namespace WaaS.Models
 
             var memory = current.Instance.GetMemory(0);
 
-            if (ea + writeSize > memory.Length) throw new TrapException();
+            if (ea + writeSize > memory.Length) throw new TrapException("out of bounds memory access");
 
             var writeValue = Convert(c);
 
@@ -528,7 +528,7 @@ namespace WaaS.Models
 
             checked
             {
-                if (src + n > memory.Length || dest + n > memory.Length) throw new TrapException();
+                if (src + n > memory.Length || dest + n > memory.Length) throw new TrapException("out of bounds memory access");
                 if (n == 0) return;
 
                 var srcSpan = memory.Slice((int)src, (int)n);
@@ -577,7 +577,7 @@ namespace WaaS.Models
 
             checked
             {
-                if (dest + n > memory.Length) throw new TrapException();
+                if (dest + n > memory.Length) throw new TrapException("out of bounds memory access");
                 if (n == 0) return;
 
                 var destSpan = memory.Slice((int)dest, (int)n);
