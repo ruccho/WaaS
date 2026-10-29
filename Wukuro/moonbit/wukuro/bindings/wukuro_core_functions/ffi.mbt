@@ -16,11 +16,11 @@ fn wasmImportSchedule(p0 : Int, p1 : Float, p2 : Int) -> Int = "wukuro:core/func
 fn wasmImportPanic(p0 : Int, p1 : Int)  = "wukuro:core/functions" "panic"
 
 ///|
-extern "wasm" fn mbt_ffi_free(position : Int) =
-#|(func (param i32) local.get 0 call $moonbit.decref)
-
-///|
 #owned(str)
 extern "wasm" fn mbt_ffi_str2ptr(str : String) -> Int =
 #|(func (param i32) (result i32) local.get 0)
+
+///|
+extern "wasm" fn mbt_ffi_free(position : Int) =
+#|(func (param i32) local.get 0 call $moonbit.decref)
 

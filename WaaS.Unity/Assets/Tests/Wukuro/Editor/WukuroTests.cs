@@ -14,11 +14,12 @@ using DialogTypes = Wukuro.Dialog.ITypes;
 namespace Wukuro.Tests
 {
     /// <summary>
-    ///     Runs the entry points of wukuro-tests.rs and wukuro-tests.mbt, which are the same scripts written in Rust and
-    ///     MoonBit.
+    ///     Runs the entry points of wukuro-tests.rs, wukuro-tests.mbt and MoonBitPackage, which are the same scripts written
+    ///     in Rust, in a MoonBit source file and in a MoonBit package.
     /// </summary>
     [TestFixture("Assets/Tests/Wukuro/wukuro-tests.rs")]
     [TestFixture("Assets/Tests/Wukuro/wukuro-tests.mbt")]
+    [TestFixture("Assets/Tests/Wukuro/MoonBitPackage/moon.pkg")]
     public class WukuroTests
     {
         private string ScriptPath { get; }
@@ -64,6 +65,15 @@ namespace Wukuro.Tests
                 .Where(p => p.IsArgument)
                 .Select(p => $"{p.Name}: {p.WitType}");
             Assert.That(parameters, Is.EqualTo(new[] { "count: s32", "label: string", "flag: bool" }));
+        }
+
+        [Test]
+        public void SmallIntegersAreDeclaredWithTheirTypes()
+        {
+            var parameters = WukuroEntryPoints.Parse(script.Wit).Single(e => e.Name == "small-integers").Parameters
+                .Where(p => p.IsArgument)
+                .Select(p => $"{p.WitType}");
+            Assert.That(parameters, Is.EqualTo(new[] { "s16", "u16" }));
         }
 
         [Test]

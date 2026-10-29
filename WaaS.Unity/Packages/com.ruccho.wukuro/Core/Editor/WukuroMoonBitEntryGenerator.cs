@@ -167,6 +167,12 @@ namespace Wukuro.Editor
                 case "Byte":
                     witType = "u8";
                     return $"{Flat("Int")}.to_byte()";
+                case "Int16":
+                    witType = "s16";
+                    return $"Int16::from_int({Flat("Int")})";
+                case "UInt16":
+                    witType = "u16";
+                    return $"{Flat("Int")}.to_uint16()";
                 case "Int":
                 case "Int32":
                     witType = "s32";

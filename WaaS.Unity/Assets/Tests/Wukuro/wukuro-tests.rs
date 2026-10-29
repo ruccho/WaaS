@@ -60,3 +60,6 @@ fn talk(cx: &Context) {
     let chosen = d.opts(["first", "second"]);
     cx.get_variable("chosen").set(Argument::TyS32(chosen));
 }
+
+#[entry]
+fn small_integers(cx: &Context, small: i16, unsigned_small: u16) {}

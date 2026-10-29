@@ -43,48 +43,20 @@ fn wasmImportMethodTaskIsCompleted(p0 : Int) -> Int = "wukuro:core/types" "[meth
 fn wasmImportMethodObjectClone(p0 : Int) -> Int = "wukuro:core/types" "[method]object.clone"
 
 ///|
-extern "wasm" fn mbt_ffi_extend16(value : Int) -> Int =
-#|(func (param i32) (result i32) local.get 0 i32.extend16_s)
-
-///|
-extern "wasm" fn mbt_ffi_load32(offset : Int) -> Int =
-#|(func (param i32) (result i32) local.get 0 i32.load)
-
-///|
-#owned(str)
-extern "wasm" fn mbt_ffi_str2ptr(str : String) -> Int =
-#|(func (param i32) (result i32) local.get 0)
-
-///|
 extern "wasm" fn mbt_ffi_load8(offset : Int) -> Int =
 #|(func (param i32) (result i32) local.get 0 i32.load8_s)
 
 ///|
-extern "wasm" fn mbt_ffi_extend8(value : Int) -> Int =
-#|(func (param i32) (result i32) local.get 0 i32.extend8_s)
-
-///|
-extern "wasm" fn mbt_ffi_load64(offset : Int) -> Int64 =
-#|(func (param i32) (result i64) local.get 0 i64.load)
-
-///|
-extern "wasm" fn mbt_ffi_malloc(size : Int) -> Int =
-#|(func (param i32) (result i32) (local i32)
-#| local.get 0 i32.const 4 i32.add call $moonbit.gc.malloc
-#| local.tee 1 i32.const 0 call $moonbit.init_array8
-#| local.get 1)
-
-///|
-extern "wasm" fn mbt_ffi_loadf32(offset : Int) -> Float =
-#|(func (param i32) (result f32) local.get 0 f32.load)
+extern "wasm" fn mbt_ffi_extend16(value : Int) -> Int =
+#|(func (param i32) (result i32) local.get 0 i32.extend16_s)
 
 ///|
 extern "wasm" fn mbt_ffi_load8_u(offset : Int) -> Int =
 #|(func (param i32) (result i32) local.get 0 i32.load8_u)
 
 ///|
-extern "wasm" fn mbt_ffi_load16_u(offset : Int) -> Int =
-#|(func (param i32) (result i32) local.get 0 i32.load16_u)
+extern "wasm" fn mbt_ffi_load64(offset : Int) -> Int64 =
+#|(func (param i32) (result i64) local.get 0 i64.load)
 
 ///|
 extern "wasm" fn mbt_ffi_ptr2str(ptr : Int, len : Int) -> String =
@@ -94,14 +66,42 @@ extern "wasm" fn mbt_ffi_ptr2str(ptr : Int, len : Int) -> String =
 #| local.get 0)
 
 ///|
-extern "wasm" fn mbt_ffi_free(position : Int) =
-#|(func (param i32) local.get 0 call $moonbit.decref)
+extern "wasm" fn mbt_ffi_loadf32(offset : Int) -> Float =
+#|(func (param i32) (result f32) local.get 0 f32.load)
 
 ///|
 extern "wasm" fn mbt_ffi_load16(offset : Int) -> Int =
 #|(func (param i32) (result i32) local.get 0 i32.load16_s)
 
 ///|
+extern "wasm" fn mbt_ffi_free(position : Int) =
+#|(func (param i32) local.get 0 call $moonbit.decref)
+
+///|
+#owned(str)
+extern "wasm" fn mbt_ffi_str2ptr(str : String) -> Int =
+#|(func (param i32) (result i32) local.get 0)
+
+///|
+extern "wasm" fn mbt_ffi_load16_u(offset : Int) -> Int =
+#|(func (param i32) (result i32) local.get 0 i32.load16_u)
+
+///|
 extern "wasm" fn mbt_ffi_loadf64(offset : Int) -> Double =
 #|(func (param i32) (result f64) local.get 0 f64.load)
+
+///|
+extern "wasm" fn mbt_ffi_malloc(size : Int) -> Int =
+#|(func (param i32) (result i32) (local i32)
+#| local.get 0 i32.const 4 i32.add call $moonbit.gc.malloc
+#| local.tee 1 i32.const 0 call $moonbit.init_array8
+#| local.get 1)
+
+///|
+extern "wasm" fn mbt_ffi_extend8(value : Int) -> Int =
+#|(func (param i32) (result i32) local.get 0 i32.extend8_s)
+
+///|
+extern "wasm" fn mbt_ffi_load32(offset : Int) -> Int =
+#|(func (param i32) (result i32) local.get 0 i32.load)
 

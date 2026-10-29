@@ -72,3 +72,13 @@ pub fn talk(cx : @wukuro.Context) -> Unit {
   })
   cx.get_variable("chosen").set(TyS32(chosen))
 }
+
+///|
+#wukuro.entry
+pub fn small_integers(
+  _cx : @wukuro.Context,
+  _small : Int16,
+  _unsigned_small : UInt16,
+) -> Unit {
+
+}

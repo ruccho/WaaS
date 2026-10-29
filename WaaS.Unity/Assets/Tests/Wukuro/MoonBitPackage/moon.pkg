@@ -1,0 +1,4 @@
+import {
+  "ruccho/wukuro" @wukuro,
+  "ruccho/wukuro/dialog" @dialog,
+}
