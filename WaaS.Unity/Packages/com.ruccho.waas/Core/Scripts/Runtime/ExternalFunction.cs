@@ -95,6 +95,7 @@ namespace WaaS.Runtime
                 if (t == typeof(ulong)) return ValueType.I64;
                 if (t == typeof(float)) return ValueType.F32;
                 if (t == typeof(double)) return ValueType.F64;
+                if (t == typeof(V128)) return ValueType.V128;
                 throw new InvalidOperationException($"Unsupported type {t}");
             }
 
@@ -133,7 +134,8 @@ namespace WaaS.Runtime
                 if (returnType != typeof(uint) &&
                     returnType != typeof(ulong) &&
                     returnType != typeof(float) &&
-                    returnType != typeof(double))
+                    returnType != typeof(double) &&
+                    returnType != typeof(V128))
                     throw new InvalidOperationException(
                         $"The external function contains incompatible return type: {returnType}");
             }
@@ -156,6 +158,8 @@ namespace WaaS.Runtime
                     parameter = parameterOnStack.ExpectValueF32();
                 else if (type == typeof(double))
                     parameter = parameterOnStack.ExpectValueF64();
+                else if (type == typeof(V128))
+                    parameter = parameterOnStack.ExpectValueV128();
                 else
                     throw new InvalidOperationException(
                         $"The external function contains incompatible parameter type: {type}");
@@ -172,6 +176,7 @@ namespace WaaS.Runtime
                     uint v => new StackValueItem(v),
                     ulong v => new StackValueItem(v),
                     float v => new StackValueItem(v),
+                    V128 v => new StackValueItem(v),
                     double v => new StackValueItem(v),
                     _ => throw new InvalidOperationException(
                         $"The external function contains incompatible return type: {result.GetType()}")

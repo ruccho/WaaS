@@ -26,7 +26,7 @@ namespace WaaS.Models
             var t = reader.ReadUnaligned<byte>();
             if (t == 0x40) return;
 
-            if (t is >= (byte)ValueType.F64 and <= (byte)ValueType.I32)
+            if (t is >= (byte)ValueType.V128 and <= (byte)ValueType.I32)
             {
                 Type = (ValueType)t;
                 return;
@@ -134,8 +134,10 @@ namespace WaaS.Models
     /// </summary>
     public abstract partial class BlockInstruction : Instruction
     {
+        // indexed by (type - V128)
         private static readonly ValueType[][] SingleValueTypes =
         {
+            new[] { ValueType.V128 },
             new[] { ValueType.F64 },
             new[] { ValueType.F32 },
             new[] { ValueType.I64 },
@@ -177,7 +179,7 @@ namespace WaaS.Models
             {
                 ParameterTypes = ReadOnlyMemory<ValueType>.Empty;
                 ResultTypes = BlockType.Type is { } type
-                    ? SingleValueTypes[(byte)type - (byte)ValueType.F64]
+                    ? SingleValueTypes[(byte)type - (byte)ValueType.V128]
                     : ReadOnlyMemory<ValueType>.Empty;
             }
         }

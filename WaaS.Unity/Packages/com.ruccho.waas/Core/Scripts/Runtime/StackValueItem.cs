@@ -6,7 +6,10 @@ namespace WaaS.Runtime
     /// <summary>
     ///     Represents a value on the stack.
     /// </summary>
-    [StructLayout(LayoutKind.Explicit, Size = 16)]
+    /// <remarks>
+    ///     The payload starts at offset 8. Scalar values use 8 bytes and v128 values use 16 bytes of it.
+    /// </remarks>
+    [StructLayout(LayoutKind.Explicit, Size = 24)]
     public struct StackValueItem : IEquatable<StackValueItem>
     {
         [FieldOffset(0)] internal readonly ValueType valueType;
@@ -21,6 +24,8 @@ namespace WaaS.Runtime
 
         [FieldOffset(8)] internal double valueF64;
 
+        [FieldOffset(8)] internal V128 valueV128;
+
         public readonly bool IsLabel => (byte)valueType == 0xFF;
 
         public override string ToString()
@@ -31,6 +36,7 @@ namespace WaaS.Runtime
                 ValueType.I64 => valueI64.ToString(),
                 ValueType.F32 => valueF32.ToString(),
                 ValueType.F64 => valueF64.ToString(),
+                ValueType.V128 => valueV128.ToString(),
                 _ => "(unknown)"
             };
         }
@@ -89,6 +95,13 @@ namespace WaaS.Runtime
             this = default;
             valueType = ValueType.F64;
             valueF64 = value;
+        }
+
+        public StackValueItem(V128 value)
+        {
+            this = default;
+            valueType = ValueType.V128;
+            valueV128 = value;
         }
 
         public readonly bool TryGetLabel(out Label label)
@@ -151,6 +164,18 @@ namespace WaaS.Runtime
             return true;
         }
 
+        public readonly bool TryGetValue(out V128 value)
+        {
+            if (valueType != ValueType.V128)
+            {
+                value = default;
+                return false;
+            }
+
+            value = valueV128;
+            return true;
+        }
+
         public readonly StackValueItem ExpectValue()
         {
             return ExpectValue(out _);
@@ -198,6 +223,13 @@ namespace WaaS.Runtime
             return valueF64;
         }
 
+        public readonly V128 ExpectValueV128()
+        {
+            if (valueType != ValueType.V128)
+                throw new InvalidCodeException($"StackValueType expected: v128, actual: {valueType}");
+            return valueV128;
+        }
+
         public readonly Label ExpectLabel()
         {
             if (!IsLabel) throw new InvalidCodeException();
@@ -217,6 +249,8 @@ namespace WaaS.Runtime
                     return valueI32 == other.valueI32;
                 case ValueType.F64:
                     return valueI64 == other.valueI64;
+                case ValueType.V128:
+                    return valueV128.Equals(other.valueV128);
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -244,6 +278,9 @@ namespace WaaS.Runtime
                     break;
                 case ValueType.F64:
                     code.Add(valueF64);
+                    break;
+                case ValueType.V128:
+                    code.Add(valueV128);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();

@@ -261,6 +261,12 @@ namespace WaaS.Runtime
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Push(V128 value)
+        {
+            Push(new StackValueItem(value));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Push(StackValueItem value)
         {
             stack.Span[checked(stackPointer++)] = value;
