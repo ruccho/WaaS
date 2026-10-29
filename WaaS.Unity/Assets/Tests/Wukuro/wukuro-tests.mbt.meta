@@ -1,0 +1,21 @@
+fileFormatVersion: 2
+guid: 1575411c9b394fb4cae3bda0a6d223e6
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: 971983ad49a147d4abe6dbac6bb5d986, type: 3}
+  script: 1
+  preset: {fileID: 4218292774016059762, guid: 4a594dd08df7ced4ea6846be91442826, type: 3}
+  settings:
+    dependencies: []
+    imports: []
+    componentize: 1
+    witDirectories: []
+    generators: []
+  references:
+    version: 2
+    RefIds: []

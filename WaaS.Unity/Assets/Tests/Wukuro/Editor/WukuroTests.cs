@@ -14,13 +14,23 @@ using DialogTypes = Wukuro.Dialog.ITypes;
 namespace Wukuro.Tests
 {
     /// <summary>
-    ///     Runs the entry points of wukuro-tests.rs.
+    ///     Runs the entry points of wukuro-tests.rs and wukuro-tests.mbt, which are the same scripts written in Rust and
+    ///     MoonBit.
     /// </summary>
+    [TestFixture("Assets/Tests/Wukuro/wukuro-tests.rs")]
+    [TestFixture("Assets/Tests/Wukuro/wukuro-tests.mbt")]
     public class WukuroTests
     {
-        private const string ScriptPath = "Assets/Tests/Wukuro/wukuro-tests.rs";
+        private string ScriptPath { get; }
 
         private ComponentAsset script;
+
+        public WukuroTests(string scriptPath)
+        {
+            ScriptPath = scriptPath;
+        }
+
+        private bool IsRust => ScriptPath.EndsWith(".rs");
 
         [OneTimeSetUp]
         public void SetUp()
@@ -129,8 +139,8 @@ namespace Wukuro.Tests
             }
 
             Assert.That(exception, Is.Not.Null);
-            // e.g. "panicked at src/lib.rs:10:5:\nscript failure"
-            Assert.That(exception.PanicMessage, Does.StartWith("panicked at "));
+            // e.g. "panicked at src/lib.rs:10:5:\nscript failure" in Rust, the message passed to fail in MoonBit
+            if (IsRust) Assert.That(exception.PanicMessage, Does.StartWith("panicked at "));
             Assert.That(exception.PanicMessage, Does.Contain("script failure"));
             Assert.That(exception.WasmStackTrace, Is.Not.Null);
             Assert.That(exception.Message, Does.Contain("wasm backtrace:"));
