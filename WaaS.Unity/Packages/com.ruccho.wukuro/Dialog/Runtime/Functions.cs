@@ -15,8 +15,7 @@ namespace Wukuro.Dialog
         public async ValueTask<Owned<ITypes.IDialogModuleResourceImpl>> GetDialogModule(
             Borrowed<Core.ITypes.IContextResourceImpl> context)
         {
-            var contextValue = (Context.Type as IHostResourceType<IContext>)!.ToHostResource(context.handle.GetValue());
-            var dialogModule = contextValue.GetModule<IDialogModule>();
+            var dialogModule = WukuroContexts.GetModule<IDialogModule>(context);
             return (Owned<ITypes.IDialogModuleResourceImpl>)DialogModuleType.Wrap(dialogModule);
         }
 

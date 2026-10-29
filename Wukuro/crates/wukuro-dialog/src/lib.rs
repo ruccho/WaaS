@@ -2,25 +2,28 @@
 
 
 
-pub use crate::wukuro::dialog::{types, functions};
+pub use bindings::wukuro::dialog::{functions, types};
 
-wit_bindgen::generate!({
-    inline: r#"
-        package wukuro:dialog-inline;
+// the generated module `wukuro` is kept private so that `use wukuro_dialog::*` does not shadow the `wukuro` crate
+mod bindings {
+    wit_bindgen::generate!({
+        inline: r#"
+            package wukuro:dialog-inline;
 
-        world imports {
-            import wukuro:dialog/functions;
-            import wukuro:dialog/types;
-        }
-    "#,
-    path: ["wit/wukuro-core", "wit/wukuro-dialog"],
-    world: "wukuro:dialog-inline/imports",
-    with: {
-        "wukuro:core/types": ::wukuro::wukuro::core::types,
-        "wukuro:dialog/types": generate,
-        "wukuro:dialog/functions": generate,
-    },
-});
+            world imports {
+                import wukuro:dialog/functions;
+                import wukuro:dialog/types;
+            }
+        "#,
+        path: ["wit/wukuro-core", "wit/wukuro-dialog"],
+        world: "wukuro:dialog-inline/imports",
+        with: {
+            "wukuro:core/types": ::wukuro::wukuro::core::types,
+            "wukuro:dialog/types": generate,
+            "wukuro:dialog/functions": generate,
+        },
+    });
+}
 
 
 pub use ::wukuro::{IntoText, l10n};
