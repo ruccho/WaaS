@@ -127,6 +127,10 @@ namespace Wukuro
             {
                 foreach (var owned in ownedArguments) owned.Dispose();
                 ownedContext.Dispose();
+
+                // resources the script did not drop (e.g. a MoonBit script, which has no destructors) are dropped
+                // when the run ends, as they are when they go out of scope in a Rust script
+                instance.DropOwnedResources();
             }
         }
 

@@ -47,6 +47,16 @@ namespace WaaS.ComponentModel.Runtime
             return handles.RemoveAt(unchecked((int)index));
         }
 
+        /// <summary>
+        ///     Removes all handles and drops the resources of the owned ones.
+        /// </summary>
+        public void DropOwned()
+        {
+            foreach (var handle in handles.RemoveAll())
+                if (handle.IsOwn)
+                    handle.Type.Drop(handle.Rep);
+        }
+
         public readonly struct Handle
         {
             public IResourceType Type { get; }

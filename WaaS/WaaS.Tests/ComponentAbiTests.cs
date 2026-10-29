@@ -136,6 +136,9 @@ public partial interface IAbiTestExports
     [ComponentApi(@"test-resource")]
     ValueTask<int> TestResource();
 
+    [ComponentApi(@"test-leak")]
+    ValueTask TestLeak(int value);
+
     [ComponentApi(@"test-borrow-param")]
     ValueTask<int> TestBorrowParam(Borrowed<IAbiHost.ICounterResourceImpl> counter);
 
@@ -226,6 +229,20 @@ public class ComponentAbiTests
         // 10 + 2 increments: read through borrow (12) + get (12)
         Assert.That(await Call(e => e.TestResource()), Is.EqualTo(24));
         Assert.That(host.CounterType.Dropped, Is.EqualTo(new[] { 12 }));
+    }
+
+    [Test]
+    public async Task OwnedResourcesNotDroppedByGuestAreDroppedWithInstance()
+    {
+        await Call(async e =>
+        {
+            await e.TestLeak(7);
+            return 0;
+        });
+        Assert.That(host.CounterType.Dropped, Is.Empty);
+
+        instance.DropOwnedResources();
+        Assert.That(host.CounterType.Dropped, Is.EqualTo(new[] { 7 }));
     }
 
     [Test]
