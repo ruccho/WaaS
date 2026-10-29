@@ -263,10 +263,25 @@ namespace WaaS.Runtime
             programCounter = index - 1;
         }
 
-        public void EnterBlock(Label label)
+        public void EnterBlock(Label label, int numParameters = 0)
         {
+            if (numParameters == 0)
+            {
+                Push(new StackValueItem(label));
+                PushLabelDepth(stackPointer);
+                return;
+            }
+
+            // move the parameters above the label
+            var parameters = stack.Span.Slice(checked(stackPointer - numParameters), numParameters);
+            Span<StackValueItem> tempParameters = stackalloc StackValueItem[numParameters];
+            parameters.CopyTo(tempParameters);
+            stackPointer -= numParameters;
+
             Push(new StackValueItem(label));
             PushLabelDepth(stackPointer);
+
+            foreach (var parameter in tempParameters) Push(parameter);
         }
 
         public void EndBlock()
