@@ -50,6 +50,8 @@ pub mod object_types;
 
 To regenerate it automatically when the C# declarations change, prepare an editor extension that generates it after compilation, and register the generated file with `ExternalFileDependency.Register` ([Generating Rust code from the data of the game](./extending.mdx#generating-rust-code-from-the-data-of-the-game)).
 
+For MoonBit scripts, `WukuroObjectTypeExporter.GenerateMoonBit` generates the marker types in the same way ([Writing Scripts in MoonBit](./moonbit.mdx#object-types)).
+
 ## Using typed parameters
 
 ```rust
