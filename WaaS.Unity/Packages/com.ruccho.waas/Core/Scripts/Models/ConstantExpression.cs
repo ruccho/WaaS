@@ -39,6 +39,7 @@ namespace WaaS.Models
                     ConstI64 c => new StackValueItem(c.Value),
                     ConstF32 c => new StackValueItem(c.Value),
                     ConstF64 c => new StackValueItem(c.Value),
+                    ConstV128 c => new StackValueItem(c.Value),
                     GlobalGet g => globals[(int)g.GlobalIndex].GetStackValue(),
                     _ => throw new InvalidModuleException()
                 };
@@ -70,6 +71,7 @@ namespace WaaS.Models
                         ConstI64 c => new StackValueItem(c.Value),
                         ConstF32 c => new StackValueItem(c.Value),
                         ConstF64 c => new StackValueItem(c.Value),
+                        ConstV128 c => new StackValueItem(c.Value),
                         GlobalGet g => initializingGlobals[(int)g.GlobalIndex].GetStackValue(),
                         _ => throw new InvalidModuleException(
                             $"Instruction {instr.GetType().Name} cannot be used for constant expression!")
