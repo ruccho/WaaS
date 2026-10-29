@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -87,6 +88,64 @@ namespace WaaS.Unity.Editor
             if (result is string message) throw new Exception(message);
 
             throw new Exception();
+        }
+
+        private static readonly Action<nint, nint, nint, nint> OnFileDelegate = OnFile;
+        private static readonly nint OnFilePointer = Marshal.GetFunctionPointerForDelegate(OnFileDelegate);
+
+        private static void OnFile(nint userData, nint name, nint ptr, nint len)
+        {
+            var contents = new byte[len];
+            Marshal.Copy(ptr, contents, 0, (int)len);
+            var files = (List<(string, byte[])>)GCHandle.FromIntPtr(userData).Target;
+            files.Add((Marshal.PtrToStringAnsi(name), contents));
+        }
+
+        private static void OnFileError(nint userData, nint message)
+        {
+            var files = (List<(string, byte[])>)GCHandle.FromIntPtr(userData).Target;
+            files.Clear();
+            files.Add((null, System.Text.Encoding.UTF8.GetBytes(Marshal.PtrToStringAnsi(message) ?? "")));
+        }
+
+        private static readonly Action<nint, nint> OnFileErrorDelegate = OnFileError;
+        private static readonly nint OnFileErrorPointer = Marshal.GetFunctionPointerForDelegate(OnFileErrorDelegate);
+
+        [DllImport(DllName, CharSet = CharSet.Ansi)]
+        private static extern void generate_moonbit_bindings(
+            string wit_path,
+            string world,
+            string project_name,
+            nint user_data,
+            nint on_file,
+            nint on_error);
+
+        /// <summary>
+        ///     Generates MoonBit bindings of a world. Returns the generated files with their paths relative to the output
+        ///     directory.
+        /// </summary>
+        public static IReadOnlyList<(string Path, byte[] Contents)> GenerateMoonBitBindings(
+            string witPath,
+            string world,
+            string projectName)
+        {
+            var files = new List<(string, byte[])>();
+            var handle = GCHandle.Alloc(files);
+            try
+            {
+                generate_moonbit_bindings(witPath, world, projectName, GCHandle.ToIntPtr(handle), OnFilePointer,
+                    OnFileErrorPointer);
+            }
+            finally
+            {
+                handle.Free();
+            }
+
+            // an error is reported as a single entry without a path
+            if (files.Count == 1 && files[0].Item1 == null)
+                throw new Exception(System.Text.Encoding.UTF8.GetString(files[0].Item2));
+
+            return files;
         }
     }
 

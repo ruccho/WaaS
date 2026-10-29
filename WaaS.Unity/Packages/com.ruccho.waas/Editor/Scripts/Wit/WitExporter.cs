@@ -6,6 +6,7 @@ using System.Text;
 using UnityEditor;
 using UnityEngine;
 using WaaS.ComponentModel.Binding;
+using WaaS.Unity.Editor.MoonBit;
 
 namespace WaaS.Unity.Editor.Wit
 {
@@ -42,8 +43,19 @@ namespace WaaS.Unity.Editor.Wit
 
         public static void ExportAll(bool log)
         {
+            var changed = ExportWit(log);
+
+            // the MoonBit bindings are generated from the exported WIT
+            changed |= MoonBitBindingsExporter.ExportAll(log);
+
+            // reimport the assets depending on the changed files
+            if (changed) AssetDatabase.Refresh();
+        }
+
+        private static bool ExportWit(bool log)
+        {
             var guids = AssetDatabase.FindAssets($"t:{nameof(WitExportSettings)}");
-            if (guids.Length == 0) return;
+            if (guids.Length == 0) return false;
 
             IReadOnlyDictionary<string, string> packages;
             try
@@ -53,7 +65,7 @@ namespace WaaS.Unity.Editor.Wit
             catch (Exception ex)
             {
                 Debug.LogException(ex);
-                return;
+                return false;
             }
 
             var changed = false;
@@ -64,8 +76,7 @@ namespace WaaS.Unity.Editor.Wit
                 changed |= Export(settings, packages, log);
             }
 
-            // reimport the assets depending on the changed files
-            if (changed) AssetDatabase.Refresh();
+            return changed;
         }
 
         private static bool Export(WitExportSettings settings, IReadOnlyDictionary<string, string> packages, bool log)
