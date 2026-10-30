@@ -24,6 +24,18 @@ namespace WaaS.Runtime
         private const int MaxInlineFrameDepth = 8;
         private int inlineFrameDepth;
         private bool isFuelLimited;
+
+        // while a debugger is attached, the fuel of the interpreter stays exhausted so that every instruction calls
+        // OnFuelExhausted(), and the fuel of the host is kept here
+        private IWasmDebugger debugger;
+        private long debuggerFuel = long.MaxValue;
+        private bool isRunningAsync;
+
+        // the location of the last pause, which is not paused again when the execution resumes
+        private WasmStackFrame pausedFrame;
+        private ushort pausedFrameVersion;
+        private int pausedIndex = -1;
+        private int pausedDepth;
         private bool moving;
 
         public ExecutionContext(uint? maxStackFrames = null)
@@ -39,11 +51,13 @@ namespace WaaS.Runtime
         /// </summary>
         public ulong? Fuel
         {
-            get => isFuelLimited ? (ulong)Math.Max(fuel, 0) : null;
+            get => isFuelLimited ? (ulong)Math.Max(debugger != null ? debuggerFuel : fuel, 0) : null;
             set
             {
                 isFuelLimited = value.HasValue;
-                fuel = value.HasValue ? (long)Math.Min(value.Value, long.MaxValue) : long.MaxValue;
+                var newFuel = value.HasValue ? (long)Math.Min(value.Value, long.MaxValue) : long.MaxValue;
+                if (debugger != null) debuggerFuel = newFuel;
+                else fuel = newFuel;
             }
         }
 
@@ -67,6 +81,30 @@ namespace WaaS.Runtime
         ///     frames of the invocation are discarded.
         /// </summary>
         public CancellationToken CancellationToken { get; set; }
+
+        /// <summary>
+        ///     The debugger observing the execution, or null. While a debugger is attached, the interpreter calls it before
+        ///     every instruction, which makes the execution several times slower.
+        /// </summary>
+        public IWasmDebugger Debugger
+        {
+            get => debugger;
+            set
+            {
+                if (debugger == value) return;
+                if (debugger == null)
+                {
+                    debuggerFuel = fuel;
+                    fuel = 0;
+                }
+                else if (value == null)
+                {
+                    fuel = debuggerFuel;
+                }
+
+                debugger = value;
+            }
+        }
 
         public StackFrame LastFrame { get; private set; }
 
@@ -260,9 +298,65 @@ namespace WaaS.Runtime
             }
         }
 
-        // called when the fuel counter goes below zero
+        // called when the fuel counter goes below zero. throws DebuggerPause to pause before the instruction.
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal void OnFuelExhausted()
+        internal void OnFuelExhausted(WasmStackFrame frame, in Waker waker)
+        {
+            if (debugger == null)
+            {
+                OnFuelExhausted();
+                return;
+            }
+
+            if (OnDebuggerInstruction(frame, waker)) throw DebuggerPause.Instance;
+        }
+
+        private bool OnDebuggerInstruction(WasmStackFrame frame, in Waker waker)
+        {
+            // every instruction comes here
+            fuel = 0;
+            if (isFuelLimited && --debuggerFuel < 0)
+            {
+                debuggerFuel = 0;
+                throw new FuelExhaustedException();
+            }
+
+            var index = frame.ProgramCounter;
+            var depth = frames.Count + frame.ActivationCount;
+            if (pausedFrame == frame && pausedFrameVersion == frame.Version && pausedIndex == index &&
+                pausedDepth == depth)
+            {
+                // resumed from the pause at this instruction
+                pausedFrame = null;
+                return false;
+            }
+
+            pausedFrame = null;
+            var instruction = frame.Function.function.Body.Instructions.Span[index];
+            if (!debugger.ShouldPause(new WasmDebugLocation(this, frame.Function, instruction, depth))) return false;
+
+            // only the asynchronous execution can wait for the resume
+            if (!isRunningAsync) return false;
+
+            pausedFrame = frame;
+            pausedFrameVersion = frame.Version;
+            pausedIndex = index;
+            pausedDepth = depth;
+
+            var debugFrames = new List<WasmDebugFrame>();
+            var isInnermost = true;
+            foreach (var stackFrame in frames)
+            {
+                if (stackFrame.Core is WasmStackFrame { Function: not null } wasmFrame)
+                    wasmFrame.CaptureDebugFrames(debugFrames, isInnermost);
+                isInnermost = false;
+            }
+
+            debugger.OnPaused(new WasmDebugPause(this, debugFrames, waker));
+            return true;
+        }
+
+        private void OnFuelExhausted()
         {
             if (!isFuelLimited)
             {
@@ -389,7 +483,17 @@ namespace WaaS.Runtime
             {
                 RefillFuel();
                 var source = currentPendingTaskSource ??= ValueTaskSource.Create();
-                MoveToEndOrPending(initial, out var pending);
+                var wasRunningAsync = isRunningAsync;
+                isRunningAsync = true;
+                bool pending;
+                try
+                {
+                    MoveToEndOrPending(initial, out pending);
+                }
+                finally
+                {
+                    isRunningAsync = wasRunningAsync;
+                }
 
                 if (!pending) return;
 
@@ -447,5 +551,13 @@ namespace WaaS.Runtime
         {
             source.TrySetException(ex);
         }
+    }
+
+    /// <summary>
+    ///     Thrown to leave the interpreter loop when a debugger pauses the execution.
+    /// </summary>
+    internal sealed class DebuggerPause : Exception
+    {
+        public static readonly DebuggerPause Instance = new();
     }
 }

@@ -112,7 +112,13 @@ namespace WaaS.Runtime
             // the interpreter loop is kept out of the exception handler for better code generation
             try
             {
-                return Run(waker);
+                // a debugger pauses before each instruction, which may be in the middle of a superinstruction
+                return Run(waker, Context.Debugger != null);
+            }
+            catch (DebuggerPause)
+            {
+                // resumed from the instruction
+                return StackFrameState.Pending;
             }
             catch (Exception ex) when (ex is not WasmException and not OperationCanceledException &&
                                        !isMovingPushedFrame)
@@ -323,6 +329,30 @@ namespace WaaS.Runtime
             }
         }
 
+        internal int ProgramCounter => (int)programCounter;
+        internal int ActivationCount => activationCount;
+
+        /// <summary>
+        ///     Adds the functions being executed in this frame to the frames of a debugger, from the innermost one.
+        /// </summary>
+        internal void CaptureDebugFrames(List<WasmDebugFrame> dest, bool isInnermost)
+        {
+            var calleeFrameBase = frameBase;
+            dest.Add(new WasmDebugFrame(Function, GetCurrentInstruction(isInnermost),
+                values.AsSpan(frameBase, stackBase - frameBase).ToArray(),
+                values.AsSpan(stackBase, stackPointer - stackBase).ToArray()));
+            for (var i = activationCount - 1; i >= 0; i--)
+            {
+                ref var caller = ref activations[i];
+                var instrs = caller.Function.function.Body.Instructions.Span;
+                // the operand stack of the caller ends at the parameters passed to the callee, which are its locals
+                dest.Add(new WasmDebugFrame(caller.Function, instrs[caller.ReturnIndex - 1],
+                    values.AsSpan(caller.FrameBase, caller.StackBase - caller.FrameBase).ToArray(),
+                    values.AsSpan(caller.StackBase, calleeFrameBase - caller.StackBase).ToArray()));
+                calleeFrameBase = caller.FrameBase;
+            }
+        }
+
         /// <summary>
         ///     Gets the instruction being executed. Used to build the stack trace on failure.
         /// </summary>
@@ -490,7 +520,7 @@ namespace WaaS.Runtime
         ///     <see cref="programCounter" /> is updated before an instruction which may throw so that it points to the
         ///     failed one.
         /// </summary>
-        private StackFrameState Run(in Waker waker)
+        private StackFrameState Run(in Waker waker, bool useBaseCode)
         {
             // the locals are kept few for the register allocation
             var context = Context;
@@ -502,6 +532,7 @@ namespace WaaS.Runtime
             // the operand stack are within the buffer, and the program counter stays in the code.
             ref var v0 = ref values[0];
             ref var c0 = ref compiled.Code[0];
+            if (useBaseCode) c0 = ref compiled.BaseCode[0];
 
             while (true)
             {
@@ -521,7 +552,10 @@ namespace WaaS.Runtime
                     }
 
                     programCounter = (uint)pc;
-                    context.OnFuelExhausted();
+                    // the debugger reads the operand stack
+                    stackPointer = sp;
+                    // a pause of the debugger throws, to keep the loop small
+                    context.OnFuelExhausted(this, waker);
                 }
                 IInvocableFunction callee;
                 switch (instr.Op)
