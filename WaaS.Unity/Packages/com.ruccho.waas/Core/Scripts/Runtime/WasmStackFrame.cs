@@ -485,7 +485,7 @@ namespace WaaS.Runtime
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void ThrowStackOverflow()
         {
-            throw new InvalidOperationException("Stack overflow.");
+            throw new TrapException("Stack overflow.");
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]

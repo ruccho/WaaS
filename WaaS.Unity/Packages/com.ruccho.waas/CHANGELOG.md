@@ -52,6 +52,7 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - Importing a memory compared the limits declared by the imported memory instead of its current size.
 - `call_indirect` with an index out of the table threw `IndexOutOfRangeException` instead of trapping.
 - Integer division by zero, the overflow of signed division and the invalid conversions from floating-point numbers to integers threw `InvalidCodeException` or `OverflowException` instead of `TrapException`, and `i32.div_s` and `i64.div_s` trapped when the minimum value was divided by 1.
+- Exceeding `MaxStackFrames` threw `InvalidOperationException` instead of `TrapException`.
 - `memory.copy` and `memory.fill` threw `OverflowException` when the range exceeded 2^32, and `memory.grow` threw `OverflowException` for more than 2^31 pages.
 - A memory larger than an array throws `NotSupportedException` at instantiation, and the memory cannot grow beyond `Memory.MaxNumPages`. Previously the length of the memory overflowed.
 - Malformed modules threw exceptions other than `InvalidModuleException`, such as `InvalidOperationException` for unknown opcodes, and modules with duplicated export names or unknown indices in the exports and the start section failed at instantiation instead of loading.
