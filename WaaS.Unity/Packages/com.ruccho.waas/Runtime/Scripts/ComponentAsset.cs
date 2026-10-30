@@ -39,8 +39,10 @@ namespace WaaS.Unity
 
         public async ValueTask<IComponent> LoadComponentAsync()
         {
-            if (component.IsValueCreated) return component.Value;
-            return await Task.Run(() => component.Value);
+            // the field is replaced when the asset is reimported while loading, e.g. when a script is edited in play mode
+            var lazy = component;
+            if (lazy.IsValueCreated) return lazy.Value;
+            return await Task.Run(() => lazy.Value);
         }
 
         public IComponent LoadComponent()

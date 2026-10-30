@@ -125,6 +125,12 @@ The implementations of the interfaces imported by scripts are registered with `W
 
 Register them once before running scripts.
 
+## Editing scripts in Play Mode
+
+Scripts can be edited without leaving Play Mode. When a script is reimported (by **Auto Refresh**, or by **Assets > Refresh** while it is disabled), the entry points started after that run the new script, while the state of the game, including the variables, is kept. The entry points already running continue with the old script until they end.
+
+Building a Rust script blocks the editor until it ends, and the game also stops during that time.
+
 ## Testing scripts
 
 Scripts can be run in EditMode tests with stub implementations of the imported interfaces, for example to check that every entry point runs to the end after the definitions of the host functions change.

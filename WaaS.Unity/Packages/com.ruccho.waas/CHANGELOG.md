@@ -44,6 +44,7 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - C# tuples of more than 7 elements: the elements after the 7th were formatted as a nested tuple instead of the elements of the same tuple.
 - Lowering a variant whose case is typed with a nullable type argument, such as `Option<int?>` holding `null` (`option<option<s32>>`), threw `InvalidOperationException`.
 - Rust Importer removes the crate of a script when the script is deleted or **Crate Root** is unchecked. A crate left for a deleted script broke `cargo check` of the Cargo workspace at the root of the project, which IDEs such as rust-analyzer run, and a crate left for a script that is no longer a crate root made IDEs analyze the script as another crate.
+- `ComponentAsset.LoadComponentAsync` threw `NullReferenceException` when the asset was reimported while loading, such as when a script was edited in play mode.
 - A Rust script that failed to compile was not reimported when the files it depends on changed, such as the WIT exported after the script was imported, because the dependencies were not recorded on the failure.
 - Stack overflow when reading and validating deeply nested blocks, which rustc emits for large `match` expressions. The blocks are read and validated without recursion.
 - Validation of `br_table` in unreachable code rejected labels of different types.
