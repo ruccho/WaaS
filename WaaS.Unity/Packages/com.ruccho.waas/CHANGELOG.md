@@ -19,6 +19,7 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - The messages of `TrapException` and `WasmException` include the WebAssembly stack trace.
 - The formatters created by reflection are preserved from managed code stripping.
 - The native editor library generates MoonBit bindings, and binds `spectest.print_char` (`println` of MoonBit) to a no-op when componentizing.
+- Calls of host functions from components are about twice as fast. `ExternalFunction.InvokeAsync` is called after all the arguments are pushed, and completes without suspension when the host function completes synchronously.
 
 ## [0.3.0]
 
