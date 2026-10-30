@@ -11,6 +11,8 @@ namespace WaaS.Runtime
     /// </summary>
     public class WasmStackFrame : IStackFrameCore
     {
+        private const int MaxRetainedBufferLength = 1024;
+
         [ThreadStatic] private static Stack<WasmStackFrame> pool;
 
         private bool isEnd;
@@ -18,6 +20,7 @@ namespace WaaS.Runtime
         private int[] labelDepthStack;
         private int labelDepthStackPointer;
         private Memory<StackValueItem> locals;
+        private StackFrame pushedFrame;
         private uint programCounter;
         private Memory<StackValueItem> stack;
         private StackValueItem[] stackBuffer;
@@ -39,26 +42,41 @@ namespace WaaS.Runtime
         {
             if (version != Version) return;
 
-            if (stackBuffer != null) ArrayPool<StackValueItem>.Shared.Return(stackBuffer);
-
-            if (labelDepthStack != null) ArrayPool<int>.Shared.Return(labelDepthStack);
-
             isEnd = default;
             isFramePushed = default;
-            labelDepthStack = default;
+            pushedFrame = default;
             labelDepthStackPointer = default;
             locals = default;
             programCounter = default;
             stack = default;
-            stackBuffer = default;
             stackPointer = default;
             Context = default;
             Function = default;
 
             if (++Version != ushort.MaxValue)
             {
+                // small buffers are kept with the pooled frame to reuse them
+                if (stackBuffer is { Length: > MaxRetainedBufferLength })
+                {
+                    ArrayPool<StackValueItem>.Shared.Return(stackBuffer);
+                    stackBuffer = default;
+                }
+
+                if (labelDepthStack is { Length: > MaxRetainedBufferLength })
+                {
+                    ArrayPool<int>.Shared.Return(labelDepthStack);
+                    labelDepthStack = default;
+                }
+
                 pool ??= new Stack<WasmStackFrame>();
                 pool.Push(this);
+            }
+            else
+            {
+                if (stackBuffer != null) ArrayPool<StackValueItem>.Shared.Return(stackBuffer);
+                if (labelDepthStack != null) ArrayPool<int>.Shared.Return(labelDepthStack);
+                stackBuffer = default;
+                labelDepthStack = default;
             }
         }
 
@@ -90,9 +108,15 @@ namespace WaaS.Runtime
 
                 programCounter++;
 
-                if (isEnd || instrs.Length <= programCounter) return StackFrameState.Completed;
+                if (isFramePushed)
+                {
+                    // a frame of the host is moved here without going back to the execution context, and the
+                    // frame of WebAssembly continues if it completes synchronously.
+                    var state = MovePushedFrame(waker);
+                    if (state != StackFrameState.Completed) return state;
+                }
 
-                if (isFramePushed) return StackFrameState.Ready;
+                if (isEnd || instrs.Length <= programCounter) return StackFrameState.Completed;
             }
         }
 
@@ -146,14 +170,10 @@ namespace WaaS.Runtime
             var parameters = Function.function.Type.ParameterTypes.Span;
             var numParams = parameters.Length;
 
-            var functionLocalTypes = Function.function.Body.Locals.Span;
+            var body = Function.function.Body;
+            var functionLocalTypes = body.Locals.Span;
 
-            var numLocals = numParams;
-            for (var i = 0; i < functionLocalTypes.Length; i++)
-            {
-                var functionLocal = functionLocalTypes[i];
-                numLocals += (int)functionLocal.Count;
-            }
+            var numLocals = numParams + body.LocalCount;
 
             // alloc
 
@@ -166,11 +186,21 @@ namespace WaaS.Runtime
             if (!maxLabelDepths.HasValue)
                 throw new InvalidOperationException("This function is not properly validated.");
 
-            stackBuffer = ArrayPool<StackValueItem>.Shared.Rent(stackBufferSize);
-            labelDepthStack = ArrayPool<int>.Shared.Rent(checked((int)maxLabelDepths.Value));
+            var labelDepthStackSize = checked((int)maxLabelDepths.Value);
+            if (stackBuffer == null || stackBuffer.Length < stackBufferSize)
+            {
+                if (stackBuffer != null) ArrayPool<StackValueItem>.Shared.Return(stackBuffer);
+                stackBuffer = ArrayPool<StackValueItem>.Shared.Rent(stackBufferSize);
+            }
 
-            Array.Clear(stackBuffer, 0, stackBuffer.Length);
-            Array.Clear(labelDepthStack, 0, labelDepthStack.Length);
+            if (labelDepthStack == null || labelDepthStack.Length < labelDepthStackSize)
+            {
+                if (labelDepthStack != null) ArrayPool<int>.Shared.Return(labelDepthStack);
+                labelDepthStack = ArrayPool<int>.Shared.Rent(labelDepthStackSize);
+            }
+
+            Array.Clear(stackBuffer, 0, stackBufferSize);
+            Array.Clear(labelDepthStack, 0, labelDepthStackSize);
 
             locals = stackBuffer.AsMemory(0, numLocals);
             stack = stackBuffer.AsMemory(numLocals, checked((int)maxStackDepth.Value));
@@ -233,7 +263,38 @@ namespace WaaS.Runtime
         public void PushFrame(IInvocableFunction function, Span<StackValueItem> parameters)
         {
             isFramePushed = true;
-            Context.PushFrame(function, parameters);
+            pushedFrame = Context.PushFrameFromFrame(function, parameters);
+        }
+
+        private StackFrameState MovePushedFrame(Waker waker)
+        {
+            var frame = pushedFrame;
+            pushedFrame = default;
+
+            StackFrameState state;
+            if (frame.Core is WasmStackFrame)
+            {
+                // nested frames of WebAssembly are left to the execution context not to grow the native stack
+                if (!Context.TryEnterInlineFrame()) return StackFrameState.Ready;
+                try
+                {
+                    state = frame.MoveNext(waker);
+                }
+                finally
+                {
+                    Context.ExitInlineFrame();
+                }
+            }
+            else
+            {
+                state = frame.MoveNext(waker);
+            }
+
+            if (state != StackFrameState.Completed) return state;
+
+            Context.CompleteFrame(frame, this);
+            isFramePushed = false;
+            return StackFrameState.Completed;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

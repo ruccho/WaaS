@@ -11,9 +11,10 @@ namespace WaaS.ComponentModel.Binding
     public struct Pullable : IDisposable
     {
         private readonly ushort version;
-        private readonly IPullableCore core;
+        // the concrete type avoids the dispatch of generic virtual methods, which is slow on some runtimes
+        private readonly PushPullAdapter core;
 
-        private IPullableCore Core
+        private PushPullAdapter Core
         {
             get
             {
@@ -37,9 +38,13 @@ namespace WaaS.ComponentModel.Binding
             core.Dispose(version);
         }
 
-        internal Pullable(IPullableCore core)
+        internal Pullable(PushPullAdapter core) : this(core, core.Version)
         {
-            version = core.Version;
+        }
+
+        internal Pullable(PushPullAdapter core, ushort version)
+        {
+            this.version = version;
             this.core = core;
         }
     }

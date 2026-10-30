@@ -3,6 +3,7 @@
 using System;
 using System.Buffers;
 using System.Runtime.InteropServices;
+using WaaS.ComponentModel.Binding;
 
 namespace WaaS.ComponentModel.Runtime
 {
@@ -10,7 +11,14 @@ namespace WaaS.ComponentModel.Runtime
     {
         private static void TransferString(ref ValueLifter lifter, ValuePusher pusher)
         {
-            var info = lifter.PullStringInfo();
+            var info = lifter.PullStringInfoCore();
+
+            if (pusher.Core is PushPullAdapter adapter && !pusher.IsDisposed)
+            {
+                // the string is pulled as a string in most cases
+                adapter.PushString(lifter.PullString(info));
+                return;
+            }
 
             var maxLength = lifter.GetStringMaxCharCount(info);
             if (maxLength > 1024)
@@ -48,6 +56,14 @@ namespace WaaS.ComponentModel.Runtime
         {
             var next = lifter.GetNextType()?.Despecialize();
             if (next == null) return;
+            TransferNext(ref lifter, pusher, next);
+        }
+
+        /// <summary>
+        ///     Transfers the next value whose type is already known to be <paramref name="next" />.
+        /// </summary>
+        internal static void TransferNext(ref ValueLifter lifter, ValuePusher pusher, IDespecializedValueType next)
+        {
             switch (next)
             {
                 case IPrimitiveValueType primitiveValueType:
@@ -58,40 +74,40 @@ namespace WaaS.ComponentModel.Runtime
                             TransferString(ref lifter, pusher);
                             break;
                         case PrimitiveValueTypeKind.Char:
-                            pusher.PushChar32(lifter.PullChar());
+                            pusher.PushChar32(lifter.PullCharCore());
                             break;
                         case PrimitiveValueTypeKind.F64:
-                            pusher.Push(lifter.PullF64());
+                            pusher.Push(lifter.PullF64Core());
                             break;
                         case PrimitiveValueTypeKind.F32:
-                            pusher.Push(lifter.PullF32());
+                            pusher.Push(lifter.PullF32Core());
                             break;
                         case PrimitiveValueTypeKind.U64:
-                            pusher.Push(lifter.PullU64());
+                            pusher.Push(lifter.PullU64Core());
                             break;
                         case PrimitiveValueTypeKind.S64:
-                            pusher.Push(lifter.PullS64());
+                            pusher.Push(lifter.PullS64Core());
                             break;
                         case PrimitiveValueTypeKind.U32:
-                            pusher.Push(lifter.PullU32());
+                            pusher.Push(lifter.PullU32Core());
                             break;
                         case PrimitiveValueTypeKind.S32:
-                            pusher.Push(lifter.PullS32());
+                            pusher.Push(lifter.PullS32Core());
                             break;
                         case PrimitiveValueTypeKind.U16:
-                            pusher.Push(lifter.PullU16());
+                            pusher.Push(lifter.PullU16Core());
                             break;
                         case PrimitiveValueTypeKind.S16:
-                            pusher.Push(lifter.PullS16());
+                            pusher.Push(lifter.PullS16Core());
                             break;
                         case PrimitiveValueTypeKind.U8:
-                            pusher.Push(lifter.PullU8());
+                            pusher.Push(lifter.PullU8Core());
                             break;
                         case PrimitiveValueTypeKind.S8:
-                            pusher.Push(lifter.PullS8());
+                            pusher.Push(lifter.PullS8Core());
                             break;
                         case PrimitiveValueTypeKind.Bool:
-                            pusher.Push(lifter.PullBool());
+                            pusher.Push(lifter.PullBoolCore());
                             break;
                         default:
                             throw new ArgumentOutOfRangeException();

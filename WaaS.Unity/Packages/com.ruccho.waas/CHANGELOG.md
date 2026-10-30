@@ -21,6 +21,7 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - The native editor library generates MoonBit bindings, and binds `spectest.print_char` (`println` of MoonBit) to a no-op when componentizing.
 - Instantiating a component validates the labels of records, variants, enums and flags in the imports (ignoring the case and `-`/`_`), and the names and sorts of the imports and exports of imported components.
 - `LinkException` on instantiation reports the path of the mismatched import with the expected and provided types.
+- Calls of host functions from components are about twice as fast. `ExternalFunction.InvokeAsync` is called after all the arguments are pushed, and completes without suspension when the host function completes synchronously.
 
 ### Fixed
 
