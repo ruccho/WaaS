@@ -1,0 +1,71 @@
+name: Build wit2waas
+
+# Builds wit2waas for each platform and uploads the archives as workflow artifacts.
+# When a release is published, the archives are also attached to the release.
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            exe: wit2waas.exe
+            archive: wit2waas-x86_64-pc-windows-msvc.zip
+          # an older Ubuntu to keep the required glibc version low
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+            exe: wit2waas
+            archive: wit2waas-x86_64-unknown-linux-gnu.tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            exe: wit2waas
+            archive: wit2waas-aarch64-apple-darwin.tar.gz
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            exe: wit2waas
+            archive: wit2waas-x86_64-apple-darwin.tar.gz
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the Rust target
+        run: rustup target add ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.target }}
+        working-directory: WaaS/wit2waas
+      - name: Archive (zip)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path "WaaS/wit2waas/target/${{ matrix.target }}/release/${{ matrix.exe }}", WaaS/wit2waas/README.md -DestinationPath "${{ matrix.archive }}"
+      - name: Archive (tar.gz)
+        if: runner.os != 'Windows'
+        run: tar -czf "${{ matrix.archive }}" -C "WaaS/wit2waas/target/${{ matrix.target }}/release" "${{ matrix.exe }}" -C "$GITHUB_WORKSPACE/WaaS/wit2waas" README.md
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wit2waas-${{ matrix.target }}
+          path: ${{ matrix.archive }}
+          if-no-files-found: error
+
+  attach:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: archives
+          pattern: wit2waas-*
+          merge-multiple: true
+      - name: Attach the archives to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" archives/* --clobber --repo "$GITHUB_REPOSITORY"
