@@ -49,6 +49,7 @@ The first parameter of an entry point is `&Context`. The following parameters ca
 | `&wukuro::types::Action` | `borrow<action>` | UnityEvent |
 | `&wukuro::types::Object` | `borrow<object>` | Any `UnityEngine.Object` |
 | `&wukuro::ObjectOf<T>` | `borrow<object>` | An object of type `T` ([Object Types](./object-types.mdx)) |
+| A record or an enum defined in C# | `record`, `enum` | The fields of the C# type ([Structured Arguments](./structured-arguments.mdx)) |
 
 The values of the parameters are matched with the values set in the inspector or passed from C# by the parameter name in kebab-case (`camera-target` for `camera_target`).
 

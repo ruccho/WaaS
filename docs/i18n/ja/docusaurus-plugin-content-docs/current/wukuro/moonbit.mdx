@@ -71,6 +71,7 @@ Rust と同じく、エントリポイント `foo_bar` はインターフェー�
 | `@wukuro.Action` | `borrow<action>` | UnityEvent |
 | `@wukuro.Object` | `borrow<object>` | 任意の `UnityEngine.Object` |
 | `@wukuro.ObjectOf[T]` | `borrow<object>` | 型 `T` のオブジェクト（[オブジェクトの型](#object-types)） |
+| C# で定義したレコードや列挙型 | `record`, `enum` | C# の型のフィールド（[構造化された引数](./structured-arguments.mdx)） |
 
 MoonBit には `s8` に対応する型がありません。引数の値は、Rust と同じく kebab-case の引数名で対応付けられます。
 
