@@ -41,6 +41,7 @@ namespace WaaS.Runtime
         public ExecutionContext(uint? maxStackFrames = null)
         {
             this.maxStackFrames = maxStackFrames;
+            Debugger = DefaultDebugger;
         }
 
         /// <summary>
@@ -81,6 +82,11 @@ namespace WaaS.Runtime
         ///     frames of the invocation are discarded.
         /// </summary>
         public CancellationToken CancellationToken { get; set; }
+
+        /// <summary>
+        ///     The debugger attached to the contexts when they are created, such as a debugger connected from an IDE.
+        /// </summary>
+        public static IWasmDebugger DefaultDebugger { get; set; }
 
         /// <summary>
         ///     The debugger observing the execution, or null. While a debugger is attached, the interpreter calls it before
@@ -352,7 +358,7 @@ namespace WaaS.Runtime
                 isInnermost = false;
             }
 
-            debugger.OnPaused(new WasmDebugPause(this, debugFrames, waker));
+            debugger.OnPaused(new WasmDebugPause(this, debugFrames, waker, depth));
             return true;
         }
 

@@ -1,0 +1,38 @@
+---
+title: Debugging Scripts
+sidebar_position: 3
+---
+
+Scripts running in the Unity editor can be debugged from VS Code with breakpoints and steps, through the Debug Adapter Protocol (DAP).
+
+## Setup
+
+1. In Unity, enable **Assets > Enable Debugger for WaaS**. The editor listens on the port 4711 of the local host (`WaaSDebugger.Port`).
+2. For Rust scripts, enable **Assets > Build Rust Scripts with Debug Information for WaaS**. The scripts are rebuilt with the line tables of DWARF, which map the instructions to the source lines. This is a preference of each user, and disabled by default.
+3. In VS Code, install the extension in `vscode-waas` of the repository, and add the following configuration to `launch.json`.
+
+```json
+{
+  "type": "waas",
+  "request": "attach",
+  "name": "Attach to Unity (WaaS)",
+  "port": 4711
+}
+```
+
+The scripts started after the debugger attaches are debugged. A paused script does not stop the game and the editor; only the script waits.
+
+## Features
+
+- Breakpoints in the source files of Rust scripts. A breakpoint on a line without instructions, such as a line removed by the optimization, moves to the next line with instructions.
+- Steps (over, into and out). The steps stop only at the lines of the files in the Unity project, and skip the libraries such as the standard library.
+- Pausing the scripts.
+- The stack frames, and the locals, the operand stacks and the globals of WebAssembly.
+
+## Limitations
+
+- The values are shown as the values of WebAssembly, not as the variables of the source language.
+- Scripts built with optimizations (Rust Importer builds with the release profile) map few instructions to the lines, and the steps may move back and forth between the lines.
+- While the debugger is attached, the scripts run several times slower.
+- MoonBit scripts have no line tables. Their stack frames and values can be inspected after pausing.
+- The client is disconnected when the domain of the editor is reloaded.

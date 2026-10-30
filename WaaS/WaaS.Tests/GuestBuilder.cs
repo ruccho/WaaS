@@ -50,6 +50,34 @@ internal static class GuestBuilder
         }
     }
 
+    /// <summary>
+    ///     Builds a guest crate under Guests/ as a core module and returns the path of the module.
+    /// </summary>
+    public static string BuildModule(string name)
+    {
+        lock (Built)
+        {
+            var key = $"{name}+module";
+            if (Built.TryGetValue(key, out var cached)) return cached;
+
+            var crateDir = GetCrateDirectory(name);
+            var targetDir = Environment.GetEnvironmentVariable("WAAS_TESTS_GUEST_TARGET_DIR") is { Length: > 0 } dir
+                ? dir
+                : Path.Combine(Utils.TempDirectory, "guest-target");
+            Run("cargo", $"build --release --target wasm32-unknown-unknown --target-dir \"{targetDir}\"", crateDir);
+
+            var modulePath = Path.Combine(targetDir, "wasm32-unknown-unknown", "release",
+                $"{name.Replace('-', '_')}.wasm");
+            Built[key] = modulePath;
+            return modulePath;
+        }
+    }
+
+    public static string GetCrateDirectory(string name)
+    {
+        return Path.Combine(GetSourceDirectory(), "Guests", name);
+    }
+
     private static void CopyDirectory(string source, string destination)
     {
         Directory.CreateDirectory(destination);

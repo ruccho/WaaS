@@ -61,10 +61,11 @@ namespace WaaS.Runtime
         private Waker waker;
         private int resumed;
 
-        internal WasmDebugPause(ExecutionContext context, IReadOnlyList<WasmDebugFrame> frames, Waker waker)
+        internal WasmDebugPause(ExecutionContext context, IReadOnlyList<WasmDebugFrame> frames, Waker waker, int depth)
         {
             Context = context;
             Frames = frames;
+            Depth = depth;
             this.waker = waker;
             synchronizationContext = SynchronizationContext.Current;
         }
@@ -75,6 +76,11 @@ namespace WaaS.Runtime
         ///     The frames of WebAssembly at the pause, from the innermost one. The values are copied at the pause.
         /// </summary>
         public IReadOnlyList<WasmDebugFrame> Frames { get; }
+
+        /// <summary>
+        ///     <see cref="WasmDebugLocation.Depth" /> of the instruction at the pause.
+        /// </summary>
+        public int Depth { get; }
 
         /// <summary>
         ///     Resumes the execution. It can be called from any thread, and the execution resumes on the

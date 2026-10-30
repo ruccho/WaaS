@@ -1,0 +1,18 @@
+[package]
+name = "debug-test"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+# the line tables are used by DebugAdapterTests
+debug = "line-tables-only"
+strip = "none"
+opt-level = 1
+panic = "abort"
+
+# keep this crate out of any parent workspace
+[workspace]
