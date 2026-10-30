@@ -15,7 +15,8 @@ using UnityEngine;
 namespace WaaS.Unity.Editor.Rust
 {
     // 5: the files outside the asset database are recorded for ExternalFileWatcher
-    [ScriptedImporter(5, "rs", 100)]
+    // 6: the scripts depend on BuildWithDebugInformation
+    [ScriptedImporter(6, "rs", 100)]
     public class RustImporter : ScriptedImporter
     {
         private const string CratesPath = "Library/com.ruccho.waas/rust/crates";
@@ -173,6 +174,15 @@ namespace WaaS.Unity.Editor.Rust
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             };
+
+            // the scripts are rebuilt when the setting is changed
+            ctx.DependsOnCustomDependency(DebugInformationDependency);
+            if (BuildWithDebugInformation)
+            {
+                // the line tables are kept for debuggers, overriding the profile of the workspace
+                psi.EnvironmentVariables["CARGO_PROFILE_RELEASE_DEBUG"] = "line-tables-only";
+                psi.EnvironmentVariables["CARGO_PROFILE_RELEASE_STRIP"] = "none";
+            }
 
             var process = Process.Start(psi);
 
@@ -362,6 +372,46 @@ namespace WaaS.Unity.Editor.Rust
             {
                 if (deletedAssets.Any(path => path.EndsWith(".rs", StringComparison.Ordinal))) RemoveStaleCrates();
             }
+        }
+
+        private const string DebugInformationDependency = "waas-rust-debug-information";
+        private const string DebugInformationMenu = "Assets/Build Rust Scripts with Debug Information for WaaS";
+        private const string DebugInformationPreference = "WaaS.RustImporter.DebugInformation";
+
+        /// <summary>
+        ///     Whether the Rust scripts are built with the line tables of DWARF, which debuggers use to map the
+        ///     instructions to the source lines. It is a preference of the user, and disabled by default.
+        /// </summary>
+        public static bool BuildWithDebugInformation
+        {
+            get => EditorPrefs.GetBool(DebugInformationPreference, false);
+            set
+            {
+                if (value == BuildWithDebugInformation) return;
+                EditorPrefs.SetBool(DebugInformationPreference, value);
+                RegisterDebugInformationDependency();
+                AssetDatabase.Refresh();
+            }
+        }
+
+        [InitializeOnLoadMethod]
+        private static void RegisterDebugInformationDependency()
+        {
+            AssetDatabase.RegisterCustomDependency(DebugInformationDependency,
+                Hash128.Compute(BuildWithDebugInformation ? "debug" : "release"));
+        }
+
+        [MenuItem(DebugInformationMenu)]
+        private static void ToggleDebugInformation()
+        {
+            BuildWithDebugInformation = !BuildWithDebugInformation;
+        }
+
+        [MenuItem(DebugInformationMenu, true)]
+        private static bool ValidateToggleDebugInformation()
+        {
+            Menu.SetChecked(DebugInformationMenu, BuildWithDebugInformation);
+            return true;
         }
 
         [MenuItem("Assets/Recompile Rust scripts for WaaS")]

@@ -9,6 +9,7 @@ namespace WaaS.Models
     {
         internal CodeSection(ref ModuleReader reader)
         {
+            ContentOffset = checked((uint)(reader.Position - reader.Origin));
             var numCodes = reader.ReadVectorSize();
             var functions = new FunctionBody[numCodes];
 
@@ -18,5 +19,11 @@ namespace WaaS.Models
         }
 
         public ReadOnlyMemory<FunctionBody> Functions { get; }
+
+        /// <summary>
+        ///     The offset of the contents of the section from the start of the module. The addresses in DWARF are relative
+        ///     to it.
+        /// </summary>
+        public uint ContentOffset { get; }
     }
 }

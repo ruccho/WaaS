@@ -11,6 +11,8 @@ namespace WaaS.Models
     {
         private HashSet<uint> declaredFunctionReferences;
         private NameSection names;
+        private DwarfLineTable lineTable;
+        private bool isLineTableRead;
 
         internal Module(ref ModuleReader reader, long? size = null)
         {
@@ -377,6 +379,21 @@ namespace WaaS.Models
         ///     The section is parsed when this property is accessed first.
         /// </summary>
         public NameSection Names => names ??= NameSection.Create(Sections.Span);
+
+        /// <summary>
+        ///     The line number table in the DWARF debugging information, or null if the module does not have it.
+        ///     The table is read when this property is accessed first.
+        /// </summary>
+        public DwarfLineTable LineTable
+        {
+            get
+            {
+                if (isLineTableRead) return lineTable;
+                lineTable = DwarfLineTable.Read(this);
+                isLineTableRead = true;
+                return lineTable;
+            }
+        }
 
         public static Module Create(ReadOnlySpan<byte> buffer)
         {

@@ -1,0 +1,74 @@
+{
+  "name": "waas-debug",
+  "displayName": "WaaS Debugger",
+  "description": "Debugs WebAssembly scripts running on WaaS in the Unity editor.",
+  "version": "0.3.0",
+  "publisher": "ruccho",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ruccho/WaaS"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Debuggers"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onDebugResolve:waas"
+  ],
+  "contributes": {
+    "breakpoints": [
+      {
+        "language": "rust"
+      },
+      {
+        "language": "moonbit"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "waas",
+        "label": "WaaS",
+        "configurationAttributes": {
+          "attach": {
+            "properties": {
+              "host": {
+                "type": "string",
+                "description": "The host where the Unity editor runs.",
+                "default": "127.0.0.1"
+              },
+              "port": {
+                "type": "number",
+                "description": "The port of the debugger in the Unity editor (Assets > Enable Debugger for WaaS).",
+                "default": 4711
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "waas",
+            "request": "attach",
+            "name": "Attach to Unity (WaaS)",
+            "port": 4711
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "WaaS: Attach to Unity",
+            "description": "Attaches to the debugger of WaaS in the Unity editor.",
+            "body": {
+              "type": "waas",
+              "request": "attach",
+              "name": "Attach to Unity (WaaS)",
+              "port": 4711
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
