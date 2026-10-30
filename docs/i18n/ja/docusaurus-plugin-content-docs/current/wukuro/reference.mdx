@@ -3,6 +3,9 @@ title: WIT リファレンス
 sidebar_position: 7
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # WIT リファレンス
 
 Wukuro のホストとスクリプトの間の関数と型は、次の WIT のパッケージとして定義されています。WIT は Unity パッケージの `Definitions/` にある C# の定義から生成されたもので、各クレートの `wit/` に同梱されています。
@@ -157,14 +160,31 @@ interface types {
 }
 ```
 
-## エントリポイント
+## エントリポイント {#entry-points}
 
-スクリプトのエントリポイント `foo_bar` は、次のインターフェースとして export されます。`run` の引数は、エントリポイントの関数の引数（`&Context` を含む）に、名前を kebab-case にして対応します。
+スクリプトのエントリポイント `foo_bar` は、次のインターフェースとして export されます。`run` の引数は、エントリポイントの関数の引数（コンテキストを含む）に、名前を kebab-case にして対応します。
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 ```rust
 #[entry]
 fn foo_bar(cx: &Context, camera_target: &Object, count: i32) { /* ... */ }
 ```
+
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
+
+```moonbit
+///|
+#wukuro.entry
+pub fn foo_bar(cx : @wukuro.Context, camera_target : @wukuro.Object, count : Int) -> Unit {
+  ...
+}
+```
+
+</TabItem>
+</Tabs>
 
 ```wit
 package wukuro-entry:foo-bar;

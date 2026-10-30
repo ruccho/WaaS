@@ -7,7 +7,7 @@ import DocCardList from '@theme/DocCardList';
 
 # Wukuro
 
-Wukuro is an event scripting framework for Unity based on WaaS. In-game events such as conversations, cutscenes and branches are written in Rust and run on Unity as WebAssembly components.
+Wukuro is an event scripting framework for Unity based on WaaS. In-game events such as conversations, cutscenes and branches are written in Rust or MoonBit and run on Unity as WebAssembly components.
 
 :::warning
 Wukuro is **very experimental** and breaking changes can be made.
@@ -15,21 +15,24 @@ Wukuro is **very experimental** and breaking changes can be made.
 
 ## Features
 
-- **Write events in Rust**: events can be written with the features of the language as they are, such as conditions, loops and functions for common processes.
-- **Multiple entry points in a file**: a function with `#[entry]` becomes an entry point. Constants and functions in the same file can be shared by multiple events.
+- **Write events in a programming language**: events can be written in Rust or MoonBit with the features of the language as they are, such as conditions, loops and functions for common processes. Both languages have the same features, and can be used together in a project.
+- **Multiple entry points in a file**: a function marked as an entry point (`#[entry]` in Rust, `#wukuro.entry` in MoonBit) becomes an entry point. Constants and functions in the same file can be shared by multiple events.
 - **Arguments set in the inspector**: objects in the scene and assets can be passed to the arguments of entry points from the Unity inspector. The types of the objects can also be constrained.
 - **Designed to be extended for each game**: Wukuro itself provides only basic features such as waiting, variables, logging and dialogs. Game-specific features such as camera, sound and items are added by the game as C# interfaces.
 
 ## Components
 
-Wukuro consists of a Unity package and Rust crates.
+Wukuro consists of a Unity package and the guest libraries for each language.
 
 | Name | Kind | Contents |
 | --- | --- | --- |
-| `com.ruccho.wukuro` | Unity package | Running scripts, references to entry points, the inspector, and the host implementations of `wukuro:core` and `wukuro:dialog` |
+| `com.ruccho.wukuro` | Unity package | Running scripts, references to entry points, the inspector, the generator of entry points for MoonBit Importer, and the host implementations of `wukuro:core` and `wukuro:dialog` |
 | `wukuro` | Rust crate | Bindings of `wukuro:core`, `#[entry]`, and helpers for texts and object types |
 | `wukuro-macro` | Rust crate | Procedural macros used by `wukuro` |
 | `wukuro-dialog` | Rust crate | Bindings of `wukuro:dialog` and helpers to show messages |
+| `ruccho/wukuro` | MoonBit module | Bindings of `wukuro:core` (package `ruccho/wukuro`) and `wukuro:dialog` (package `ruccho/wukuro/dialog`), and helpers for texts, messages and object types |
+
+The crates are published on [crates.io](https://crates.io/), and the MoonBit module on [mooncakes.io](https://mooncakes.io/).
 
 The functions and types between the host and scripts are defined as WIT packages of the [Component Model](../component-model/index.mdx).
 
@@ -37,5 +40,11 @@ The functions and types between the host and scripts are defined as WIT packages
 - `wukuro:dialog`: showing dialogs (messages, options and fades)
 
 Game-specific features are added as your own WIT packages in the same way ([Extending](./extending.mdx)).
+
+## Languages
+
+Rust and MoonBit are supported with an importer that builds the scripts in Unity and a guest library that provides the bindings and the helpers. The pages describe both languages side by side.
+
+Since the interfaces between the host and scripts are defined in WIT, scripts can also be written in other languages that can build WebAssembly components, such as C, C++, Go and JavaScript, without an importer or a guest library. It needs more work, such as writing the WIT of the entry points and building the components outside Unity ([Using Other Languages](./other-languages.mdx)).
 
 <DocCardList />

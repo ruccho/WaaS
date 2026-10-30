@@ -1,11 +1,11 @@
 {
   "name": "com.ruccho.wukuro",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "displayName": "Wukuro",
   "description": "Event scripting framework for Unity based on WaaS. Scripts are written in Rust and run as WebAssembly components.",
   "unity": "6000.0",
   "dependencies": {
-    "com.ruccho.waas": "0.3.0"
+    "com.ruccho.waas": "0.4.0"
   },
   "keywords": [
     "scripting",

@@ -3,13 +3,27 @@ title: Writing Scripts
 sidebar_position: 3
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Writing Scripts
 
-This page describes scripts written in Rust. Scripts can also be written in MoonBit with the same features ([Writing Scripts in MoonBit](./moonbit.mdx)).
+Wukuro scripts are written in Rust or MoonBit. Both languages have the same features, scripts in both languages can be used together in a project, and they are run in the same way ([Running Scripts](./running-scripts.mdx)). Set up the guest library of the language beforehand ([Installation](./installation.mdx)). Other languages can also be used through WIT, with more work ([Using Other Languages](./other-languages.mdx)).
 
-## Entry points
+| | Rust | MoonBit |
+| --- | --- | --- |
+| Importer | [Rust Importer](../unity-integration/rust.mdx) (`*.rs`) | [MoonBit Importer](../unity-integration/moonbit.mdx) (`*.mbt`, or a [script package](../unity-integration/moonbit.mdx#script-packages)) |
+| Guest library | The crates `wukuro` and `wukuro-dialog` | The module `ruccho/wukuro` (packages `ruccho/wukuro` and `ruccho/wukuro/dialog`) |
+| Entry points | `#[entry]` | `#wukuro.entry` |
 
-A function with `#[entry]` becomes an entry point. A file can have multiple entry points, and they can share the constants and functions in the same file.
+## Entry points {#entry-points}
+
+A function marked as an entry point is exported from the script. A file can have multiple entry points, and they can share the constants and functions in the same file.
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
+
+A function with `#[entry]` becomes an entry point.
 
 ```rust
 use wukuro::entry;
@@ -33,31 +47,64 @@ fn night(cx: &Context) {
 }
 ```
 
-An entry point `foo_bar` is exported as the function `run` of the component interface `wukuro-entry:foo-bar/entry`. The name of the entry point is the function name in kebab-case, with `_` replaced by `-`.
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
 
-### Parameters
+A public function with the attribute `#wukuro.entry` becomes an entry point. It must be `pub` and return `Unit`.
 
-The first parameter of an entry point is `&Context`. The following parameters can have the types below.
+```moonbit
+///|
+let greeting = "Hello"
 
-| Rust type | WIT type | Input in the inspector |
-| --- | --- | --- |
-| `bool` | `bool` | Checkbox |
-| `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64` | `s8` to `u64` | Integer |
-| `f32`, `f64` | `f32`, `f64` | Decimal |
-| `char` | `char` | Character |
-| `String` | `string` | String |
-| `&wukuro::types::Action` | `borrow<action>` | UnityEvent |
-| `&wukuro::types::Object` | `borrow<object>` | Any `UnityEngine.Object` |
-| `&wukuro::ObjectOf<T>` | `borrow<object>` | An object of type `T` ([Object Types](./object-types.mdx)) |
-| A record or an enum defined in C# | `record`, `enum` | The fields of the C# type ([Structured Arguments](./structured-arguments.mdx)) |
+///|
+fn greet(name : String) -> Unit {
+  @wukuro.log("\{greeting}, \{name}")
+}
+
+///|
+#wukuro.entry
+pub fn morning(_cx : @wukuro.Context) -> Unit {
+  greet("early bird")
+}
+
+///|
+#wukuro.entry
+pub fn night(_cx : @wukuro.Context) -> Unit {
+  greet("night owl")
+}
+```
+
+</TabItem>
+</Tabs>
+
+An entry point `foo_bar` is exported as the function `run` of the component interface `wukuro-entry:foo-bar/entry`. The name of the entry point is the function name in kebab-case, with `_` replaced by `-` ([WIT Reference](./reference.mdx#entry-points)).
+
+### Parameters {#parameters}
+
+The first parameter of an entry point is the context. The following parameters can have the types below.
+
+| WIT type | Rust type | MoonBit type | Input in the inspector |
+| --- | --- | --- | --- |
+| `bool` | `bool` | `Bool` | Checkbox |
+| `s8` to `u64` | `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64` | `Byte` (`u8`), `Int16`, `UInt16`, `Int`, `UInt`, `Int64`, `UInt64` (no type for `s8`) | Integer |
+| `f32`, `f64` | `f32`, `f64` | `Float`, `Double` | Decimal |
+| `char` | `char` | `Char` | Character |
+| `string` | `String` | `String` | String |
+| `borrow<action>` | `&wukuro::types::Action` | `@wukuro.Action` | UnityEvent |
+| `borrow<object>` | `&wukuro::types::Object` | `@wukuro.Object` | Any `UnityEngine.Object` |
+| `borrow<object>` | `&wukuro::ObjectOf<T>` | `@wukuro.ObjectOf[T]` | An object of type `T` ([Object Types](./object-types.mdx)) |
+| `record`, `enum` | A record or an enum defined in C# | A record or an enum defined in C# | The fields of the C# type ([Structured Arguments](./structured-arguments.mdx)) |
 
 The values of the parameters are matched with the values set in the inspector or passed from C# by the parameter name in kebab-case (`camera-target` for `camera_target`).
 
 `Action` is a C# process that can be called with `run()`. It is set as a UnityEvent in the inspector.
 
-## Context
+## Context {#context}
 
-The arguments and variables can be obtained from `&Context`.
+The arguments and variables can be obtained from the context.
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 ```rust
 use wukuro::types::Argument;
@@ -75,19 +122,44 @@ fn counter(cx: &Context) {
 }
 ```
 
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
+
+```moonbit
+///|
+#wukuro.entry
+pub fn counter(cx : @wukuro.Context) -> Unit {
+  // get and set a variable
+  let variable = cx.get_variable("count")
+  let count = match variable.get() {
+    Some(TyS32(value)) => value
+    _ => 0
+  }
+  variable.set(TyS32(count + 1))
+  @wukuro.log("count: \{count + 1}")
+}
+```
+
+</TabItem>
+</Tabs>
+
 - `get_argument(name)`: gets the value of an argument by its name. Values not declared as parameters of the entry point can also be obtained.
 - `get_variable(name)`: gets a variable. Where the variables are stored is decided by the C# side that runs the script ([Running Scripts](./running-scripts.mdx#variables)).
 
-Values are represented by `wukuro::types::Argument`. It has cases such as `TyBool`, `TyS32`, `TyF32`, `TyString`, `TyAction` and `TyObject`.
+Values are represented by `Argument` (`wukuro::types::Argument` in Rust and `@wukuro.Argument` in MoonBit). It has cases such as `TyBool`, `TyS32`, `TyF32`, `TyString`, `TyAction` and `TyObject`.
 
-## Functions
+:::info
+Resources a script obtains, such as `Variable`, are released at the end of their scope in Rust. In MoonBit, they are released when the run of the entry point ends, or earlier with `drop()`.
+:::
 
-`wukuro::functions` provides the following functions.
+## Functions {#functions}
+
+`wukuro:core` provides the following functions (`wukuro::functions` in Rust, and `@wukuro` in MoonBit).
 
 | Function | Description |
 | --- | --- |
 | `log(message)` | Outputs a log to the Unity console. |
-| `delay(duration, update_mode)` | Waits for the specified seconds. `update_mode` is one of `UpdateModeKind::Scaled` (affected by `Time.timeScale`), `Unscaled` (not affected) and `Realtime` (real time). |
+| `delay(duration, update_mode)` | Waits for the specified seconds. `update_mode` is one of `Scaled` (affected by `Time.timeScale`), `Unscaled` (not affected) and `Realtime` (real time) of `UpdateModeKind` (`SCALED`, `UNSCALED` and `REALTIME` in MoonBit). |
 | `delay_frame(num_frames)` | Waits for the specified number of frames. |
 | `schedule(action, delay, update_mode)` | Runs `action` after `delay` seconds without waiting for it. With the returned `Task`, you can wait for the completion (`wait()`) or check whether it has completed (`is_completed()`). |
 
@@ -95,11 +167,14 @@ Values are represented by `wukuro::types::Argument`. It has cases such as `TyBoo
 A call to a function in a script does not return until the process on the host side completes. Waiting for a delay or the end of a cutscene can be written as ordinary function calls in order.
 :::
 
-## Texts
+## Texts {#texts}
 
-Texts shown to the player are represented by `wukuro::types::Text`. There are two kinds: a string written directly in the script (`Text::Plain`), and a reference to a localized text (`Text::Localized`).
+Texts shown to the player are represented by `Text`. There are two kinds: a string written directly in the script (`Plain`), and a reference to a localized text (`Localized`). Functions taking texts take `IntoText`, so strings and `Text` can both be passed. How a localized text is resolved to an actual string is decided by the host implementation.
 
-A localized text is created with the `l10n!` macro. The arguments are a table name and a key, and the source text can optionally be written as the third argument. The source text is not used at runtime and is only for the readability of the script.
+A localized text is created from a table name and a key. The source text can optionally be written. It is not used at runtime and is only for the readability of the script.
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 ```rust
 use wukuro::{l10n, IntoText};
@@ -108,11 +183,22 @@ let greeting = l10n!("Dialogs", "greeting", "Hello");
 let plain = "Hello".into_text();
 ```
 
-Functions taking texts take `impl IntoText`, so `&str`, `String` and `Text` can all be passed. How a localized text is resolved to an actual string is decided by the host implementation.
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
 
-## Dialogs
+```moonbit
+let greeting = @wukuro.l10n("Dialogs", "greeting", source="Hello")
+```
 
-The `wukuro-dialog` crate shows messages and options in dialogs. The dialogs are shown by the host implementation (`IDialogModule`) ([Extending](./extending.mdx#implementing-dialogs)).
+</TabItem>
+</Tabs>
+
+## Dialogs {#dialogs}
+
+`wukuro:dialog` shows messages and options in dialogs (the crate `wukuro-dialog` in Rust, and the package `ruccho/wukuro/dialog` in MoonBit). The dialogs are shown by the host implementation (`IDialogModule`) ([Extending](./extending.mdx#implementing-dialogs)).
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 ```rust
 use wukuro::entry;
@@ -135,17 +221,42 @@ fn shopkeeper(cx: &Context) {
 }
 ```
 
-### Dialog sessions
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
 
-`DialogSession::new` opens a dialog, and the dialog is closed when the session is dropped. The second argument can specify the kind of the dialog interpreted by the host.
+```moonbit
+///|
+#wukuro.entry
+pub fn shopkeeper(cx : @wukuro.Context) -> Unit {
+  let module = @dialog.get_dialog_module(cx)
+  @dialog.dialog(module, fn(d) {
+    d.msg(shopkeeper, "Welcome!")
+    d.show(@dialog.message(shopkeeper, "Would you like to buy something?").face("smile"))
+    match d.opts(["Buy", "Leave"]) {
+      0 => d.msg(shopkeeper, "Thank you!")
+      _ => d.msg(shopkeeper, "Come again!")
+    }
+  })
+}
+```
 
-- `msg::<T>(text)`: shows a message of the speaker `T` with the default face, and waits until the player proceeds.
-- `show(message)`: shows a message configured with `MessageInfo`.
+</TabItem>
+</Tabs>
+
+### Dialog sessions {#dialog-sessions}
+
+A dialog is open during a session: `DialogSession::new(&dialog, provider)` opens it in Rust, and the dialog is closed when the session is dropped. In MoonBit, `@dialog.dialog(module, provider?, f)` opens it, runs `f` and closes it. The provider specifies the kind of the dialog interpreted by the host.
+
+- `msg(speaker, text)` (`msg::<T>(text)` in Rust): shows a message of the speaker with the default face, and waits until the player proceeds.
+- `show(message)`: shows a configured message.
 - `opts(options)`: shows options and returns the index of the chosen option.
 
-### Configuring messages
+### Configuring messages {#configuring-messages}
 
-`MessageInfo::new::<T>(text)` creates a message with only the speaker `T` and the text. Other settings are changed by chaining methods.
+A message is created with the speaker and the text (`MessageInfo::new::<T>(text)` in Rust, and `@dialog.message(speaker, text)` in MoonBit). Other settings are changed by chaining methods.
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 ```rust
 d.show(
@@ -158,9 +269,25 @@ d.show(
 );
 ```
 
-### Speakers and faces
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
+
+```moonbit
+// the face, proceeding without waiting for input, forbidding skipping and fast-forwarding,
+// and a display style interpreted by the host
+let message = @dialog.message(shopkeeper, "...").face("sad").auto(true)
+d.show(message.forbid_skip(true).forbid_accel(true).style("whisper"))
+```
+
+</TabItem>
+</Tabs>
+
+### Speakers and faces {#speakers-and-faces}
 
 A speaker is represented by a type implementing `DialogSpeaker`, and a face by a type implementing `DialogFace`. The names are passed to the host as strings, and the host shows the corresponding speaker and face.
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 ```rust
 pub struct Shopkeeper;
@@ -193,8 +320,47 @@ impl DialogFace for ShopkeeperFace {
 }
 ```
 
-If the list of speakers is generated from the data of the game and included in a game-specific crate, mistakes in the names of speakers and faces are detected at compile time. Use `NoSpeaker` for messages without a speaker, such as narrations.
+Use `NoSpeaker` for messages without a speaker, such as narrations.
 
-### Fades
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
 
-`FadeSession::new(&dialog, duration_in, duration_out)` fades the screen, and the fade is reverted when the session is dropped.
+A speaker implements `name` and `default_face` of `@dialog.DialogSpeaker`, and `String` implements `@dialog.DialogFace`.
+
+```moonbit
+///|
+pub(all) enum Shopkeeper {
+  Shopkeeper
+}
+
+///|
+pub impl @dialog.DialogSpeaker for Shopkeeper with name(_) {
+  "shopkeeper"
+}
+
+///|
+pub impl @dialog.DialogSpeaker for Shopkeeper with default_face(_) {
+  "normal"
+}
+
+///|
+let shopkeeper : Shopkeeper = Shopkeeper
+```
+
+Use `@dialog.no_speaker` for messages without a speaker, such as narrations.
+
+</TabItem>
+</Tabs>
+
+If the list of speakers is generated from the data of the game and included in the guest library of the game, mistakes in the names of speakers and faces are detected at compile time ([Generating code from the data of the game](./extending.mdx#generating-code-from-the-data-of-the-game)).
+
+### Fades {#fades}
+
+The screen is faded during a session: `FadeSession::new(&dialog, duration_in, duration_out)` in Rust, whose fade is reverted when the session is dropped, and `@dialog.fade(module, duration_in?, duration_out?, f)` in MoonBit, which fades the screen during `f`.
+
+## Failures {#failures}
+
+A failure stops the script, and the message is reported to the host as `WukuroPanicException` with the WebAssembly stack trace.
+
+- Rust: a panic (`panic!`, `unwrap()` and so on) reports its message and location.
+- MoonBit: `abort(message)` and `@wukuro.fail(message)` report the message. **Wukuro Entry Points** overrides `abort` in the copy of the script that is built, because the MoonBit compiler drops the messages of `abort`. `@wukuro.fail` can also be used in libraries. The other failures, such as `panic()` and an index out of bounds, stop the script without a message.

@@ -1,0 +1,93 @@
+---
+title: ほかの言語の利用
+sidebar_position: 3.5
+---
+
+# ほかの言語の利用
+
+Rust と MoonBit は、インポーターとゲスト側のライブラリによってサポートしています（[スクリプトの記述](./writing-scripts.mdx)）。ホストとスクリプトの間のインターフェースは WIT で定義されているため、インポーターやゲスト側のライブラリがなくても、C や C++（[wit-bindgen](https://github.com/bytecodealliance/wit-bindgen)）など、WebAssembly のコンポーネントをビルドできるほかの言語でもスクリプトを記述できます。このページでは、スクリプトが提供する必要のあるものを説明します。
+
+Rust や MoonBit に比べて、次の手間がかかります。
+
+- `#[entry]` や **Wukuro Entry Points** が生成するエントリポイントの WIT を、手で書く必要があります。
+- スクリプトは Unity の外でビルドし、コンポーネントをプロジェクトにコピーします。C# の定義を変更しても、自動では再ビルドされません。
+- テキスト、ダイアログ、オブジェクトの型の補助はありません。
+
+## スクリプトの構成
+
+Wukuro のスクリプトは、次の WebAssembly のコンポーネントです。
+
+- 使うインターフェースを import します。`wukuro:core/functions` と `wukuro:core/types`、`wukuro:dialog`、ゲームのインターフェース（[機能の追加](./extending.mdx)）です。
+- エントリポイントごとに、関数 `run` を持つインターフェース `wukuro-entry:<name>/entry` を export します。`<name>` は、エントリポイントの名前を kebab-case にしたものです。
+
+`run` の最初の引数は `wukuro:core/types` の `borrow<context>` で、2 番目以降の引数はエントリポイントの引数であり、名前で対応付けられます。引数の型は、[引数](./writing-scripts.mdx#parameters)の WIT の型です。`run` は戻り値を持ちません。
+
+コンポーネントは、ホストが提供しないインターフェースを import してはいけません。ガベージコレクションを持つ言語のランタイムなど、WASI を import するコンポーネントを作るツールチェインでは、ゲーム側でその import の実装を登録する必要があります。
+
+## 手順
+
+### 1. WIT を入手する
+
+`wukuro:core` と `wukuro:dialog` の WIT は、[WaaS のリポジトリ](https://github.com/ruccho/WaaS)のゲスト側のライブラリの `wit` ディレクトリ（`Wukuro/crates/wukuro/wit`、`Wukuro/crates/wukuro-dialog/wit` など）にあります。ゲームの WIT は、WIT Export Settings で C# の定義から書き出します（[WIT の書き出し](../component-model/binding-generator/wit-export.mdx)）。Unity パッケージと同じバージョンの WIT を使ってください。
+
+### 2. エントリポイントの WIT を書く
+
+エントリポイントごとのパッケージと、スクリプトが使うインターフェースを import し、エントリポイントを export する world を書きます。wit-bindgen では、world のパッケージ以外は `wit/deps` に置きます（`wukuro:core` の WIT は `wit/deps/wukuro-core` など）。
+
+```wit title="wit/deps/entries/hello.wit"
+package wukuro-entry:hello;
+
+interface entry {
+    use wukuro:core/types.{context};
+
+    run: func(cx: borrow<context>, name: string, count: s32);
+}
+```
+
+```wit title="wit/script.wit"
+package my-game:script;
+
+world script {
+    import wukuro:core/functions;
+    export wukuro-entry:hello/entry;
+}
+```
+
+C# で定義した record や enum の引数は、インスペクタが C# の型を見つけられるように、エントリポイントのインターフェースで `use` によってゲームのインターフェースから import します（`use my-game:events/types.{door-settings};`）（[構造化された引数](./structured-arguments.mdx#how-it-works)）。
+
+### 3. コンポーネントをビルドする
+
+言語のツールで world のバインディングを生成し、各エントリポイントの `run` を実装して、コンポーネントをビルドします。たとえば C では、wit-bindgen でバインディングを生成し、WebAssembly 向けの C コンパイラと libc（[wasi-sdk](https://github.com/WebAssembly/wasi-sdk) など）でコアモジュールをビルドして、`wasm-tools component new` でコンポーネントに変換します。
+
+```c
+#include "script.h"
+
+void exports_wukuro_entry_hello_entry_run(
+    exports_wukuro_entry_hello_entry_borrow_context_t cx, script_string_t *name, int32_t count) {
+    for (int32_t i = 0; i < count; i++) {
+        wukuro_core_functions_log(name);
+    }
+}
+```
+
+```sh
+wit-bindgen c ./wit --world script
+$WASI_SDK_PATH/bin/clang --target=wasm32-wasip1 -mexec-model=reactor -o script.wasm hello.c script.c script_component_type.o
+wasm-tools component new script.wasm -o script.component.wasm
+
+# ホストが提供するインターフェースだけを import していることを確認する
+wasm-tools component wit script.component.wasm
+```
+
+生成される関数や型の名前は wit-bindgen のバージョンによって異なります。生成されたヘッダーを参照してください。libc の関数のためにコアモジュールが `wasi_snapshot_preview1` を import する場合、`wasm-tools component new` にはアダプターが必要になり、コンポーネントは WASI を import します。そのような関数を避けるか、ゲーム側で import を提供してください。
+
+### 4. コンポーネントを使う
+
+コンポーネント（`*.wasm`）を `Assets` 以下に置きます。WaaS はコンポーネントを `ComponentAsset` としてインポートし、その型を WIT として記録します。インスペクタは、その WIT からエントリポイントと引数を読み取ります。スクリプトの参照と実行は、Rust や MoonBit のスクリプトと同じです（[スクリプトの実行](./running-scripts.mdx)）。
+
+## 任意の機能
+
+- **パニック**: `wukuro:core/functions` の `panic(message)` を呼ぶと、メッセージとともにスクリプトを停止し、`WukuroPanicException` としてホストに報告されます。
+- **リソース**: スクリプトが取得したリソース（変数など）は、使わなくなったら drop してください。実行の終了時に残っているリソースは Wukuro が drop します。
+- **オブジェクトの型**: インスペクタでオブジェクトの引数の型を制約するには、コアモジュールにカスタムセクション `wukuro-entry-types` を追加し、引数ごとに UTF-8 で `<entry>\t<parameter>\t<C# の型名>\n` の記録を書きます。エントリポイントと引数の名前は kebab-case です（[オブジェクトの型](./object-types.mdx#how-it-works)）。
+- **デバッグ**: コンパイラが DWARF の行番号表（`.debug_line`）を出力する場合、デバッガは命令をソースの行に対応付けます（[スクリプトのデバッグ](../unity-integration/debugging.mdx)）。

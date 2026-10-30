@@ -10,4 +10,4 @@ readme = "../../README.md"
 
 [dependencies]
 wit-bindgen = "0.63.0"
-wukuro = { path = "../wukuro", version = "0.3.0" }
+wukuro = { path = "../wukuro", version = "0.4.0" }

@@ -24,7 +24,7 @@ Rust Importer を利用するには [Rust ツールチェイン](https://www.rus
 - **Dependencies**: 依存するパッケージを指定します。
   - **via Registry**: パッケージレジストリからパッケージをインストールします。
   - **via Git**: Git リポジトリからパッケージをインストールします。
-- **Componentize**: WebAssembly モジュールをコンポーネントに変換します。詳しくは [コンポーネント化](#コンポーネント化) を参照してください。
+- **Componentize**: WebAssembly モジュールをコンポーネントに変換します。詳しくは [コンポーネント化](#componentization) を参照してください。
 
 ### Dependency
 
@@ -54,7 +54,7 @@ Rust Importer は、ソースファイルのビルドに使われたファイル
 また、`Assets` > `Recompile Rust scripts for WaaS` を選択すると、プロジェクト内のすべての Rust ソースファイルを再コンパイルします。
 :::
 
-### プリセットの利用
+### プリセットの利用 {#using-presets}
 
 上記の設定を**プリセット アセット**として保存することで再利用できます。
 
@@ -97,7 +97,7 @@ rust-analyzer はワークスペースに対して `cargo check` を実行する
 
 Define Symbol として `WAAS_DISABLE_RUST_IMPORTER` を指定すると、Rust Importer が無効化されます。
 
-## コンポーネント化
+## コンポーネント化 {#componentization}
 
 :::info
 コンポーネント化については [Component Model ではじめる](../getting-started/component-model) を参照してください。

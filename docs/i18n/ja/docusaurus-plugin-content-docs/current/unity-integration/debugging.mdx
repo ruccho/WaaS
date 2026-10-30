@@ -9,7 +9,7 @@ Unity エディタで実行しているスクリプトを、Debug Adapter Protoc
 
 1. Unity で **Assets > Enable Debugger for WaaS** を有効にします。エディタはローカルホストのポート 4711（`WaaSDebugger.Port`）で待ち受けます。
 2. Rust のスクリプトでは、**Assets > Build Rust Scripts with Debug Information for WaaS** を有効にします。スクリプトは、命令とソースの行を対応付ける DWARF の行番号表を含めて再ビルドされます。この設定はユーザーごとであり、既定では無効です。
-3. VS Code に、リポジトリの `vscode-waas` の拡張をインストールし、`launch.json` に次の構成を追加します。
+3. VS Code で、[リリース](https://github.com/ruccho/WaaS/releases)に添付されている拡張 `waas-debug-<version>.vsix` を、コマンドパレットの **Extensions: Install from VSIX...** でインストールし、`launch.json` に次の構成を追加します。
 
 ```json
 {

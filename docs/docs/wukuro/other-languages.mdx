@@ -1,0 +1,93 @@
+---
+title: Using Other Languages
+sidebar_position: 3.5
+---
+
+# Using Other Languages
+
+Rust and MoonBit are supported with an importer and a guest library ([Writing Scripts](./writing-scripts.mdx)). Since the interfaces between the host and scripts are defined in WIT, scripts can also be written in other languages that can build WebAssembly components, such as C and C++ ([wit-bindgen](https://github.com/bytecodealliance/wit-bindgen)), without an importer or a guest library. This page describes what a script has to provide.
+
+It needs more work than Rust and MoonBit:
+
+- The WIT of the entry points has to be written by hand, which `#[entry]` and **Wukuro Entry Points** generate.
+- The scripts are built outside Unity, and the components are copied to the project. They are not rebuilt when the C# definitions change.
+- There are no helpers for texts, dialogs and object types.
+
+## What a script is
+
+A Wukuro script is a WebAssembly component that:
+
+- imports the interfaces it uses: `wukuro:core/functions` and `wukuro:core/types`, `wukuro:dialog`, and the interfaces of the game ([Extending](./extending.mdx));
+- exports an interface `wukuro-entry:<name>/entry` with a function `run` for each entry point, where `<name>` is the name of the entry point in kebab-case.
+
+The first parameter of `run` is `borrow<context>` of `wukuro:core/types`, and the other parameters are the arguments of the entry point, matched by their names. The types of the arguments are the WIT types in [Parameters](./writing-scripts.mdx#parameters). `run` has no results.
+
+The components must not import interfaces that the host does not provide. Toolchains whose components import WASI, such as runtimes of garbage-collected languages, need the implementations of the imports registered by the game.
+
+## Steps
+
+### 1. Getting the WIT
+
+The WIT of `wukuro:core` and `wukuro:dialog` is in the `wit` directories of the guest libraries in the [WaaS repository](https://github.com/ruccho/WaaS) (for example `Wukuro/crates/wukuro/wit` and `Wukuro/crates/wukuro-dialog/wit`). The WIT of the game is exported from the C# definitions with WIT Export Settings ([Exporting WIT](../component-model/binding-generator/wit-export.mdx)). Use the WIT of the same version as the Unity package.
+
+### 2. Writing the WIT of the entry points
+
+Write a package for each entry point, and a world that imports the interfaces used by the script and exports the entry points. With wit-bindgen, the packages other than the one of the world are put in `wit/deps`, such as the WIT of `wukuro:core` in `wit/deps/wukuro-core`.
+
+```wit title="wit/deps/entries/hello.wit"
+package wukuro-entry:hello;
+
+interface entry {
+    use wukuro:core/types.{context};
+
+    run: func(cx: borrow<context>, name: string, count: s32);
+}
+```
+
+```wit title="wit/script.wit"
+package my-game:script;
+
+world script {
+    import wukuro:core/functions;
+    export wukuro-entry:hello/entry;
+}
+```
+
+A parameter of a record or an enum defined in C# is imported from the interface of the game with `use` in the interface of the entry point (`use my-game:events/types.{door-settings};`), so that the inspector finds the C# type ([Structured Arguments](./structured-arguments.mdx#how-it-works)).
+
+### 3. Building the component
+
+Generate the bindings of the world with the tool of the language, implement `run` of each entry point, and build a component. For example in C, generate the bindings with wit-bindgen, build a core module with a C compiler for WebAssembly and a libc (such as [wasi-sdk](https://github.com/WebAssembly/wasi-sdk)), and convert it to a component with `wasm-tools component new`.
+
+```c
+#include "script.h"
+
+void exports_wukuro_entry_hello_entry_run(
+    exports_wukuro_entry_hello_entry_borrow_context_t cx, script_string_t *name, int32_t count) {
+    for (int32_t i = 0; i < count; i++) {
+        wukuro_core_functions_log(name);
+    }
+}
+```
+
+```sh
+wit-bindgen c ./wit --world script
+$WASI_SDK_PATH/bin/clang --target=wasm32-wasip1 -mexec-model=reactor -o script.wasm hello.c script.c script_component_type.o
+wasm-tools component new script.wasm -o script.component.wasm
+
+# check that the component imports only the interfaces provided by the host
+wasm-tools component wit script.component.wasm
+```
+
+The names of the generated functions and types depend on the version of wit-bindgen. See the generated header. If the core module imports `wasi_snapshot_preview1` because of the functions of the libc, `wasm-tools component new` needs an adapter, and the component imports WASI. Avoid such functions, or provide the imports from the game.
+
+### 4. Using the component
+
+Put the component (`*.wasm`) under `Assets`. WaaS imports a component as `ComponentAsset`, and records its type in WIT, from which the inspector reads the entry points and their parameters. The script is referred to and run in the same way as the scripts in Rust and MoonBit ([Running Scripts](./running-scripts.mdx)).
+
+## Optional features
+
+- **Panics**: call `panic(message)` of `wukuro:core/functions` to stop the script with a message, which is reported to the host as `WukuroPanicException`.
+- **Resources**: drop the resources obtained by the script (such as variables) when they are no longer used. The resources left when the run ends are dropped by Wukuro.
+- **Object types**: to constrain the types of the object parameters in the inspector, add a custom section `wukuro-entry-types` to the core module, with a record `<entry>\t<parameter>\t<C# type name>\n` in UTF-8 for each parameter, where the names of the entry point and the parameter are in kebab-case ([Object Types](./object-types.mdx#how-it-works)).
+- **Debugging**: if the compiler emits the line tables of DWARF (`.debug_line`), the debugger maps the instructions to the source lines ([Debugging Scripts](../unity-integration/debugging.mdx)).

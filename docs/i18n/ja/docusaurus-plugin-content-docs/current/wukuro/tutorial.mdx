@@ -3,13 +3,19 @@ title: チュートリアル
 sidebar_position: 2
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # チュートリアル
 
 このチュートリアルでは、ログを出力するだけの簡単なスクリプトを作成し、シーン上のコンポーネントから実行します。事前に [導入](./installation.mdx) を済ませてください。
 
 ## スクリプトを作成する
 
-`Assets` 以下に `hello.rs` を作成し、次の内容を記述します。
+`Assets` 以下に、好きな言語で次の内容のスクリプトを作成します。
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 ```rust title="hello.rs"
 use wukuro::entry;
@@ -25,12 +31,33 @@ fn hello(cx: &Context, name: String, count: i32) {
 }
 ```
 
-- `#[entry]` を付けた関数 `hello` がエントリポイントになります。
-- 第 1 引数の `&Context` は、スクリプトの実行の情報です。引数や変数の取得、モジュールの取得に用います。
+インポート設定で、**Dependencies** に `wukuro` を追加し、**Componentize** を有効にし、**WIT Directory** を空にして Apply します。Wukuro のスクリプトの WIT は `#[entry]` が埋め込むため、**WIT Directory** は空にする必要があります（[コンポーネント化](../unity-integration/rust.mdx#componentization)）。
+
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
+
+```moonbit title="hello.mbt"
+///|
+#wukuro.entry
+pub fn hello(_cx : @wukuro.Context, name : String, count : Int) -> Unit {
+  for i in 0..<count {
+    @wukuro.log("Hello, \{name}! (\{i})")
+    @wukuro.delay(1.0, SCALED)
+  }
+}
+```
+
+インポート設定で、**Dependencies** と **Imports** に `ruccho/wukuro` を追加し、**Componentize** を有効にし、**Generators** に **Wukuro Entry Points** を追加して Apply します（[導入](./installation.mdx#moonbit)）。
+
+</TabItem>
+</Tabs>
+
+- エントリポイントとして指定した（`#[entry]`、`#wukuro.entry`）関数 `hello` がエントリポイントになります。
+- 第 1 引数の `Context` は、スクリプトの実行の情報です。引数や変数の取得、モジュールの取得に用います。
 - `name` と `count` は、インスペクタから値を設定する引数です。
 - `log` と `delay` は `wukuro:core` が提供する関数です。
 
-インポート設定で、Dependencies に `wukuro` を追加し、**Componentize** を有効にし、**WIT Directory** を空にして Apply します。Wukuro のスクリプトの WIT は `#[entry]` が埋め込むため、**WIT Directory** は空にする必要があります（[コンポーネント化](../unity-integration/rust.mdx#コンポーネント化)）。インポートが成功すると、スクリプトはコンポーネントのアセット（`ComponentAsset`）になります。
+インポートが成功すると、スクリプトはコンポーネントのアセット（`ComponentAsset`）になります。
 
 ## スクリプトを実行するコンポーネントを作成する
 
@@ -66,7 +93,7 @@ public class HelloEvent : MonoBehaviour
 ## 引数を設定して実行する
 
 1. シーン上の GameObject に `HelloEvent` を追加します。
-2. インスペクタの **Entry** の **Script** に `hello.rs` を指定します。
+2. インスペクタの **Entry** の **Script** にスクリプト（`hello.rs` または `hello.mbt`）を指定します。
 3. エントリポイントの一覧から `hello` を選択します。エントリポイントの引数に合わせて、`name` と `count` の入力欄が表示されます。
 4. `name` と `count` に値を入力し、Play モードに入ります。
 

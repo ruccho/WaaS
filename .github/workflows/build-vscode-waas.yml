@@ -1,0 +1,58 @@
+name: Build VS Code Extension
+
+# Packages the extension of VS Code (vscode-waas) as a .vsix and uploads it as a workflow artifact.
+# Pull requests that change the extension package it to check the manifest.
+# When a release is published, the .vsix is also attached to the release.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - vscode-waas/**
+      - .github/workflows/build-vscode-waas.yml
+  release:
+    types: [published]
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vscode-waas
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Check versions
+        if: github.event_name == 'release'
+        run: python scripts/version.py check "${{ github.event.release.tag_name }}"
+        working-directory: .
+      - name: Package
+        run: |
+          # the license of the repository is included in the package
+          cp ../LICENSE LICENSE
+          version=$(node -p "require('./package.json').version")
+          npx --yes @vscode/vsce@3.6.0 package --out "waas-debug-$version.vsix"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vscode-waas
+          path: vscode-waas/*.vsix
+          if-no-files-found: error
+
+  attach:
+    if: github.event_name == 'release'
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: vscode-waas
+          path: vsix
+      - name: Attach the extension to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" vsix/* --clobber --repo "$GITHUB_REPOSITORY"

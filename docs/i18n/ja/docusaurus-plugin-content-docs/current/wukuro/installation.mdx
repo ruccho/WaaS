@@ -9,8 +9,10 @@ sidebar_position: 1
 
 - Unity 6000.0 以降
 - [UniTask](https://github.com/Cysharp/UniTask)（`com.cysharp.unitask`）
-- WaaS（`com.ruccho.waas`）と、[Rust Importer](../unity-integration/rust.mdx) を利用するための Rust のツールチェインと `wasm32-unknown-unknown` ターゲット
-- MoonBit でスクリプトを記述する場合は、[MoonBit Importer](../unity-integration/moonbit.mdx) を利用するための MoonBit のツールチェイン（[MoonBit でのスクリプトの記述](./moonbit.mdx#setting-up)）
+- WaaS（`com.ruccho.waas`）
+- スクリプトの言語のツールチェイン
+  - Rust: [Rust Importer](../unity-integration/rust.mdx) を利用するための Rust のツールチェインと `wasm32-unknown-unknown` ターゲット
+  - MoonBit: [MoonBit Importer](../unity-integration/moonbit.mdx) を利用するための [MoonBit のツールチェイン](https://www.moonbitlang.com/download)（`moon` が `PATH` 上にあること）
 
 ## Unity パッケージの追加
 
@@ -20,11 +22,19 @@ UniTask と WaaS を先に導入してから、Package Manager の `Add package 
 https://github.com/ruccho/WaaS.git?path=/WaaS.Unity/Packages/com.ruccho.wukuro#release
 ```
 
-`#release` は、最新のリリースを指す `release` ブランチを参照します。特定のバージョンを使う場合は、代わりに `#v0.3.0` のようにタグを指定してください。WaaS と Wukuro には同じバージョンを使ってください。
+`#release` は、最新のリリースを指す `release` ブランチを参照します。特定のバージョンを使う場合は、代わりに `#v0.4.0` のようにタグを指定してください。WaaS と Wukuro には同じバージョンを使ってください。
 
 UniTask は Unity のパッケージレジストリにないため、`package.json` の依存として宣言していません。[UniTask の導入方法](https://github.com/Cysharp/UniTask#upm-package) に従って、別途導入してください。
 
-## Rust のクレートの設定
+## ゲスト側のライブラリの設定
+
+スクリプトは、インポーターのインポート設定で指定した、その言語のゲスト側のライブラリを使ってビルドされます。すべてのスクリプトに同じ設定を適用するには、設定をプリセット（[Rust](../unity-integration/rust.mdx#using-presets)、[MoonBit](../unity-integration/moonbit.mdx#using-presets)）にまとめると便利です。
+
+:::warning
+ゲスト側のライブラリに同梱されている WIT は、Unity パッケージの C# の定義から生成されたものです。Unity パッケージとゲスト側のライブラリのバージョンが異なると、スクリプトとホストの関数の定義が一致せず、実行時にエラーになることがあります。バージョンを揃えてください。
+:::
+
+### Rust {#rust}
 
 Rust のスクリプトは、Rust Importer のインポート設定の **Dependencies** に指定したクレートに依存してビルドされます。Wukuro のスクリプトには、次のクレートが必要です。
 
@@ -38,24 +48,14 @@ Wukuro のクレートは [crates.io](https://crates.io/) で公開していま�
 
 | Name | Version Requirements |
 | --- | --- |
-| `wukuro` | Unity パッケージと同じバージョン（例: Unity パッケージが `0.3.0` であれば `0.3.0`） |
+| `wukuro` | Unity パッケージと同じバージョン（例: Unity パッケージが `0.4.0` であれば `0.4.0`） |
 | `wukuro-dialog` | `wukuro` と同じバージョン |
 
-:::warning
-クレートに同梱されている WIT は、Unity パッケージの C# の定義から生成されたものです。Unity パッケージとクレートのバージョンが異なると、スクリプトとホストの関数の定義が一致せず、実行時にエラーになることがあります。両者のバージョンを揃えてください。
-:::
+インポート設定では **Componentize** を有効にし、**WIT Directory** を空にしてください。スクリプトの WIT は `#[entry]` が埋め込みます。
 
-:::warning
-Wukuro のスクリプトのインポート設定では、**Componentize** を有効にし、**WIT Directory** を空にしてください。スクリプトの WIT は `#[entry]` が埋め込みます。
-:::
+#### ワークスペースの依存の利用 {#using-workspace-dependencies}
 
-:::info
-すべてのスクリプトに同じ依存を設定するため、依存を [プリセット](../unity-integration/rust.mdx#プリセットの利用) にまとめておくと便利です。
-:::
-
-### ワークスペースの依存を利用する
-
-ゲーム固有のクレートを Unity プロジェクト内で開発する場合や、依存のバージョンを 1 か所で管理したい場合は、Unity プロジェクトのルートの `Cargo.toml` に `[workspace.dependencies]` を追加し、Rust Importer の Dependencies で **via Workspace** を選択します。
+Unity プロジェクト内でゲーム固有のクレートを開発する場合や、依存のバージョンを 1 か所で管理する場合は、Unity プロジェクトのルートの `Cargo.toml` に `[workspace.dependencies]` を追加し、Rust Importer の Dependencies で **via Workspace** を選択します。
 
 ```toml
 [workspace]
@@ -63,21 +63,40 @@ members = ["Library/com.ruccho.waas/rust/crates/*", "rust/*"] # Used by WaaS
 resolver = "2" # Used by WaaS
 
 [workspace.dependencies]
-wukuro = "0.3.0"
-wukuro_dialog = { package = "wukuro-dialog", version = "0.3.0" }
+wukuro = "0.4.0"
+wukuro_dialog = { package = "wukuro-dialog", version = "0.4.0" }
 my-game = { path = "./rust/my-game" }
 ```
 
-**via Workspace** の依存では、**Name** に `[workspace.dependencies]` のキーを指定します。
+**via Workspace** の依存では、`[workspace.dependencies]` のキーを **Name** に指定します。
 
-### 未公開のバージョンを使う
+#### 未公開のバージョンの利用 {#using-unpublished-versions}
 
-crates.io に公開されていない変更を試す場合は、WaaS のリポジトリから git で取得できます。cargo はリポジトリ内のクレートを名前で探すため、リポジトリ内のパスを指定する必要はありません。
+crates.io にまだ公開されていない変更を試す場合は、WaaS のリポジトリから git でクレートを取得できます。cargo はリポジトリ内のクレートを名前で見つけるため、リポジトリ内のパスを指定する必要はありません。
 
 ```toml
 [workspace.dependencies]
-wukuro = { git = "https://github.com/ruccho/WaaS.git", rev = "<コミットハッシュ>" }
-wukuro_dialog = { package = "wukuro-dialog", git = "https://github.com/ruccho/WaaS.git", rev = "<コミットハッシュ>" }
+wukuro = { git = "https://github.com/ruccho/WaaS.git", rev = "<commit hash>" }
+wukuro_dialog = { package = "wukuro-dialog", git = "https://github.com/ruccho/WaaS.git", rev = "<commit hash>" }
 ```
 
-この場合、cargo はリポジトリ全体をサブモジュールを含めて取得するため、初回の取得に時間がかかります。Unity パッケージも同じコミットのものを使ってください。
+この場合、cargo はサブモジュールを含むリポジトリ全体を取得するため、初回の取得に時間がかかります。Unity パッケージも同じコミットのものを使ってください。
+
+### MoonBit {#moonbit}
+
+MoonBit のスクリプトは、モジュール `ruccho/wukuro` を使います。モジュールには次のパッケージが含まれます。
+
+| パッケージ | 用途 |
+| --- | --- |
+| `ruccho/wukuro` | すべてのスクリプトで必要です。`wukuro` クレートに相当します。 |
+| `ruccho/wukuro/dialog` | ダイアログを表示するスクリプトで必要です。`wukuro-dialog` クレートに相当します。 |
+| ゲーム固有のモジュールのパッケージ | ゲーム側で追加した機能を使うスクリプトで必要です（[機能の追加](./extending.mdx)）。 |
+
+MoonBit Importer のインポート設定で、モジュールを次のように指定します。
+
+- **Dependencies**: `ruccho/wukuro`。**Version** には Unity パッケージと同じバージョン（例: `0.4.0`）を指定します。モジュールは [mooncakes.io](https://mooncakes.io/) で公開しています。
+- **Imports**: `ruccho/wukuro` を `wukuro` として、`ruccho/wukuro/dialog` を `dialog` として追加します。[スクリプトパッケージ](../unity-integration/moonbit.mdx#script-packages)では、代わりにその `moon.pkg` に書きます。
+- **Componentize**: 有効にします。`wukuro:core` と `wukuro:dialog` の WIT はモジュールの `wit` ディレクトリにあるため、**WIT Directories** は空でかまいません。
+- **Generators**: エントリポイントの export を生成する **Wukuro Entry Points** を追加します。
+
+未公開のバージョンを使う場合は、[WaaS のリポジトリ](https://github.com/ruccho/WaaS)を clone し、依存の **Local Path** にモジュールのディレクトリ（`Wukuro/moonbit/wukuro`。リポジトリを Unity プロジェクトの隣に clone した場合は `../WaaS/Wukuro/moonbit/wukuro`）を指定して、同じコミットの Unity パッケージを使ってください。

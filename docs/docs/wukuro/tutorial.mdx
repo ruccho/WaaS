@@ -3,13 +3,19 @@ title: Tutorial
 sidebar_position: 2
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Tutorial
 
 In this tutorial, we create a simple script that only outputs logs and run it from a component in the scene. Complete [Installation](./installation.mdx) beforehand.
 
 ## Creating a script
 
-Create `hello.rs` under `Assets` with the following content.
+Create a script under `Assets` with the following content in the language of your choice.
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 ```rust title="hello.rs"
 use wukuro::entry;
@@ -25,12 +31,33 @@ fn hello(cx: &Context, name: String, count: i32) {
 }
 ```
 
-- The function `hello` with `#[entry]` becomes an entry point.
-- The first parameter `&Context` is the information of the running script. It is used to get the arguments, variables and modules.
+In the import settings, add `wukuro` to **Dependencies**, enable **Componentize**, clear **WIT Directory** and apply. The WIT of a Wukuro script is embedded by `#[entry]`, so **WIT Directory** must be empty ([Componentization](../unity-integration/rust.mdx#componentization)).
+
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
+
+```moonbit title="hello.mbt"
+///|
+#wukuro.entry
+pub fn hello(_cx : @wukuro.Context, name : String, count : Int) -> Unit {
+  for i in 0..<count {
+    @wukuro.log("Hello, \{name}! (\{i})")
+    @wukuro.delay(1.0, SCALED)
+  }
+}
+```
+
+In the import settings, add `ruccho/wukuro` to **Dependencies** and **Imports**, enable **Componentize**, add **Wukuro Entry Points** to **Generators** and apply ([Installation](./installation.mdx#moonbit)).
+
+</TabItem>
+</Tabs>
+
+- The function `hello` marked as an entry point (`#[entry]`, `#wukuro.entry`) becomes an entry point.
+- The first parameter `Context` is the information of the running script. It is used to get the arguments, variables and modules.
 - `name` and `count` are arguments whose values are set in the inspector.
 - `log` and `delay` are functions provided by `wukuro:core`.
 
-In the import settings, add `wukuro` to Dependencies, enable **Componentize**, clear **WIT Directory** and apply. The WIT of a Wukuro script is embedded by `#[entry]`, so **WIT Directory** must be empty ([Componentization](../unity-integration/rust.mdx#componentization)). When the import succeeds, the script becomes a component asset (`ComponentAsset`).
+When the import succeeds, the script becomes a component asset (`ComponentAsset`).
 
 ## Creating a component to run the script
 
@@ -66,7 +93,7 @@ public class HelloEvent : MonoBehaviour
 ## Setting the arguments and running
 
 1. Add `HelloEvent` to a GameObject in the scene.
-2. Set `hello.rs` to **Script** of **Entry** in the inspector.
+2. Set the script (`hello.rs` or `hello.mbt`) to **Script** of **Entry** in the inspector.
 3. Select `hello` from the list of entry points. The fields of `name` and `count` are shown according to the parameters of the entry point.
 4. Enter the values of `name` and `count`, and enter the play mode.
 

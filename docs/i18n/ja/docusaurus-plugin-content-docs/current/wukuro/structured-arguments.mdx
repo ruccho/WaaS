@@ -148,11 +148,11 @@ fn open_door(cx: &Context, settings: DoorSettings, kind: DoorKind) {
 }
 ```
 
-C# の定義が変わったときは、オブジェクトの型と同じ方法でファイルを生成し直します（[オブジェクトの型](./object-types.mdx)）。
+C# の定義が変わったときは、オブジェクトの型と同じ方法でファイルを生成し直します（[オブジェクトの型](./object-types.mdx#generating-the-types-of-scripts)）。
 
 ## MoonBit のスクリプトから使う
 
-追加のコードは必要ありません。**Wukuro Entry Points** は、引数の型の C# の型を、その MoonBit のバインディングのパッケージ（[MoonBit Bindings Settings](./moonbit.mdx#extending) が生成する `ns_pkg_iface`）と型の名前から見つけます。
+追加のコードは必要ありません。**Wukuro Entry Points** は、引数の型の C# の型を、その MoonBit のバインディングのパッケージ（[MoonBit Bindings Settings](./extending.mdx#creating-a-moonbit-module) が生成する `ns_pkg_iface`）と型の名前から見つけます。
 
 ```moonbit
 ///|
@@ -177,7 +177,7 @@ var arguments = new WukuroRuntimeArguments()
 await runner.RunAsync(entry, variables, arguments);
 ```
 
-## 仕組み
+## 仕組み {#how-it-works}
 
 - スクリプトのエントリポイントは、ゲームのインターフェースから型をインポートします（`use my-game:events/types.{door-settings}`）。インスペクターはスクリプトの WIT からこの `use` を読み、`WukuroArgumentTypes.Find` で C# の型を見つけ、その型の Unity のシリアライズで値を保存します。
 - 実行時には、WaaS がレコードに対して生成したフォーマッターで値が渡されます。`ObjectOf<T>` のオブジェクトは、スクリプトが所有する `object` リソースとして渡され、レコードを受け取ったホスト関数はリソースからオブジェクトを取り出します。
