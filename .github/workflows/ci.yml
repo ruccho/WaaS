@@ -6,7 +6,12 @@ on:
 
 jobs:
   dotnet-test:
-    runs-on: ubuntu-latest
+    # NativeEditorLibraryTests tests the native library of the Unity editor for each platform
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: WaaS
