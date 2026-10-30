@@ -9,18 +9,10 @@ namespace WaaS.Models
         {
             var results = new List<Instruction>();
             uint count = 0;
-            ReadBlock(null, ref reader, results, ref count);
-            return results.ToArray();
-        }
 
-
-        private static void ReadBlock(
-            BlockInstruction currentBlock,
-            ref ModuleReader reader,
-            List<Instruction> results,
-            ref uint count,
-            int depth = 0)
-        {
+            // the blocks being read. the nesting is tracked without recursion, which would overflow the stack of the
+            // thread on deeply nested blocks.
+            var blocks = new Stack<BlockInstruction>();
             while (true)
             {
                 var offset = reader.Position - reader.Origin;
@@ -31,12 +23,19 @@ namespace WaaS.Models
 
                 if (instruction is BlockInstruction newBlock)
                 {
-                    ReadBlock(newBlock, ref reader, results, ref count, ++depth);
+                    blocks.Push(newBlock);
                 }
                 else if (instruction is BlockDelimiterInstruction delimiter)
                 {
-                    currentBlock?.InjectDelimiter(delimiter);
-                    if (instruction is End) return;
+                    // the end of the function
+                    if (blocks.Count == 0)
+                    {
+                        if (instruction is End) return results.ToArray();
+                        continue;
+                    }
+
+                    blocks.Peek().InjectDelimiter(delimiter);
+                    if (instruction is End) blocks.Pop();
                 }
             }
         }
