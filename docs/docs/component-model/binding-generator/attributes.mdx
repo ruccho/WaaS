@@ -106,7 +106,7 @@ public partial interface IEnv
 ```
 
 - Define a `partial` `class` or `struct` as a member of the `interface` with `[ComponentInterface]` applied, and apply the `[ComponentRecord]` attribute.
-- Apply the `[ComponentField]` attribute to the property.
+- Apply the `[ComponentField]` attribute to the property. A public field with `[ComponentField]` is also a field of the record, which allows a type serialized by Unity to be a record.
 - Apply the `init` or `set` accessor to the property. Accessibility doesn't matter.
 - The property type uses the corresponding C# type for the Component Model type. The available types are the same as [Types that can be used in a function](#types-that-can-be-used-in-a-function).
 

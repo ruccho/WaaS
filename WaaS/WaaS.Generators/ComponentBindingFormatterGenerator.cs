@@ -361,10 +361,15 @@ public class ComponentBindingFormatterGenerator : IIncrementalGenerator
 /* lang=c#  */$$"""
                                     case VariantCase.{{member.Name}}:
                 """);
+            // the payload of a case typed with a type parameter (such as Option<T>) can be null when the type
+            // argument is nullable (such as Option<int?>), so it must not be checked against null
+            var payloadExpression = memberType is ITypeParameterSymbol
+                ? $"value.{member.Name}!"
+                : $"value.{member.Name} ?? throw new global::System.InvalidOperationException()";
             if (!isNone)
                 bodyBuilder.AppendLine(
 /* lang=c#  */$$"""
-                                        global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{memberType!.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push(value.{{member.Name}} ?? throw new global::System.InvalidOperationException(), pusher);
+                                        global::WaaS.ComponentModel.Binding.FormatterProvider.GetFormatter<{{memberType!.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}>().Push({{payloadExpression}}, pusher);
                 """);
             bodyBuilder.AppendLine(
 /* lang=c#  */"""                        break;""");

@@ -7,13 +7,19 @@ namespace STask
     {
         public static STaskMethodBuilder Create()
         {
-            return new STaskMethodBuilder
-            {
-                source = STaskCompletionSource<byte>.Create()
-            };
+            return default;
         }
 
+        // created on the first suspension or failure, so that methods completing synchronously never use it
         private STaskCompletionSource<byte> source;
+        private bool hasSource;
+
+        private void EnsureSource()
+        {
+            if (hasSource) return;
+            source = STaskCompletionSource<byte>.Create();
+            hasSource = true;
+        }
 
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
@@ -28,12 +34,13 @@ namespace STask
 
         public void SetException(Exception exception)
         {
+            EnsureSource();
             source.SetException(exception);
         }
 
         public void SetResult()
         {
-            source.SetResult(0);
+            if (hasSource) source.SetResult(0);
         }
 
         public void AwaitOnCompleted<TAwaiter, TStateMachine>(
@@ -41,6 +48,8 @@ namespace STask
             where TAwaiter : INotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
+            // the state machine is copied below, so the source must be created before it
+            EnsureSource();
             awaiter.OnCompleted(InstantContinuation<TStateMachine>.Get(in stateMachine,
                 static (in TStateMachine stateMachine) => stateMachine.MoveNext()));
         }
@@ -50,24 +59,33 @@ namespace STask
             where TAwaiter : ICriticalNotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
+            // the state machine is copied below, so the source must be created before it
+            EnsureSource();
             awaiter.UnsafeOnCompleted(InstantContinuation<TStateMachine>.Get(in stateMachine,
                 static (in TStateMachine stateMachine) => stateMachine.MoveNext()));
         }
 
-        public STaskVoid Task => new(source.TaskSource);
+        public STaskVoid Task => hasSource ? new STaskVoid(source.TaskSource) : default;
     }
 
     public struct STaskMethodBuilder<T>
     {
         public static STaskMethodBuilder<T> Create()
         {
-            return new STaskMethodBuilder<T>
-            {
-                source = STaskCompletionSource<T>.Create()
-            };
+            return default;
         }
 
+        // created on the first suspension or failure, so that methods completing synchronously never use it
         private STaskCompletionSource<T> source;
+        private bool hasSource;
+        private T result;
+
+        private void EnsureSource()
+        {
+            if (hasSource) return;
+            source = STaskCompletionSource<T>.Create();
+            hasSource = true;
+        }
 
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
@@ -82,12 +100,16 @@ namespace STask
 
         public void SetException(Exception exception)
         {
+            EnsureSource();
             source.SetException(exception);
         }
 
         public void SetResult(T result)
         {
-            source.SetResult(result);
+            if (hasSource)
+                source.SetResult(result);
+            else
+                this.result = result;
         }
 
         public void AwaitOnCompleted<TAwaiter, TStateMachine>(
@@ -95,6 +117,8 @@ namespace STask
             where TAwaiter : INotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
+            // the state machine is copied below, so the source must be created before it
+            EnsureSource();
             awaiter.OnCompleted(InstantContinuation<TStateMachine>.Get(in stateMachine,
                 static (in TStateMachine stateMachine) => stateMachine.MoveNext()));
         }
@@ -104,10 +128,12 @@ namespace STask
             where TAwaiter : ICriticalNotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
+            // the state machine is copied below, so the source must be created before it
+            EnsureSource();
             awaiter.UnsafeOnCompleted(InstantContinuation<TStateMachine>.Get(in stateMachine,
                 static (in TStateMachine stateMachine) => stateMachine.MoveNext()));
         }
 
-        public STask<T> Task => new(source.TaskSource);
+        public STask<T> Task => hasSource ? new STask<T>(source.TaskSource) : new STask<T>(result);
     }
 }

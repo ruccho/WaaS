@@ -11,6 +11,8 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - WebAssembly stack traces of traps (`WasmStackTrace`), with the function names in the `name` section.
 - MoonBit Importer, which imports `*.mbt` files as scripts, and **MoonBit Bindings Settings**, which generate MoonBit bindings of WIT interfaces.
 - wit2waas: inline interfaces of worlds.
+- `[ComponentField]` can be applied to public fields, so that a type serialized by Unity can be a record.
+- Prebuilt wit2waas binaries for Windows, macOS and Linux, attached to each GitHub release.
 
 ### Changed
 
@@ -19,6 +21,22 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - The messages of `TrapException` and `WasmException` include the WebAssembly stack trace.
 - The formatters created by reflection are preserved from managed code stripping.
 - The native editor library generates MoonBit bindings, and binds `spectest.print_char` (`println` of MoonBit) to a no-op when componentizing.
+- Instantiating a component validates the labels of records, variants, enums and flags in the imports (ignoring the case and `-`/`_`), and the names and sorts of the imports and exports of imported components.
+- `LinkException` on instantiation reports the path of the mismatched import with the expected and provided types.
+- Calls of host functions from components are about twice as fast. `ExternalFunction.InvokeAsync` is called after all the arguments are pushed, and completes without suspension when the host function completes synchronously.
+- The interpreter runs the function bodies translated at validation with a single dispatch loop and superinstructions, which is several times faster. The fuel is consumed at the start of each basic block. The control instructions (blocks and branches) cannot be executed with `Instruction.Execute` alone, and labels are no longer pushed to the stack.
+- Calls between WebAssembly functions are executed within the `WasmStackFrame` of the caller without pushing frames to `ExecutionContext`. `WasmStackFrame.Function` is the innermost function being executed, and `WasmStackTrace` still lists each function.
+- MoonBit Importer places the build output in a short directory under the temporary directory on Windows, so that the MoonBit compiler does not fail with the long paths of a project in a deep directory.
+
+### Fixed
+
+- Comparing component types and instance types no longer throws `NotImplementedException`.
+- A failure to resolve a type while validating an import is reported as a mismatch of the import instead of an empty `LinkException`.
+- The layout of variants whose payloads are aligned to 1 byte or have no payload (such as `option<u8>` and enums) in the memory: the payload was aligned to 2 bytes.
+- Lowering flags from C# `[Flags]` enums (passing flags to components) threw `InvalidOperationException`.
+- C# tuples of more than 7 elements: the elements after the 7th were formatted as a nested tuple instead of the elements of the same tuple.
+- Lowering a variant whose case is typed with a nullable type argument, such as `Option<int?>` holding `null` (`option<option<s32>>`), threw `InvalidOperationException`.
+- Rust Importer removes the crate of a script when the script is deleted or **Crate Root** is unchecked. A crate left for a deleted script broke `cargo check` of the Cargo workspace at the root of the project, which IDEs such as rust-analyzer run, and a crate left for a script that is no longer a crate root made IDEs analyze the script as another crate.
 
 ### Fixed
 

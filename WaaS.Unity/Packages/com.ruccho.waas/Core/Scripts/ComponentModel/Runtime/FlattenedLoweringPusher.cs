@@ -28,6 +28,29 @@ namespace WaaS.ComponentModel.Runtime
             return pooled;
         }
 
+        private bool isOwned;
+
+        /// <summary>
+        ///     Creates a pusher which is not returned to the pool, and reused by its owner with
+        ///     <see cref="InitRoot" />.
+        /// </summary>
+        public static FlattenedLoweringPusher CreateOwned()
+        {
+            return new FlattenedLoweringPusher { isOwned = true };
+        }
+
+        /// <summary>
+        ///     Initializes this pusher as a root pusher which writes to the destination owned by the caller.
+        /// </summary>
+        public LoweringPusherBase InitRoot(ICanonContext context, Memory<StackValueItem> destination,
+            ElementTypeSelector rootType)
+        {
+            Destination = destination;
+            destinationCursor = 0;
+            rentDestination = default;
+            return Init(context, rootType);
+        }
+
         private static FlattenedLoweringPusher Get(Memory<StackValueItem> destination)
         {
             if (!Pool.TryPop(out var pooled)) pooled = new FlattenedLoweringPusher();
@@ -45,7 +68,7 @@ namespace WaaS.ComponentModel.Runtime
             Destination = default;
             destinationCursor = 0;
 
-            if (reuse) Pool.Push(this);
+            if (reuse && !isOwned) Pool.Push(this);
         }
 
         protected override void PushU8Core(byte value)

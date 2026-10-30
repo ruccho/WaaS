@@ -75,7 +75,7 @@ namespace WaaS.ComponentModel.Runtime
             {
                 var task = resultPuller(pullable);
                 TakeResults(resultPusher);
-                return task.source.GetResult();
+                return task.GetAwaiter().GetResult();
             }
         }
 

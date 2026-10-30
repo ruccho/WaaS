@@ -1,4 +1,5 @@
-﻿using WaaS.Runtime;
+﻿using System;
+using WaaS.Runtime;
 
 namespace WaaS.Models
 {
@@ -27,6 +28,16 @@ namespace WaaS.Models
         /// </summary>
         /// <param name="current"></param>
         public abstract void Execute(WasmStackFrame current);
+
+        /// <summary>
+        ///     Throws for the control instructions, which are executed by the interpreter loop of
+        ///     <see cref="WasmStackFrame" /> directly.
+        /// </summary>
+        private protected void ThrowExecutedByInterpreter()
+        {
+            throw new NotSupportedException(
+                $"{GetType().Name} is executed by the interpreter loop of {nameof(WasmStackFrame)} and cannot be executed alone.");
+        }
 
         /// <summary>
         ///     Get the number of values to pop and push from the stack to validate stack depth.

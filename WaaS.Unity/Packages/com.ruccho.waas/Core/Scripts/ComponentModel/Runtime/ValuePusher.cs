@@ -12,6 +12,8 @@ namespace WaaS.ComponentModel.Runtime
 
         public bool IsDisposed => core!.Version != version;
 
+        internal IValuePusherCore? Core => core;
+
         public ValuePusher(IValuePusherCore core)
         {
             this.core = core;

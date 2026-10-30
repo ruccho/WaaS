@@ -188,7 +188,7 @@ namespace WaaS.ComponentModel.Models
                 foreach (var import in Source.imports)
                 {
                     arguments.TryGetValue(import.Name.Name, out var argument);
-                    if (!import.Descriptor.ValidateArgument(newContext, argument))
+                    if (!import.Descriptor.ValidateArgumentSafe(newContext, argument))
                     {
                         missingImports ??= new List<IImport<ISortedExportable>>();
                         missingImports.Add(import);
