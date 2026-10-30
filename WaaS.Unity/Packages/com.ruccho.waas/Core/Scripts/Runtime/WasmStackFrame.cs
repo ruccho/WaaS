@@ -252,21 +252,21 @@ namespace WaaS.Runtime
         /// <summary>
         ///     Returns from the function called in this frame to the caller.
         /// </summary>
-        /// <returns>The stack pointer of the caller.</returns>
-        private int ReturnToCaller(int sp, out int returnIndex)
+        /// <returns>The instruction index of the caller to continue. The stack pointer is set to the field.</returns>
+        private int ReturnToCaller(int sp)
         {
-            sp = MoveBranchValues(values, sp, frameBase, compiled.NumResults);
+            stackPointer = MoveBranchValues(ref values[0], sp, frameBase, compiled.NumResults);
 
             ref var caller = ref activations[--activationCount];
             Function = caller.Function;
             compiled = caller.Compiled;
             frameBase = caller.FrameBase;
             stackBase = caller.StackBase;
-            returnIndex = caller.ReturnIndex;
+            var returnIndex = caller.ReturnIndex;
             caller = default;
 
             if (Function.instance != currentInstance) SetInstance(Function.instance);
-            return sp;
+            return returnIndex;
         }
 
         private StackValueItem[] GrowValues(int requiredLength, int usedLength)
@@ -429,17 +429,12 @@ namespace WaaS.Runtime
 
         // moves the values a branch carries to the target height and returns the new stack pointer
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int MoveBranchValues(StackValueItem[] values, int sp, int height, int arity)
+        private static int MoveBranchValues(ref StackValueItem values, int sp, int height, int arity)
         {
-            if (arity == 0) return height;
             var source = sp - arity;
             if (source != height)
-            {
-                if (arity == 1)
-                    values[height] = values[source];
-                else
-                    Array.Copy(values, source, values, height, arity);
-            }
+                for (var i = 0; i < arity; i++)
+                    Unsafe.Add(ref values, height + i) = Unsafe.Add(ref values, source + i);
 
             return height + arity;
         }
@@ -451,33 +446,35 @@ namespace WaaS.Runtime
         /// </summary>
         private StackFrameState Run()
         {
+            // the locals are kept few for the register allocation
             var context = Context;
-            var code = compiled.Code;
-            var values = this.values;
             var frameBase = this.frameBase;
-            var stackBase = this.stackBase;
             var sp = stackPointer;
             var pc = (int)programCounter;
 
             // the bounds are not checked on the hot path. the validation ensures that the indices of the locals and
             // the operand stack are within the buffer, and the program counter stays in the code.
             ref var v0 = ref values[0];
-            ref var c0 = ref code[0];
-
-            // the calls in this frame count as frames of the context
-            var maxActivationCount = context.MaxStackFrames is { } maxStackFrames
-                ? (long)maxStackFrames - context.FrameCount
-                : long.MaxValue;
+            ref var c0 = ref compiled.Code[0];
 
             while (true)
             {
-                if (--context.fuel < 0)
+                ref var instr = ref Unsafe.Add(ref c0, pc);
+                var length = instr.Length;
+                if ((context.fuel -= length) < 0)
                 {
+                    if (length > 1)
+                    {
+                        // the fuel is not enough for all the instructions of a superinstruction.
+                        // continue without superinstructions until the function changes.
+                        context.fuel += length;
+                        c0 = ref compiled.BaseCode[0];
+                        continue;
+                    }
+
                     programCounter = (uint)pc;
                     context.OnFuelExhausted();
                 }
-
-                ref var instr = ref Unsafe.Add(ref c0, pc);
                 IInvocableFunction callee;
                 switch (instr.Op)
                 {
@@ -502,18 +499,18 @@ namespace WaaS.Runtime
                     case Op.BrLoop:
                         // every loop iteration takes a branch, so this is enough to abort a running loop
                         ThrowIfCancellationRequested(context, pc);
-                        sp = MoveBranchValues(values, sp, stackBase + instr.B, instr.C);
+                        sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
                         pc = instr.A;
                         continue;
                     case Op.Br:
-                        sp = MoveBranchValues(values, sp, stackBase + instr.B, instr.C);
+                        sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
                         pc = instr.A;
                         continue;
                     case Op.BrIfLoop:
                         if (Unsafe.Add(ref v0, --sp).valueI32 != 0)
                         {
                             ThrowIfCancellationRequested(context, pc);
-                            sp = MoveBranchValues(values, sp, stackBase + instr.B, instr.C);
+                            sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
                             pc = instr.A;
                             continue;
                         }
@@ -522,7 +519,27 @@ namespace WaaS.Runtime
                     case Op.BrIf:
                         if (Unsafe.Add(ref v0, --sp).valueI32 != 0)
                         {
-                            sp = MoveBranchValues(values, sp, stackBase + instr.B, instr.C);
+                            sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
+                            pc = instr.A;
+                            continue;
+                        }
+
+                        break;
+                    case Op.BrIfZeroLoop:
+                        if (Unsafe.Add(ref v0, --sp).valueI32 == 0)
+                        {
+                            // the cancellation is reported at br_if
+                            ThrowIfCancellationRequested(context, pc + 1);
+                            sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
+                            pc = instr.A;
+                            continue;
+                        }
+
+                        break;
+                    case Op.BrIfZero:
+                        if (Unsafe.Add(ref v0, --sp).valueI32 == 0)
+                        {
+                            sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
                             pc = instr.A;
                             continue;
                         }
@@ -538,7 +555,7 @@ namespace WaaS.Runtime
                         if (target.Index < 0) goto Return;
 
                         if (target.IsLoop) ThrowIfCancellationRequested(context, pc);
-                        sp = MoveBranchValues(values, sp, stackBase + target.Height, target.Arity);
+                        sp = MoveBranchValues(ref v0, sp, this.stackBase + target.Height, target.Arity);
                         pc = target.Index;
                         continue;
                     }
@@ -566,6 +583,38 @@ namespace WaaS.Runtime
 
                     #region Variable
 
+                    case Op.LocalGet2:
+                        Unsafe.Add(ref v0, sp) = Unsafe.Add(ref v0, frameBase + instr.A);
+                        Unsafe.Add(ref v0, sp + 1) = Unsafe.Add(ref v0, frameBase + instr.B);
+                        sp += 2;
+                        break;
+                    case Op.LocalGetConst:
+                    {
+                        Unsafe.Add(ref v0, sp) = Unsafe.Add(ref v0, frameBase + instr.A);
+                        ref var slot = ref Unsafe.Add(ref v0, sp + 1);
+                        slot.valueType = ValueType.I32;
+                        slot.valueI64 = (uint)instr.B;
+                        sp += 2;
+                        break;
+                    }
+                    case Op.LocalGetI32AddConst:
+                    {
+                        ref var slot = ref Unsafe.Add(ref v0, sp);
+                        slot.valueType = ValueType.I32;
+                        slot.valueI64 = Unsafe.Add(ref v0, frameBase + instr.A).valueI32 + (uint)instr.B;
+                        sp++;
+                        break;
+                    }
+                    case Op.I32AddConst:
+                    {
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
+                        slot.valueI64 = slot.valueI32 + (uint)instr.B;
+                        break;
+                    }
+                    case Op.LocalSetGet:
+                        Unsafe.Add(ref v0, frameBase + instr.A) = Unsafe.Add(ref v0, sp - 1);
+                        Unsafe.Add(ref v0, sp - 1) = Unsafe.Add(ref v0, frameBase + instr.B);
+                        break;
                     case Op.LocalGet:
                         Unsafe.Add(ref v0, sp) = Unsafe.Add(ref v0, frameBase + instr.A);
                         sp++;
@@ -1355,13 +1404,16 @@ namespace WaaS.Runtime
                     }
                 }
 
-                pc++;
+                pc += length;
                 continue;
 
                 Call:
                 {
                     programCounter = (uint)pc;
-                    if (activationCount >= maxActivationCount) ThrowStackOverflow();
+                    // the calls in this frame count as frames of the context
+                    if (context.MaxStackFrames is { } maxStackFrames &&
+                        context.FrameCount + activationCount >= maxStackFrames)
+                        ThrowStackOverflow();
 
                     var numParameters = instr.B;
                     if (callee is InstanceFunction wasmCallee)
@@ -1369,12 +1421,9 @@ namespace WaaS.Runtime
                         // the cancellation is observed on calls as well as loops, to abort a deep recursion
                         ThrowIfCancellationRequested(context, pc);
                         EnterFunction(wasmCallee, pc + 1, sp - numParameters);
-                        code = compiled.Code;
-                        c0 = ref code[0];
-                        values = this.values;
+                        c0 = ref compiled.Code[0];
                         v0 = ref values[0];
                         frameBase = this.frameBase;
-                        stackBase = this.stackBase;
                         sp = stackBase;
                         pc = 0;
                         continue;
@@ -1397,11 +1446,11 @@ namespace WaaS.Runtime
                     return StackFrameState.Completed;
                 }
 
-                sp = ReturnToCaller(sp, out pc);
-                code = compiled.Code;
-                c0 = ref code[0];
+                // the locals are not passed by reference to keep them in registers
+                pc = ReturnToCaller(sp);
+                sp = stackPointer;
+                c0 = ref compiled.Code[0];
                 frameBase = this.frameBase;
-                stackBase = this.stackBase;
             }
         }
 

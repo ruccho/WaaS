@@ -9,7 +9,7 @@ namespace WaaS.Runtime
     ///     Operations executed by the interpreter loop of <see cref="WasmStackFrame" />.
     ///     Instructions without a dedicated operation are executed with <see cref="Instruction.Execute" />.
     /// </summary>
-    internal enum Op
+    internal enum Op : ushort
     {
         Fallback,
         Nop,
@@ -141,7 +141,16 @@ namespace WaaS.Runtime
         Store8,
         Store16,
         Store32,
-        Store64
+        Store64,
+
+        // superinstructions, which execute a sequence of instructions at once
+        LocalGet2, // local.get A, local.get B
+        LocalGetConst, // local.get A, i32.const B
+        LocalGetI32AddConst, // local.get A, i32.const B, i32.add
+        I32AddConst, // i32.const B, i32.add
+        LocalSetGet, // local.set A, local.get B
+        BrIfZero, // i32.eqz, br_if (A, B and C are the same as BrIf)
+        BrIfZeroLoop
     }
 
     /// <summary>
@@ -151,6 +160,10 @@ namespace WaaS.Runtime
     internal struct CompiledInstruction
     {
         [FieldOffset(0)] public Op Op;
+
+        // the number of the instructions executed at once, which is also the fuel consumed
+        [FieldOffset(2)] public ushort Length;
+
         [FieldOffset(4)] public int A;
         [FieldOffset(8)] public int B;
         [FieldOffset(12)] public int C;
@@ -176,10 +189,12 @@ namespace WaaS.Runtime
     /// </summary>
     internal sealed class CompiledFunction
     {
-        private CompiledFunction(CompiledInstruction[] code, BranchTarget[] branchTargets,
-            StackValueItem[] initialLocals, int numParameters, int numResults, int maxStackDepth)
+        private CompiledFunction(CompiledInstruction[] code, CompiledInstruction[] baseCode,
+            BranchTarget[] branchTargets, StackValueItem[] initialLocals, int numParameters, int numResults,
+            int maxStackDepth)
         {
             Code = code;
+            BaseCode = baseCode;
             BranchTargets = branchTargets;
             InitialLocals = initialLocals;
             NumParameters = numParameters;
@@ -187,7 +202,17 @@ namespace WaaS.Runtime
             MaxStackDepth = maxStackDepth;
         }
 
+        /// <summary>
+        ///     The instructions with superinstructions. A sequence of instructions which falls through is executed at once
+        ///     from the first one.
+        /// </summary>
         public CompiledInstruction[] Code { get; }
+
+        /// <summary>
+        ///     The instructions without superinstructions, each of which executes only the instruction at the index.
+        ///     Used when the remaining fuel is not enough to execute a superinstruction.
+        /// </summary>
+        public CompiledInstruction[] BaseCode { get; }
         public BranchTarget[] BranchTargets { get; }
 
         /// <summary>
@@ -391,15 +416,77 @@ namespace WaaS.Runtime
                         }
                     }
 
+                    compiled.Length = 1;
                     if (maxHeight < height) maxHeight = height;
                 }
 
                 // the stack depth from the validation also counts the labels and is not smaller
                 var maxStackDepth = Math.Max(maxHeight, (int)(function.MaxStackDepth ?? 0));
 
-                return new CompiledFunction(code, branchTargets.ToArray(), initialLocals, parameterTypes.Length,
-                    function.Type.ResultTypes.Length, maxStackDepth);
+                return new CompiledFunction(Fuse(code), code, branchTargets.ToArray(), initialLocals,
+                    parameterTypes.Length, function.Type.ResultTypes.Length, maxStackDepth);
             }
+        }
+
+        // whether the operation always continues to the next instruction without throwing
+        private static bool IsStraight(Op op)
+        {
+            return op == Op.Nop || (op >= Op.Drop && op <= Op.Reinterpret) ||
+                   (op >= Op.LocalGet2 && op <= Op.LocalSetGet);
+        }
+
+        private static bool IsI32Const(in CompiledInstruction instr)
+        {
+            return instr.Op == Op.Const && instr.A == (int)ValueType.I32;
+        }
+
+        /// <summary>
+        ///     Creates the code with superinstructions. Every index still has its own entry, which is the target of
+        ///     branches.
+        /// </summary>
+        private static CompiledInstruction[] Fuse(CompiledInstruction[] baseCode)
+        {
+            var code = (CompiledInstruction[])baseCode.Clone();
+            for (var i = 0; i < code.Length; i++)
+            {
+                ref var fused = ref code[i];
+                var first = baseCode[i];
+                var second = i + 1 < baseCode.Length ? baseCode[i + 1] : default;
+                var third = i + 2 < baseCode.Length ? baseCode[i + 2] : default;
+
+                if (first.Op == Op.LocalGet && IsI32Const(second) && third.Op == Op.I32Add)
+                    fused = new CompiledInstruction
+                        { Op = Op.LocalGetI32AddConst, Length = 3, A = first.A, B = second.B };
+                else if (first.Op == Op.LocalGet && second.Op == Op.LocalGet)
+                    fused = new CompiledInstruction { Op = Op.LocalGet2, Length = 2, A = first.A, B = second.A };
+                else if (first.Op == Op.LocalGet && IsI32Const(second))
+                    fused = new CompiledInstruction { Op = Op.LocalGetConst, Length = 2, A = first.A, B = second.B };
+                else if (IsI32Const(first) && second.Op == Op.I32Add)
+                    fused = new CompiledInstruction { Op = Op.I32AddConst, Length = 2, B = first.B };
+                else if (first.Op == Op.LocalSet && second.Op == Op.LocalGet)
+                    fused = new CompiledInstruction { Op = Op.LocalSetGet, Length = 2, A = first.A, B = second.A };
+                else if (first.Op == Op.I32Eqz && (second.Op == Op.BrIf || second.Op == Op.BrIfLoop))
+                    fused = new CompiledInstruction
+                    {
+                        Op = second.Op == Op.BrIf ? Op.BrIfZero : Op.BrIfZeroLoop,
+                        Length = 2,
+                        A = second.A,
+                        B = second.B,
+                        C = second.C
+                    };
+
+                if (!IsStraight(fused.Op)) continue;
+
+                // the following blocks, loops and ends do nothing
+                var next = i + fused.Length;
+                while (next < baseCode.Length && baseCode[next].Op == Op.Nop && fused.Length < ushort.MaxValue)
+                {
+                    fused.Length++;
+                    next++;
+                }
+            }
+
+            return code;
         }
 
         private static void Translate(in ValidationContext context, Instruction instr, ref CompiledInstruction compiled)
