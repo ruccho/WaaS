@@ -149,8 +149,29 @@ namespace WaaS.Runtime
         LocalGetI32AddConst, // local.get A, i32.const B, i32.add
         I32AddConst, // i32.const B, i32.add
         LocalSetGet, // local.set A, local.get B
-        BrIfZero, // i32.eqz, br_if (A, B and C are the same as BrIf)
-        BrIfZeroLoop
+        LocalGet3, // local.get A, local.get B, local.get C
+        LocalGet2Const, // local.get A, local.get B, i32.const C
+        LocalTeeConst, // local.tee A, i32.const B
+        LocalGetI32AddTee, // local.get A, i32.add, local.tee B
+        I32AndConst, // i32.const B, i32.and
+        I32ShlAdd, // i32.shl, i32.add
+        I32ShrUTee, // i32.shr_u, local.tee A
+
+        // superinstructions with memory accesses, which may throw
+        Load32Tee, // (i32|f32).load A (B: value type), local.tee C
+        ConstLoad32Tee, // i32.const B, i32.load A, local.tee C
+        Store32Const2, // (i32|f32|i64).store32 A, i32.const B, i32.const C
+        Store32LocalGet2, // (i32|f32|i64).store32 A, local.get B, local.get C
+
+        // superinstructions ending with br_if. A, B and C are the same as BrIf
+        BrIfZero, // i32.eqz, br_if
+        BrIfZeroLoop,
+        BrIfI32Ne, // i32.ne, br_if
+        BrIfI32NeLoop,
+        BrIfI32GtU, // i32.gt_u, br_if
+        BrIfI32GtULoop,
+        BrIfI32LtU, // i32.lt_u, br_if
+        BrIfI32LtULoop
     }
 
     /// <summary>
@@ -441,15 +462,14 @@ namespace WaaS.Runtime
         private static bool IsStraight(Op op)
         {
             return op == Op.Nop || (op >= Op.Drop && op <= Op.Reinterpret) ||
-                   (op >= Op.LocalGet2 && op <= Op.LocalSetGet);
+                   (op >= Op.LocalGet2 && op <= Op.I32ShrUTee);
         }
 
         // whether the operation may continue at an instruction other than the next one. the operations executed with
         // Instruction.Execute may push a frame and continue at the next instruction after the frame completes.
         private static bool IsBlockEnd(Op op)
         {
-            return op == Op.Fallback || (op >= Op.Return && op <= Op.CallIndirect) || op == Op.BrIfZero ||
-                   op == Op.BrIfZeroLoop;
+            return op == Op.Fallback || (op >= Op.Return && op <= Op.CallIndirect) || op >= Op.BrIfZero;
         }
 
         /// <summary>
@@ -543,9 +563,29 @@ namespace WaaS.Runtime
                 var second = i + 1 < baseCode.Length ? baseCode[i + 1] : default;
                 var third = i + 2 < baseCode.Length ? baseCode[i + 2] : default;
 
+                // the sequences are chosen by the frequencies in the scripts compiled by rustc
                 if (first.Op == Op.LocalGet && IsI32Const(second) && third.Op == Op.I32Add)
                     fused = new CompiledInstruction
                         { Op = Op.LocalGetI32AddConst, Length = 3, A = first.A, B = second.B };
+                else if (first.Op == Op.LocalGet && second.Op == Op.LocalGet && third.Op == Op.LocalGet)
+                    fused = new CompiledInstruction
+                        { Op = Op.LocalGet3, Length = 3, A = first.A, B = second.A, C = third.A };
+                else if (first.Op == Op.LocalGet && second.Op == Op.LocalGet && IsI32Const(third))
+                    fused = new CompiledInstruction
+                        { Op = Op.LocalGet2Const, Length = 3, A = first.A, B = second.A, C = third.B };
+                else if (first.Op == Op.LocalGet && second.Op == Op.I32Add && third.Op == Op.LocalTee)
+                    fused = new CompiledInstruction
+                        { Op = Op.LocalGetI32AddTee, Length = 3, A = first.A, B = third.A };
+                else if (IsI32Const(first) && second.Op == Op.Load32 && second.B == (int)ValueType.I32 &&
+                         third.Op == Op.LocalTee)
+                    fused = new CompiledInstruction
+                        { Op = Op.ConstLoad32Tee, Length = 3, A = second.A, B = first.B, C = third.A };
+                else if (first.Op == Op.Store32 && IsI32Const(second) && IsI32Const(third))
+                    fused = new CompiledInstruction
+                        { Op = Op.Store32Const2, Length = 3, A = first.A, B = second.B, C = third.B };
+                else if (first.Op == Op.Store32 && second.Op == Op.LocalGet && third.Op == Op.LocalGet)
+                    fused = new CompiledInstruction
+                        { Op = Op.Store32LocalGet2, Length = 3, A = first.A, B = second.A, C = third.A };
                 else if (first.Op == Op.LocalGet && second.Op == Op.LocalGet)
                     fused = new CompiledInstruction { Op = Op.LocalGet2, Length = 2, A = first.A, B = second.A };
                 else if (first.Op == Op.LocalGet && IsI32Const(second))
@@ -554,15 +594,39 @@ namespace WaaS.Runtime
                     fused = new CompiledInstruction { Op = Op.I32AddConst, Length = 2, B = first.B };
                 else if (first.Op == Op.LocalSet && second.Op == Op.LocalGet)
                     fused = new CompiledInstruction { Op = Op.LocalSetGet, Length = 2, A = first.A, B = second.A };
-                else if (first.Op == Op.I32Eqz && (second.Op == Op.BrIf || second.Op == Op.BrIfLoop))
+                else if (first.Op == Op.LocalTee && IsI32Const(second))
+                    fused = new CompiledInstruction { Op = Op.LocalTeeConst, Length = 2, A = first.A, B = second.B };
+                else if (IsI32Const(first) && second.Op == Op.I32And)
+                    fused = new CompiledInstruction { Op = Op.I32AndConst, Length = 2, B = first.B };
+                else if (first.Op == Op.I32Shl && second.Op == Op.I32Add)
+                    fused = new CompiledInstruction { Op = Op.I32ShlAdd, Length = 2 };
+                else if (first.Op == Op.I32ShrU && second.Op == Op.LocalTee)
+                    fused = new CompiledInstruction { Op = Op.I32ShrUTee, Length = 2, A = second.A };
+                else if (first.Op == Op.Load32 && second.Op == Op.LocalTee)
                     fused = new CompiledInstruction
+                        { Op = Op.Load32Tee, Length = 2, A = first.A, B = first.B, C = second.A };
+                else if (second.Op == Op.BrIf || second.Op == Op.BrIfLoop)
+                {
+                    var op = first.Op switch
                     {
-                        Op = second.Op == Op.BrIf ? Op.BrIfZero : Op.BrIfZeroLoop,
-                        Length = 2,
-                        A = second.A,
-                        B = second.B,
-                        C = second.C
+                        Op.I32Eqz => Op.BrIfZero,
+                        Op.I32Ne => Op.BrIfI32Ne,
+                        Op.I32GtU => Op.BrIfI32GtU,
+                        Op.I32LtU => Op.BrIfI32LtU,
+                        _ => Op.Fallback
                     };
+
+                    // the loop variant follows each operation
+                    if (op != Op.Fallback)
+                        fused = new CompiledInstruction
+                        {
+                            Op = second.Op == Op.BrIf ? op : op + 1,
+                            Length = 2,
+                            A = second.A,
+                            B = second.B,
+                            C = second.C
+                        };
+                }
 
                 if (!IsStraight(fused.Op)) continue;
 
