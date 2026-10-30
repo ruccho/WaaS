@@ -119,7 +119,7 @@ namespace Wukuro
             try
             {
                 using var binder = run.GetBinder(executionContext);
-                PushArguments(binder.ArgumentPusher, run.Type, context, ownedContext, ownedArguments);
+                PushArguments(binder.ArgumentPusher, run.Type, context, arguments, ownedContext, ownedArguments);
 
                 await binder.InvokeAsync(executionContext);
             }
@@ -134,14 +134,14 @@ namespace Wukuro
             }
         }
 
-        private static void PushArguments(ValuePusher pusher, IFunctionType type, IContext context,
+        private static void PushArguments(ValuePusher pusher, IFunctionType type, IContext context, IArguments arguments,
             Owned ownedContext, List<Owned> ownedArguments)
         {
             foreach (var parameter in type.Parameters.Span)
-                PushArgument(pusher, parameter, context, ownedContext, ownedArguments);
+                PushArgument(pusher, parameter, context, arguments, ownedContext, ownedArguments);
         }
 
-        private static void PushArgument(ValuePusher pusher, IParameter parameter, IContext context,
+        private static void PushArgument(ValuePusher pusher, IParameter parameter, IContext context, IArguments arguments,
             Owned ownedContext, List<Owned> ownedArguments)
         {
             var type = parameter.Type.Despecialize();
@@ -149,6 +149,16 @@ namespace Wukuro
             if (type is IBorrowedType { Type: var resourceType } && resourceType == ContextImpl.Instance)
             {
                 pusher.PushBorrowed(ownedContext.Borrow());
+                return;
+            }
+
+            // records and enums defined in C# are pushed with their formatters, and the resources in them are
+            // owned by the script
+            if (parameter.Type is IEnumType || type is IRecordType)
+            {
+                if (!arguments.TryGetValue(parameter.Label, out var value) || value == null)
+                    throw new ArgumentException($"The argument \"{parameter.Label}\" is not set.");
+                WukuroArgumentTypes.Push(value, pusher);
                 return;
             }
 

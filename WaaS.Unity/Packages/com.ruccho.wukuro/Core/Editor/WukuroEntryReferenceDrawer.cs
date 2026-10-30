@@ -150,7 +150,7 @@ namespace Wukuro.Editor
             // keep the containers whose name and type match, in the order of the parameters
             var synced = parameters
                 .Select(p => existing.FirstOrDefault(c => c != null && c.Name == p.Name && c.WitType == p.WitType) ??
-                             ArgumentContainerBase.Create(p.Name, p.WitType))
+                             ArgumentContainerBase.Create(p))
                 .Where(c => c != null)
                 .ToArray();
 
