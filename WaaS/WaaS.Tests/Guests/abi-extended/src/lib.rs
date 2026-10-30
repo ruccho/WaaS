@@ -60,12 +60,21 @@ impl ex::Guest for AbiExtended {
     }
 
     fn texts(values: Vec<String>) -> Vec<String> {
-        record(&values);
+        if values.iter().map(|s| s.len()).sum::<usize>() <= 1024 {
+            record(&values);
+        } else {
+            // large values are not formatted to keep the test fast
+            record(values.iter().map(|s| s.len()).collect::<Vec<_>>());
+        }
         values
     }
 
     fn bytes(values: Vec<u8>) -> Vec<u8> {
-        record(&values);
+        if values.len() <= 1024 {
+            record(&values);
+        } else {
+            record(values.len());
+        }
         values
     }
 

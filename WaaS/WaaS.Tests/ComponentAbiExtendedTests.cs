@@ -407,6 +407,20 @@ public class ComponentAbiExtendedTests
         Assert.That(await LastCall(), Is.EqualTo("[Level::High, Level::Low, Level::Mid]"));
     }
 
+    [Test]
+    public async Task ExportsRoundTripListsGrowingMemory()
+    {
+        // larger than the initial memory of the guest, so that the allocations grow the memory while lowering
+        var bytes = new byte[4 << 20];
+        for (var i = 0; i < bytes.Length; i++) bytes[i] = unchecked((byte)(i * 7));
+        Assert.That((await CallExport(e => e.Bytes(bytes))).Span.SequenceEqual(bytes), Is.True);
+        Assert.That(await LastCall(), Is.EqualTo((4 << 20).ToString()));
+
+        var texts = Enumerable.Range(0, 4).Select(i => new string((char)('a' + i), 1 << 20) + "😀").ToArray();
+        Assert.That((await CallExport(e => e.Texts(texts))).ToArray(), Is.EqualTo(texts));
+        Assert.That(await LastCall(), Is.EqualTo("[1048580, 1048580, 1048580, 1048580]"));
+    }
+
     private static IExtValues.Inner Inner(byte a, short? b, params string[] c)
     {
         return new IExtValues.Inner { A = a, B = b, C = c };
