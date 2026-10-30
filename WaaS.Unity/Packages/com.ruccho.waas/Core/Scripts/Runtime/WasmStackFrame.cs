@@ -18,6 +18,7 @@ namespace WaaS.Runtime
         private int[] labelDepthStack;
         private int labelDepthStackPointer;
         private Memory<StackValueItem> locals;
+        private StackFrame pushedFrame;
         private uint programCounter;
         private Memory<StackValueItem> stack;
         private StackValueItem[] stackBuffer;
@@ -45,6 +46,7 @@ namespace WaaS.Runtime
 
             isEnd = default;
             isFramePushed = default;
+            pushedFrame = default;
             labelDepthStack = default;
             labelDepthStackPointer = default;
             locals = default;
@@ -90,9 +92,15 @@ namespace WaaS.Runtime
 
                 programCounter++;
 
-                if (isEnd || instrs.Length <= programCounter) return StackFrameState.Completed;
+                if (isFramePushed)
+                {
+                    // a frame of the host is moved here without going back to the execution context, and the
+                    // frame of WebAssembly continues if it completes synchronously.
+                    var state = MovePushedFrame(waker);
+                    if (state != StackFrameState.Completed) return state;
+                }
 
-                if (isFramePushed) return StackFrameState.Ready;
+                if (isEnd || instrs.Length <= programCounter) return StackFrameState.Completed;
             }
         }
 
@@ -233,7 +241,38 @@ namespace WaaS.Runtime
         public void PushFrame(IInvocableFunction function, Span<StackValueItem> parameters)
         {
             isFramePushed = true;
-            Context.PushFrame(function, parameters);
+            pushedFrame = Context.PushFrameFromFrame(function, parameters);
+        }
+
+        private StackFrameState MovePushedFrame(Waker waker)
+        {
+            var frame = pushedFrame;
+            pushedFrame = default;
+
+            StackFrameState state;
+            if (frame.Core is WasmStackFrame)
+            {
+                // nested frames of WebAssembly are left to the execution context not to grow the native stack
+                if (!Context.TryEnterInlineFrame()) return StackFrameState.Ready;
+                try
+                {
+                    state = frame.MoveNext(waker);
+                }
+                finally
+                {
+                    Context.ExitInlineFrame();
+                }
+            }
+            else
+            {
+                state = frame.MoveNext(waker);
+            }
+
+            if (state != StackFrameState.Completed) return state;
+
+            Context.CompleteFrame(frame, this);
+            isFramePushed = false;
+            return StackFrameState.Completed;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
