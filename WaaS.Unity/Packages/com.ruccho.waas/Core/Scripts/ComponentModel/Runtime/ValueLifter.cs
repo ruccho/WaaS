@@ -119,6 +119,12 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.Bool })
                 throw new InvalidOperationException();
+            return PullBoolCore();
+        }
+
+        // the type is already checked by the caller
+        internal bool PullBoolCore()
+        {
             try
             {
                 if (Flattened)
@@ -136,6 +142,12 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.U8 })
                 throw new InvalidOperationException();
+            return PullU8Core();
+        }
+
+        // the type is already checked by the caller
+        internal byte PullU8Core()
+        {
             try
             {
                 if (Flattened)
@@ -153,6 +165,12 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.U16 })
                 throw new InvalidOperationException();
+            return PullU16Core();
+        }
+
+        // the type is already checked by the caller
+        internal ushort PullU16Core()
+        {
             try
             {
                 if (Flattened)
@@ -170,6 +188,12 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.U32 })
                 throw new InvalidOperationException();
+            return PullU32Core();
+        }
+
+        // the type is already checked by the caller
+        internal uint PullU32Core()
+        {
             try
             {
                 if (Flattened)
@@ -187,6 +211,12 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.U64 })
                 throw new InvalidOperationException();
+            return PullU64Core();
+        }
+
+        // the type is already checked by the caller
+        internal ulong PullU64Core()
+        {
             try
             {
                 if (Flattened)
@@ -204,6 +234,12 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S8 })
                 throw new InvalidOperationException();
+            return PullS8Core();
+        }
+
+        // the type is already checked by the caller
+        internal sbyte PullS8Core()
+        {
             try
             {
                 if (Flattened)
@@ -221,6 +257,12 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S16 })
                 throw new InvalidOperationException();
+            return PullS16Core();
+        }
+
+        // the type is already checked by the caller
+        internal short PullS16Core()
+        {
             try
             {
                 if (Flattened)
@@ -238,6 +280,12 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S32 })
                 throw new InvalidOperationException();
+            return PullS32Core();
+        }
+
+        // the type is already checked by the caller
+        internal int PullS32Core()
+        {
             try
             {
                 if (Flattened)
@@ -255,6 +303,12 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.S64 })
                 throw new InvalidOperationException();
+            return PullS64Core();
+        }
+
+        // the type is already checked by the caller
+        internal long PullS64Core()
+        {
             try
             {
                 if (Flattened)
@@ -272,6 +326,12 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.F32 })
                 throw new InvalidOperationException();
+            return PullF32Core();
+        }
+
+        // the type is already checked by the caller
+        internal float PullF32Core()
+        {
             try
             {
                 float value;
@@ -294,6 +354,12 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.F64 })
                 throw new InvalidOperationException();
+            return PullF64Core();
+        }
+
+        // the type is already checked by the caller
+        internal double PullF64Core()
+        {
             try
             {
                 double value;
@@ -316,6 +382,12 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.Char })
                 throw new InvalidOperationException();
+            return PullCharCore();
+        }
+
+        // the type is already checked by the caller
+        internal uint PullCharCore()
+        {
             try
             {
                 uint value;
@@ -355,7 +427,12 @@ namespace WaaS.ComponentModel.Runtime
         {
             if (GetNextType()?.Despecialize() is not IPrimitiveValueType { Kind: PrimitiveValueTypeKind.String })
                 throw new InvalidOperationException();
+            return PullStringInfoCore();
+        }
 
+        // the type is already checked by the caller
+        internal StringInfo PullStringInfoCore()
+        {
             const uint UTF16_TAG = unchecked((uint)(1 << 31));
 
             uint begin;

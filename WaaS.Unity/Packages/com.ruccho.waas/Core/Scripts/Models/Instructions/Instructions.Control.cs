@@ -195,12 +195,9 @@ namespace WaaS.Models
             for (var i = paramTypes.Length - 1; i >= 0; i--) stackState.Pop(paramTypes[i]);
         }
 
-        protected abstract void OnBeforeBlockEnter(WasmStackFrame current, out uint continuationIndex);
-
         public sealed override void Execute(WasmStackFrame current)
         {
-            OnBeforeBlockEnter(current, out var continuationIndex);
-            current.EnterBlock(new Label(Index, continuationIndex), ParameterTypes.Length);
+            ThrowExecutedByInterpreter();
         }
 
         public virtual void InjectDelimiter(BlockDelimiterInstruction delimiter)
@@ -223,11 +220,6 @@ namespace WaaS.Models
     public partial class Block : BlockInstruction
     {
         public override uint Arity => (uint)ResultTypes.Length;
-
-        protected override void OnBeforeBlockEnter(WasmStackFrame current, out uint continuationIndex)
-        {
-            continuationIndex = End.Index + 1;
-        }
     }
 
     /// <summary>
@@ -237,11 +229,6 @@ namespace WaaS.Models
     public partial class Loop : BlockInstruction
     {
         public override uint Arity => (uint)ParameterTypes.Length;
-
-        protected override void OnBeforeBlockEnter(WasmStackFrame current, out uint continuationIndex)
-        {
-            continuationIndex = Index;
-        }
     }
 
     /// <summary>
@@ -264,19 +251,6 @@ namespace WaaS.Models
         {
             stackState.Pop(ValueType.I32);
             base.ValidateStackState(context, ref stackState);
-        }
-
-        protected override void OnBeforeBlockEnter(WasmStackFrame current, out uint continuationIndex)
-        {
-            var c = current.Pop().ExpectValueI32();
-            continuationIndex = End.Index + 1;
-
-            if (c != 0) return;
-
-            if (Else != null)
-                current.Jump(Else.Index + 1);
-            else
-                current.Jump(End.Index);
         }
 
         public override void InjectDelimiter(BlockDelimiterInstruction delimiter)
@@ -304,7 +278,7 @@ namespace WaaS.Models
     {
         public override void Execute(WasmStackFrame current)
         {
-            current.EndBlock();
+            ThrowExecutedByInterpreter();
         }
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)
@@ -325,7 +299,7 @@ namespace WaaS.Models
     {
         public override void Execute(WasmStackFrame current)
         {
-            current.EndBlock();
+            ThrowExecutedByInterpreter();
         }
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)
@@ -348,7 +322,7 @@ namespace WaaS.Models
 
         public override void Execute(WasmStackFrame current)
         {
-            current.JumpLabel(LabelIndex);
+            ThrowExecutedByInterpreter();
         }
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)
@@ -371,9 +345,7 @@ namespace WaaS.Models
 
         public override void Execute(WasmStackFrame current)
         {
-            var c = current.Pop().ExpectValueI32();
-            if (c == 0) return;
-            current.JumpLabel(LabelIndex);
+            ThrowExecutedByInterpreter();
         }
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)
@@ -398,12 +370,7 @@ namespace WaaS.Models
 
         public override void Execute(WasmStackFrame current)
         {
-            var i = current.Pop().ExpectValueI32();
-
-            if (i < LabelIndices.Length)
-                current.JumpLabel(LabelIndices.Span[checked((int)i)]);
-            else
-                current.JumpLabel(DefaultLabelIndex);
+            ThrowExecutedByInterpreter();
         }
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)

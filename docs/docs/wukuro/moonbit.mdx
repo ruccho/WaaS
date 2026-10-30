@@ -71,6 +71,7 @@ The first parameter of an entry point is `@wukuro.Context`. The following parame
 | `@wukuro.Action` | `borrow<action>` | UnityEvent |
 | `@wukuro.Object` | `borrow<object>` | Any `UnityEngine.Object` |
 | `@wukuro.ObjectOf[T]` | `borrow<object>` | An object of type `T` ([Object types](#object-types)) |
+| A record or an enum defined in C# | `record`, `enum` | The fields of the C# type ([Structured Arguments](./structured-arguments.mdx)) |
 
 MoonBit has no type for `s8`. The values of the parameters are matched by the parameter name in kebab-case, as in Rust.
 

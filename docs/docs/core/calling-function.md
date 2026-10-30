@@ -57,6 +57,7 @@ using var context = new ExecutionContext
 };
 ```
 
+- The fuel of a basic block (a sequence of instructions without branches and calls) is consumed at its start. When the remaining fuel is not enough for the block, the instructions are counted one by one, so the consumed fuel equals the number of the executed instructions. However, when another trap occurs in the middle of a block, the fuel of the rest of the block is also consumed.
 - When the fuel runs out, `FuelExhaustedException` (a `TrapException`) is thrown. As with other traps, it may be wrapped in a `WasmException` that tells where the execution stopped. The remaining fuel becomes 0, and the host can refill `Fuel` at any time to continue using the context.
 - When cancellation is requested, `OperationCanceledException` is thrown. Cancellation is observed at branches and calls while the guest code is running, and immediately while the execution is suspended.
 - In both cases the frames of the invocation are discarded, so the context can be used for another invocation.

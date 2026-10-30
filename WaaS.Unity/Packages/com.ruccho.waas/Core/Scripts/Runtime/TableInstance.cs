@@ -69,9 +69,12 @@ namespace WaaS.Runtime
             }
 
             Tables = tables;
+            TableArray = tables;
         }
 
         public ReadOnlyMemory<Table> Tables { get; }
+
+        internal Table[] TableArray { get; }
 
         public void Initialize(FunctionInstance functionInstance, GlobalInstance globals, ElementSection elementSection)
         {

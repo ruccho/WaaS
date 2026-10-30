@@ -20,6 +20,9 @@ namespace WaaS.Runtime
 
         // remaining fuel. it is long.MaxValue when the fuel is unlimited, and never runs out in practice.
         internal long fuel = long.MaxValue;
+        // frames of WebAssembly moved directly by their caller frame, instead of the loop in MoveToEndOrPending()
+        private const int MaxInlineFrameDepth = 8;
+        private int inlineFrameDepth;
         private bool isFuelLimited;
         private bool moving;
 
@@ -66,6 +69,10 @@ namespace WaaS.Runtime
         public CancellationToken CancellationToken { get; set; }
 
         public StackFrame LastFrame { get; private set; }
+
+        internal int FrameCount => frames.Count;
+
+        internal uint? MaxStackFrames => maxStackFrames;
 
         private StackFrame? Current
         {
@@ -196,6 +203,50 @@ namespace WaaS.Runtime
             }
         }
 
+        internal bool TryEnterInlineFrame()
+        {
+            if (inlineFrameDepth >= MaxInlineFrameDepth) return false;
+            inlineFrameDepth++;
+            return true;
+        }
+
+        internal void ExitInlineFrame()
+        {
+            inlineFrameDepth--;
+        }
+
+        /// <summary>
+        ///     Pops the completed frame at the top, and passes its results to the next frame.
+        /// </summary>
+        internal void CompleteFrame(StackFrame frame, WasmStackFrame next)
+        {
+            if (frames.Pop() != frame) throw new InvalidOperationException();
+
+            var resultLength = frame.ResultLength;
+            if (resultLength <= 16)
+            {
+                Span<StackValueItem> results = stackalloc StackValueItem[resultLength];
+                frame.TakeResults(results);
+                next.PushResults(next.Version, results);
+            }
+            else
+            {
+                var rented = ArrayPool<StackValueItem>.Shared.Rent(resultLength);
+                try
+                {
+                    var results = rented.AsSpan(0, resultLength);
+                    frame.TakeResults(results);
+                    next.PushResults(next.Version, results);
+                }
+                finally
+                {
+                    ArrayPool<StackValueItem>.Shared.Return(rented);
+                }
+            }
+
+            frame.Dispose();
+        }
+
         private void DiscardFrames(StackFrame initial)
         {
             lock (locker)
@@ -266,12 +317,26 @@ namespace WaaS.Runtime
         {
             lock (locker)
             {
-                if (frames.Count >= maxStackFrames) throw new InvalidOperationException("Stack overflow.");
-
-                var frame = function.CreateFrame(this, inputValues);
-                frames.Push(frame);
-                return frame;
+                return PushFrameWhileMoving(function, inputValues);
             }
+        }
+
+        /// <summary>
+        ///     Pushes a frame from a frame being moved.
+        /// </summary>
+        internal StackFrame PushFrameFromFrame(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
+        {
+            // the lock is already held while a frame is moved
+            return moving ? PushFrameWhileMoving(function, inputValues) : PushFrame(function, inputValues);
+        }
+
+        private StackFrame PushFrameWhileMoving(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
+        {
+            if (frames.Count >= maxStackFrames) throw new InvalidOperationException("Stack overflow.");
+
+            var frame = function.CreateFrame(this, inputValues);
+            frames.Push(frame);
+            return frame;
         }
 
         internal StackFrame PushFrame(StackFrame frame)
