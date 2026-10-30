@@ -334,14 +334,14 @@ namespace WaaS.Models
 
                     if (instr is BrTable brTable)
                     {
+                        // each label is checked against the same values, which may be of any types in an
+                        // unreachable code, so the labels only need the same arity
+                        var arity = blockResultTypeStack.Get((int)brTable.DefaultLabelIndex).LabelTypes.Length;
                         foreach (var index in brTable.LabelIndices.Span)
                         {
                             var labelTypes = blockResultTypeStack.Get((int)index).LabelTypes.Span;
+                            if (labelTypes.Length != arity) throw new InvalidCodeException("type mismatch");
                             stackState.ValidateResults(labelTypes, false);
-
-                            // pop and push to close "any" values so that every label sees the same types
-                            for (var j = 0; j < labelTypes.Length; j++) stackState.PopAny();
-                            foreach (var labelType in labelTypes) stackState.Push(labelType);
                         }
 
                         {

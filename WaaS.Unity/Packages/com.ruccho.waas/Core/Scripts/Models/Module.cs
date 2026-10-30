@@ -9,6 +9,7 @@ namespace WaaS.Models
     /// </summary>
     public class Module
     {
+        private HashSet<uint> declaredFunctionReferences;
         private NameSection names;
 
         internal Module(ref ModuleReader reader, long? size = null)
@@ -38,10 +39,19 @@ namespace WaaS.Models
             TypeSection typeSection = null;
             CodeSection codeSection = null;
 
+            var lastSectionOrder = 0;
             while (reader.Available > rest)
             {
                 var section = Section.Read(ref reader);
                 sections.Add(section);
+
+                // the sections except the custom sections appear at most once in the order
+                var order = GetSectionOrder(section);
+                if (order != 0)
+                {
+                    if (order <= lastSectionOrder) throw new InvalidModuleException("unexpected content after last section");
+                    lastSectionOrder = order;
+                }
 
                 switch (section)
                 {
@@ -136,15 +146,157 @@ namespace WaaS.Models
 
             InternalFunctions = functionInstances;
 
-            var numImportedFunctions = 0;
+            int numImportedFunctions = 0, numImportedTables = 0, numImportedMemories = 0, numImportedGlobals = 0;
             if (ImportSection != null)
                 foreach (var import in ImportSection.Imports.Span)
-                    if (import.Descriptor.Kind == ImportKind.Type)
-                        numImportedFunctions++;
+                    switch (import.Descriptor.Kind)
+                    {
+                        case ImportKind.Type:
+                            numImportedFunctions++;
+                            break;
+                        case ImportKind.Table:
+                            numImportedTables++;
+                            break;
+                        case ImportKind.Memory:
+                            numImportedMemories++;
+                            break;
+                        case ImportKind.Global:
+                            numImportedGlobals++;
+                            break;
+                    }
+
             ImportedFunctionCount = numImportedFunctions;
+            ImportedGlobalCount = numImportedGlobals;
+            FunctionCount = numImportedFunctions + functionInstances.Length;
+            TableCount = numImportedTables + (TableSection?.TableTypes.Length ?? 0);
+            MemoryCount = numImportedMemories + (MemorySection?.MemoryTypes.Length ?? 0);
+            GlobalCount = numImportedGlobals + (GlobalSection?.Globals.Length ?? 0);
+
+            ValidateModuleFields();
 
             foreach (var functionInstance in functionInstances)
                 functionInstance.Validate(new ValidationContext(this, functionInstance));
+        }
+
+        /// <summary>
+        ///     Validates the fields outside the function bodies, and collects the functions declared to be referenced.
+        /// </summary>
+        private void ValidateModuleFields()
+        {
+            var context = new ValidationContext(this, null);
+
+            if (TypeSection != null)
+                foreach (var type in TypeSection.FuncTypes.Span)
+                {
+                    foreach (var t in type.ParameterTypes.Span) ValidateValueType(t);
+                    foreach (var t in type.ResultTypes.Span) ValidateValueType(t);
+                }
+
+            if (ImportSection != null)
+                foreach (var import in ImportSection.Imports.Span)
+                    if (import.Descriptor.TypeIndex is { } typeIndex &&
+                        typeIndex >= (TypeSection?.FuncTypes.Length ?? 0))
+                        throw new InvalidModuleException($"unknown type {typeIndex}");
+
+            // functions are declared by the references outside the function bodies
+            if (ExportSection != null)
+                foreach (var export in ExportSection.Exports.Span)
+                    if (export.Descriptor.FunctionIndex is { } functionIndex)
+                        DeclareFunctionReference(functionIndex);
+
+            if (ElementSection != null)
+                foreach (var element in ElementSection.Elements.Span)
+                foreach (var item in element.Items.Span)
+                    DeclareFunctionReferences(item);
+
+            if (GlobalSection != null)
+                foreach (var global in GlobalSection.Globals.Span)
+                    DeclareFunctionReferences(global.Expression);
+
+            if (GlobalSection != null)
+                foreach (var global in GlobalSection.Globals.Span)
+                {
+                    ValidateValueType(global.Type.ValueType);
+                    // the initializers can only read the imported globals
+                    ((ConstantExpression)global.Expression).Validate(context, global.Type.ValueType,
+                        ImportedGlobalCount);
+                }
+
+            if (ElementSection != null)
+                foreach (var element in ElementSection.Elements.Span)
+                {
+                    foreach (var item in element.Items.Span)
+                        if (item is ConstantExpression expression)
+                            expression.Validate(context, element.Type, ImportedGlobalCount);
+                        else if (item is ConstantExpressionFunction function)
+                            context.ValidateFunctionReference(function.FunctionIndex, false);
+
+                    if (element.Mode == ElementMode.Active)
+                    {
+                        var tableType = context.GetTableType(element.TableIndex);
+                        if ((ValueType)tableType.ElementType != element.Type)
+                            throw new InvalidModuleException("type mismatch");
+                        ((ConstantExpression)element.Offset).Validate(context, ValueType.I32, ImportedGlobalCount);
+                    }
+                }
+
+            if (DataSection != null)
+                foreach (var data in DataSection.Data.Span)
+                    if (!data.IsPassive)
+                    {
+                        context.GetMemoryType(data.MemoryIndex);
+                        ((ConstantExpression)data.Offset).Validate(context, ValueType.I32, ImportedGlobalCount);
+                    }
+        }
+
+        private static int GetSectionOrder(Section section)
+        {
+            return section switch
+            {
+                Models.TypeSection => 1,
+                Models.ImportSection => 2,
+                Models.FunctionSection => 3,
+                Models.TableSection => 4,
+                Models.MemorySection => 5,
+                Models.GlobalSection => 6,
+                Models.ExportSection => 7,
+                Models.StartSection => 8,
+                Models.ElementSection => 9,
+                Models.DataCountSection => 10,
+                Models.CodeSection => 11,
+                Models.DataSection => 12,
+                _ => 0
+            };
+        }
+
+        private static void ValidateValueType(ValueType type)
+        {
+            if (!type.IsDefined()) throw new InvalidModuleException("malformed value type");
+        }
+
+        private void DeclareFunctionReferences(IConstantExpression expression)
+        {
+            switch (expression)
+            {
+                case ConstantExpressionFunction function:
+                    DeclareFunctionReference(function.FunctionIndex);
+                    break;
+                case ConstantExpression constant:
+                    foreach (var instr in constant.Instructions.Span)
+                        if (instr is RefFunc refFunc)
+                            DeclareFunctionReference(refFunc.FunctionIndex);
+                    break;
+            }
+        }
+
+        private void DeclareFunctionReference(uint functionIndex)
+        {
+            (declaredFunctionReferences ??= new HashSet<uint>()).Add(functionIndex);
+        }
+
+        internal bool IsFunctionReferenceDeclared(uint functionIndex)
+        {
+            return declaredFunctionReferences != null && declaredFunctionReferences.Contains(functionIndex);
         }
 
         public Preamble Preamble { get; }
@@ -168,6 +320,17 @@ namespace WaaS.Models
         ///     <c>ImportedFunctionCount + Function.FunctionIndex</c>.
         /// </summary>
         public int ImportedFunctionCount { get; }
+
+        public int ImportedGlobalCount { get; }
+
+        /// <summary>
+        ///     The numbers of the items in the index spaces, including the imported ones.
+        /// </summary>
+        public int FunctionCount { get; }
+
+        public int TableCount { get; }
+        public int MemoryCount { get; }
+        public int GlobalCount { get; }
 
         /// <summary>
         ///     Names in the "name" custom section. Empty if the module does not have the section.

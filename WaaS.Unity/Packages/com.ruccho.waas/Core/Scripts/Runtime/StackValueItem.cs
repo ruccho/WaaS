@@ -37,6 +37,9 @@ namespace WaaS.Runtime
                 ValueType.F32 => valueF32.ToString(),
                 ValueType.F64 => valueF64.ToString(),
                 ValueType.V128 => valueV128.ToString(),
+                ValueType.FuncRef or ValueType.ExternRef => valueI32 == 0
+                    ? $"{valueType}(null)"
+                    : $"{valueType}({References.Get(valueI32)})",
                 _ => "(unknown)"
             };
         }
@@ -95,6 +98,33 @@ namespace WaaS.Runtime
             this = default;
             valueType = ValueType.V128;
             valueV128 = value;
+        }
+
+        /// <summary>
+        ///     Creates a reference value (<c>funcref</c> or <c>externref</c>). <c>null</c> is the null reference.
+        /// </summary>
+        /// <remarks>
+        ///     The value holds the object weakly. The object must be kept alive while the value is used outside
+        ///     tables and globals, which hold the objects strongly.
+        /// </remarks>
+        public static StackValueItem FromReference(ValueType type, object value)
+        {
+            if (!type.IsReference()) throw new ArgumentException($"{type} is not a reference type.", nameof(type));
+            if (type == ValueType.FuncRef && value is not (null or IInvocableFunction))
+                throw new ArgumentException($"funcref must be {nameof(IInvocableFunction)}.", nameof(value));
+            return new StackValueItem(type) { valueI32 = References.GetHandle(value) };
+        }
+
+        public readonly bool IsNullReference => valueType.IsReference() && valueI32 == 0;
+
+        /// <summary>
+        ///     Gets the object of a reference value. Returns <c>null</c> for the null reference.
+        /// </summary>
+        public readonly object ExpectReference()
+        {
+            if (!valueType.IsReference())
+                throw new InvalidCodeException($"StackValueType expected: reference, actual: {valueType}");
+            return References.Get(valueI32);
         }
 
         public readonly bool TryGetLabel(out Label label)
@@ -244,6 +274,9 @@ namespace WaaS.Runtime
                     return valueI64 == other.valueI64;
                 case ValueType.V128:
                     return valueV128.Equals(other.valueV128);
+                case ValueType.FuncRef:
+                case ValueType.ExternRef:
+                    return valueI32 == other.valueI32;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -274,6 +307,10 @@ namespace WaaS.Runtime
                     break;
                 case ValueType.V128:
                     code.Add(valueV128);
+                    break;
+                case ValueType.FuncRef:
+                case ValueType.ExternRef:
+                    code.Add(valueI32);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();

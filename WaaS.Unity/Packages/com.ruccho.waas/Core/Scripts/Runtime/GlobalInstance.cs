@@ -8,7 +8,8 @@ namespace WaaS.Runtime
     /// </summary>
     public class GlobalInstance
     {
-        internal GlobalInstance(ImportSection importSection, GlobalSection globalSection, IImports importObject)
+        internal GlobalInstance(ImportSection importSection, GlobalSection globalSection, IImports importObject,
+            FunctionInstance functions)
         {
             // starts import first, next global
             var imports = importSection != null ? importSection.Imports.Span : Span<Import>.Empty;
@@ -29,7 +30,7 @@ namespace WaaS.Runtime
 
                 if (!importObject.TryGetImportable(import.ModuleName, import.Name, out Global global) ||
                     global.Mutability != globalType.Value.Mutability || global.ValueType != globalType.Value.ValueType)
-                    throw new ArgumentException(
+                    throw new InvalidModuleException(
                         $"Failed to import global in module: {import.ModuleName}, name: {import.Name}");
 
                 globals[cursor++] = global;
@@ -38,7 +39,7 @@ namespace WaaS.Runtime
             var internalGlobals = globalSection != null ? globalSection.Globals.Span : Span<Models.Global>.Empty;
             foreach (var internalGlobal in internalGlobals)
             {
-                var value = internalGlobal.Expression.Evaluate(globals);
+                var value = internalGlobal.Expression.Evaluate(globals, functions.Functions.Span);
 
                 if (internalGlobal.Type.ValueType != value.valueType) throw new InvalidModuleException("type mismatch");
 

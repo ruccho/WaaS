@@ -11,9 +11,27 @@ namespace WaaS.Runtime
     {
         protected internal StackValueItem stackValue;
 
+        // the object of a reference value, which the global holds strongly
+        private protected object referenceKeepAlive;
+
         internal Global(StackValueItem value)
         {
             stackValue = value;
+            KeepReferenceAlive();
+        }
+
+        /// <summary>
+        ///     Creates a global of a reference type (<c>funcref</c> or <c>externref</c>).
+        /// </summary>
+        public static Global CreateReference(ValueType type, object value, Mutability mutability = Mutability.Const)
+        {
+            var item = StackValueItem.FromReference(type, value);
+            return mutability == Mutability.Var ? new GlobalMutable(item) : new Global(item);
+        }
+
+        private protected void KeepReferenceAlive()
+        {
+            referenceKeepAlive = stackValue.valueType.IsReference() ? stackValue.ExpectReference() : null;
         }
 
         public virtual Mutability Mutability => Mutability.Const;
@@ -41,6 +59,7 @@ namespace WaaS.Runtime
         {
             if (value.valueType != stackValue.valueType) throw new InvalidOperationException();
             stackValue = value;
+            if (value.valueType.IsReference()) KeepReferenceAlive();
         }
     }
 

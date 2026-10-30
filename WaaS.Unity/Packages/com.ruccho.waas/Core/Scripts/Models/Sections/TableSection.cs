@@ -32,6 +32,8 @@ namespace WaaS.Models
         internal TableType(ref ModuleReader reader)
         {
             ElementType = reader.ReadUnaligned<ElementType>();
+            if (ElementType is not (ElementType.FuncRef or ElementType.ExternRef))
+                throw new InvalidModuleException("malformed reference type");
             Limits = new Limits(ref reader, 32);
         }
 

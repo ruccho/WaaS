@@ -25,7 +25,7 @@ namespace WaaS.Runtime
         ReturnIf,
         BrTable, // A: the start index in BranchTargets, B: the number of the targets excluding the default
         Call, // A: function index, B: the number of the parameters
-        CallIndirect, // A: type index, B: the number of the parameters
+        CallIndirect, // A: type index, B: the number of the parameters, C: table index
 
         // parametric
         Drop,
@@ -658,6 +658,7 @@ namespace WaaS.Runtime
                     compiled.Op = Op.CallIndirect;
                     compiled.A = checked((int)callIndirect.FunctionTypeIndex);
                     compiled.B = context.Module.TypeSection.FuncTypes.Span[compiled.A].ParameterTypes.Length;
+                    compiled.C = checked((int)callIndirect.TableIndex);
                     return;
                 case Drop:
                     compiled.Op = Op.Drop;
@@ -681,7 +682,8 @@ namespace WaaS.Runtime
                     compiled.Op = Op.GlobalGet;
                     compiled.A = checked((int)globalGet.GlobalIndex);
                     return;
-                case GlobalSet globalSet:
+                // the globals hold the objects of references, which global.set of the instruction updates
+                case GlobalSet globalSet when !context.GetGlobalType(globalSet.GlobalIndex).ValueType.IsReference():
                     compiled.Op = Op.GlobalSet;
                     compiled.A = checked((int)globalSet.GlobalIndex);
                     return;

@@ -197,6 +197,7 @@ namespace WaaS.Models
     /// </summary>
     public enum ElementType : byte
     {
-        FuncRef = 0x70
+        FuncRef = 0x70,
+        ExternRef = 0x6F
     }
 }

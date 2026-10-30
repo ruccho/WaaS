@@ -27,8 +27,21 @@ namespace WaaS.Models
             if (isUnreachable && Depth == 0) return 0; // any
 
             var popped = stack[--Depth];
-            if (popped == type) return popped;
+            // a value pushed in an unreachable code may be of any type
+            if (popped == type || (byte)popped == 0) return type;
             throw new InvalidCodeException();
+        }
+
+        /// <summary>
+        ///     Pops a value of a reference type. Returns 0 if the type is unknown in an unreachable code.
+        /// </summary>
+        public ValueType PopReference()
+        {
+            if (isUnreachable && Depth == 0) return 0; // any
+
+            var popped = stack[--Depth];
+            if ((byte)popped == 0 || popped.IsReference()) return popped;
+            throw new InvalidCodeException("type mismatch");
         }
 
         public ValueType PopAny()

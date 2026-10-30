@@ -21,13 +21,14 @@ namespace WaaS.Models
     }
 
     /// <summary>
-    ///     Single element entry in an element section.
+    ///     Single element segment in an element section.
     /// </summary>
     public class Element
     {
         internal Element(ref ModuleReader reader)
         {
             var kind = reader.ReadUnalignedLeb128U32();
+            if (kind > 7) throw new InvalidModuleException("malformed elements segment kind");
 
             // > The initial integer can be interpreted as a bitfield. Bit 0 distinguishes a passive or declarative
             // > segment from an active segment, bit 1 indicates the presence of an explicit table index for an active
@@ -39,42 +40,74 @@ namespace WaaS.Models
 
             if (isActive)
             {
+                Mode = ElementMode.Active;
                 TableIndex = hasTableIndexOrDeclarative ? reader.ReadUnalignedLeb128U32() : 0;
                 Offset = new ConstantExpression(ref reader);
             }
             else
             {
-                throw new NotSupportedException("Passive and declarative segments are not supported yet.");
+                Mode = hasTableIndexOrDeclarative ? ElementMode.Declarative : ElementMode.Passive;
             }
 
-            IConstantExpression[] functionIndices;
+            // the element type is omitted for the kinds 0 and 4
+            var hasType = kind is not (0 or 4);
+
+            IConstantExpression[] items;
             if (hasElementExpressions)
             {
-                if (reader.ReadUnaligned<ReferenceType>() != ReferenceType.Function)
-                    throw new NotSupportedException("Reference types are not supported yet.");
+                Type = ValueType.FuncRef;
+                if (hasType)
+                {
+                    Type = reader.ReadUnaligned<ValueType>();
+                    if (!Type.IsReference()) throw new InvalidModuleException("malformed reference type");
+                }
 
                 var numElements = reader.ReadVectorSize();
-                functionIndices = new IConstantExpression[numElements];
-                for (var i = 0; i < numElements; i++) functionIndices[i] = new ConstantExpression(ref reader);
+                items = new IConstantExpression[numElements];
+                for (var i = 0; i < numElements; i++) items[i] = new ConstantExpression(ref reader);
             }
             else
             {
-                var elementKind = kind == 0 ? ElementKind.Function : reader.ReadUnaligned<ElementKind>();
-                if (elementKind != ElementKind.Function)
-                    throw new NotSupportedException("Only function elements are supported.");
+                Type = ValueType.FuncRef;
+                if (hasType && reader.ReadUnaligned<ElementKind>() != ElementKind.Function)
+                    throw new InvalidModuleException("malformed element kind");
                 var numFunctions = reader.ReadVectorSize();
-                functionIndices = new IConstantExpression[numFunctions];
-                for (var i = 0; i < functionIndices.Length; i++)
-                    functionIndices[i] =
-                        new ConstantExpressionConstant(new StackValueItem(reader.ReadUnalignedLeb128U32()));
+                items = new IConstantExpression[numFunctions];
+                for (var i = 0; i < items.Length; i++)
+                    items[i] = new ConstantExpressionFunction(reader.ReadUnalignedLeb128U32());
             }
 
-            FunctionIndices = functionIndices;
+            Items = items;
         }
 
+        public ElementMode Mode { get; }
+
+        /// <summary>
+        ///     The index of the table initialized by an active segment.
+        /// </summary>
         public uint TableIndex { get; }
+
+        /// <summary>
+        ///     The offset in the table initialized by an active segment. <c>null</c> for the other segments.
+        /// </summary>
         public IConstantExpression Offset { get; }
-        public ReadOnlyMemory<IConstantExpression> FunctionIndices { get; }
+
+        /// <summary>
+        ///     <see cref="ValueType.FuncRef" /> or <see cref="ValueType.ExternRef" />.
+        /// </summary>
+        public ValueType Type { get; }
+
+        /// <summary>
+        ///     The expressions of the references in the segment.
+        /// </summary>
+        public ReadOnlyMemory<IConstantExpression> Items { get; }
+    }
+
+    public enum ElementMode : byte
+    {
+        Active,
+        Passive,
+        Declarative
     }
 
     public enum ElementKind : byte

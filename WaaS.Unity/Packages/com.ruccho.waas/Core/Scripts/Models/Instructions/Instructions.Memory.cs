@@ -614,5 +614,72 @@ namespace WaaS.Models
         }
     }
 
+    /// <summary>
+    ///     Represents "memory.init" instruction.
+    /// </summary>
+    [OpCode(0xFC, 0x08)]
+    public partial class MemoryInit : Instruction
+    {
+        [Operand(0)] public uint DataIndex { get; }
+        [Operand(1)] public byte Reserved { get; }
+
+        public override void Execute(WasmStackFrame current)
+        {
+            var n = current.Pop().ExpectValueI32();
+            var src = current.Pop().ExpectValueI32();
+            var dest = current.Pop().ExpectValueI32();
+            current.Instance.MemoryInstance.Init(0, DataIndex, dest, src, n);
+        }
+
+        public override void Validate(in ValidationContext context)
+        {
+            base.Validate(context);
+            if (Reserved != 0) throw new InvalidModuleException();
+            context.GetMemoryType(0);
+            context.ValidateDataIndex(DataIndex);
+        }
+
+        public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)
+        {
+            return (3, 0);
+        }
+
+        public override void ValidateStackState(in ValidationContext context, ref ValidationBlockStackState stackState)
+        {
+            stackState.Pop(ValueType.I32);
+            stackState.Pop(ValueType.I32);
+            stackState.Pop(ValueType.I32);
+        }
+    }
+
+    /// <summary>
+    ///     Represents "data.drop" instruction.
+    /// </summary>
+    [OpCode(0xFC, 0x09)]
+    public partial class DataDrop : Instruction
+    {
+        [Operand(0)] public uint DataIndex { get; }
+
+        public override void Execute(WasmStackFrame current)
+        {
+            current.Instance.MemoryInstance.DropDataSegment(DataIndex);
+        }
+
+        public override void Validate(in ValidationContext context)
+        {
+            base.Validate(context);
+            context.ValidateDataIndex(DataIndex);
+        }
+
+        public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)
+        {
+            return (0, 0);
+        }
+
+        public override void ValidateStackState(in ValidationContext context, ref ValidationBlockStackState stackState)
+        {
+        }
+    }
+
     #endregion
 }
