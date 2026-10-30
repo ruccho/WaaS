@@ -124,3 +124,34 @@ public class SaveDataVariables : IVariables
 - ゲーム固有のインターフェースは、ゲーム側で登録します（[機能の追加](./extending.mdx#3-インポートを登録する)）。
 
 スクリプトの実行の前に、一度だけ登録してください。
+
+## スクリプトのテスト
+
+import するインターフェースをスタブの実装に置き換えると、スクリプトを EditMode テストで実行できます。たとえば、ホスト関数の定義を変更した後に、すべてのエントリポイントが最後まで実行されることを確認できます。
+
+- `WukuroEntryPoints.CreateDefaultArguments` は、エントリポイントの引数を既定値（0、`false`、空の文字列、何もしない action、null のオブジェクト、record と enum の既定値）で作成します。
+- `WukuroClock.Current` に `WukuroClock.Immediate` を設定すると、スクリプトの待機（`delay`、`delay-frame`、`schedule`）は、指定した時間に関わらず次のフレームで完了します。テストの後に `null` に戻してください。
+
+```csharp
+[UnityTest]
+public IEnumerator RunsToTheEnd()
+{
+    return UniTask.ToCoroutine(async () =>
+    {
+        WukuroClock.Current = WukuroClock.Immediate;
+        try
+        {
+            var entry = WukuroEntryPoints.Parse(script.Wit).Single(e => e.Name == "villager");
+            var runner = new WukuroRunner();
+            // スクリプトが使うモジュールのスタブ（テスト側で実装する）
+            runner.AddModule(new StubDialogModule());
+            await runner.RunAsync(await script.LoadComponentAsync(), entry.Name,
+                WukuroEntryPoints.CreateDefaultArguments(entry), new MemoryVariables());
+        }
+        finally
+        {
+            WukuroClock.Current = null;
+        }
+    });
+}
+```

@@ -20,18 +20,12 @@ namespace Wukuro
 
         public async ValueTask Delay(float duration, ITypes.UpdateModeKind updateMode)
         {
-            await UniTask.Delay(TimeSpan.FromSeconds(duration), updateMode switch
-            {
-                ITypes.UpdateModeKind.Unscaled => DelayType.UnscaledDeltaTime,
-                ITypes.UpdateModeKind.Scaled => DelayType.DeltaTime,
-                ITypes.UpdateModeKind.Realtime => DelayType.Realtime,
-                _ => throw new ArgumentOutOfRangeException(nameof(updateMode), updateMode, null)
-            });
+            await WukuroClock.Current.Delay(duration, updateMode);
         }
 
         public async ValueTask DelayFrame(uint numFrames)
         {
-            await UniTask.DelayFrame(checked((int)numFrames));
+            await WukuroClock.Current.DelayFrame(numFrames);
         }
 
         public ValueTask<Owned<ITypes.ITaskResourceImpl>> Schedule(Borrowed<ITypes.IActionResourceImpl> action,

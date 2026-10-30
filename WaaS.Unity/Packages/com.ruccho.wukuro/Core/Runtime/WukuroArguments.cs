@@ -15,6 +15,15 @@ namespace Wukuro
     {
         [SerializeReference] private ArgumentContainerBase[] _arguments = new ArgumentContainerBase[0];
 
+        public Arguments()
+        {
+        }
+
+        internal Arguments(ArgumentContainerBase[] arguments)
+        {
+            _arguments = arguments;
+        }
+
         public bool TryGetArgument(IContext context, string name, out ITypes.Argument result)
         {
             // NOTE: should we use a dictionary for faster lookup?

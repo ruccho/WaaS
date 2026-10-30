@@ -98,6 +98,63 @@ namespace Wukuro.Tests
         }
 
         [Test]
+        public async Task DefaultArgumentsAreCreatedForEachParameter()
+        {
+            var variables = new MemoryVariables();
+            var entry = WukuroEntryPoints.Parse(script.Wit).Single(e => e.Name == "store-arguments");
+
+            await RunAsync(new WukuroRunner(), Entry("store-arguments"), variables,
+                WukuroEntryPoints.CreateDefaultArguments(entry));
+
+            Assert.That(variables.Values["count"].TyS32, Is.EqualTo(0));
+            Assert.That(variables.Values["label"].TyString, Is.EqualTo("!"));
+        }
+
+        [Test]
+        public async Task DefaultArgumentsIncludeActionsAndObjects()
+        {
+            foreach (var name in new[] { "run-action", "typed-object" })
+            {
+                var entry = WukuroEntryPoints.Parse(script.Wit).Single(e => e.Name == name);
+                await RunAsync(new WukuroRunner(), Entry(name), new MemoryVariables(),
+                    WukuroEntryPoints.CreateDefaultArguments(entry));
+            }
+        }
+
+        [Test]
+        public void DefaultArgumentsIncludeRecordsAndEnums()
+        {
+            var entry = WukuroEntryPoints.Parse(script.Wit).Single(e => e.Name == "forward-settings");
+            var arguments = WukuroEntryPoints.CreateDefaultArguments(entry);
+
+            Assert.That(arguments.TryGetValue("settings", out var settings), Is.True);
+            Assert.That(settings, Is.EqualTo(default(ITestRecordTypes.DoorSettings)));
+            Assert.That(arguments.TryGetValue("kind", out var kind), Is.True);
+            Assert.That(kind, Is.EqualTo(default(ITestRecordTypes.DoorKind)));
+        }
+
+        [Test]
+        public async Task ImmediateClockDoesNotWaitForTheDuration()
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            await WukuroClock.Immediate.Delay(60, CoreTypes.UpdateModeKind.Realtime);
+            await WukuroClock.Immediate.DelayFrame(1000);
+            Assert.That(stopwatch.Elapsed.TotalSeconds, Is.LessThan(10));
+
+            WukuroClock.Current = WukuroClock.Immediate;
+            try
+            {
+                Assert.That(WukuroClock.Current, Is.SameAs(WukuroClock.Immediate));
+            }
+            finally
+            {
+                WukuroClock.Current = null;
+            }
+
+            Assert.That(WukuroClock.Current, Is.SameAs(WukuroClock.Default));
+        }
+
+        [Test]
         public async Task VariablesPersistAcrossRuns()
         {
             var variables = new MemoryVariables();
