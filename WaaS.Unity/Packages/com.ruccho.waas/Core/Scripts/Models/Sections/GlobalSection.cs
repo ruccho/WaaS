@@ -49,6 +49,7 @@ namespace WaaS.Models
         {
             ValueType = reader.ReadUnaligned<ValueType>();
             Mutability = reader.ReadUnaligned<Mutability>();
+            if (Mutability is not (Mutability.Const or Mutability.Var)) throw new InvalidModuleException("malformed mutability");
         }
 
 

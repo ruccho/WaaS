@@ -492,8 +492,10 @@ namespace WaaS.Models
         public override void Execute(WasmStackFrame current)
         {
             var n = current.Pop().ExpectValueI32();
-            if (current.Instance.TryGrowMemory(0, checked((int)n), current.MaxMemoryPages, out var oldNumPages))
-                current.Push(checked((uint)oldNumPages));
+            // more than 65536 pages cannot be allocated
+            if (n <= 1 << 16 &&
+                current.Instance.TryGrowMemory(0, (int)n, current.MaxMemoryPages, out var oldNumPages))
+                current.Push((uint)oldNumPages);
             else
                 current.Push(uint.MaxValue);
         }
@@ -536,7 +538,8 @@ namespace WaaS.Models
 
             checked
             {
-                if (src + n > memory.Length || dest + n > memory.Length) throw new TrapException("out of bounds memory access");
+                if ((ulong)src + n > (ulong)memory.Length || (ulong)dest + n > (ulong)memory.Length)
+                    throw new TrapException("out of bounds memory access");
                 if (n == 0) return;
 
                 var srcSpan = memory.Slice((int)src, (int)n);
@@ -585,7 +588,7 @@ namespace WaaS.Models
 
             checked
             {
-                if (dest + n > memory.Length) throw new TrapException("out of bounds memory access");
+                if ((ulong)dest + n > (ulong)memory.Length) throw new TrapException("out of bounds memory access");
                 if (n == 0) return;
 
                 var destSpan = memory.Slice((int)dest, (int)n);

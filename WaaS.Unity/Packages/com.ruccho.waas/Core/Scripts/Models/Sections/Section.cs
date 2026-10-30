@@ -29,7 +29,7 @@ namespace WaaS.Models
                 SectionId.Code => new CodeSection(ref reader),
                 SectionId.Data => new DataSection(ref reader),
                 SectionId.DataCount => new DataCountSection(ref reader),
-                _ => throw new ArgumentOutOfRangeException()
+                _ => throw new InvalidModuleException($"malformed section id {(byte)sectionId}")
             };
 
             if (reader.Position != next)

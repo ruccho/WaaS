@@ -760,10 +760,9 @@ namespace WaaS.Models
     {
         protected override uint Operate(uint lhs, uint rhs)
         {
-            if (rhs == 0) throw new InvalidCodeException();
-            var result = unchecked((int)lhs / (int)rhs);
-            if (result == 1 << (sizeof(uint) * 8 - 1)) throw new InvalidCodeException();
-            return unchecked((uint)result);
+            if (rhs == 0) throw Traps.DivideByZero();
+            if (lhs == 0x8000_0000 && rhs == uint.MaxValue) throw Traps.IntegerOverflow();
+            return unchecked((uint)((int)lhs / (int)rhs));
         }
     }
 
@@ -775,7 +774,7 @@ namespace WaaS.Models
     {
         protected override uint Operate(uint lhs, uint rhs)
         {
-            if (rhs == 0) throw new InvalidCodeException();
+            if (rhs == 0) throw Traps.DivideByZero();
             return lhs / rhs;
         }
     }
@@ -790,7 +789,7 @@ namespace WaaS.Models
         {
             unchecked
             {
-                if (rhs == 0) throw new InvalidCodeException();
+                if (rhs == 0) throw Traps.DivideByZero();
                 var j1 = (long)(int)lhs;
                 var j2 = (long)(int)rhs;
                 if (Math.Abs(j1) < Math.Abs(j2)) return (uint)j1;
@@ -807,7 +806,7 @@ namespace WaaS.Models
     {
         protected override uint Operate(uint lhs, uint rhs)
         {
-            if (rhs == 0) throw new InvalidCodeException();
+            if (rhs == 0) throw Traps.DivideByZero();
             return lhs - rhs * (lhs / rhs);
         }
     }
@@ -1025,10 +1024,9 @@ namespace WaaS.Models
     {
         protected override ulong Operate(ulong lhs, ulong rhs)
         {
-            if (rhs == 0) throw new InvalidCodeException();
-            var result = unchecked((long)lhs / (long)rhs);
-            if (result == (long)1 << (sizeof(ulong) * 8 - 1)) throw new InvalidCodeException();
-            return unchecked((ulong)result);
+            if (rhs == 0) throw Traps.DivideByZero();
+            if (lhs == 0x8000_0000_0000_0000 && rhs == ulong.MaxValue) throw Traps.IntegerOverflow();
+            return unchecked((ulong)((long)lhs / (long)rhs));
         }
     }
 
@@ -1040,7 +1038,7 @@ namespace WaaS.Models
     {
         protected override ulong Operate(ulong lhs, ulong rhs)
         {
-            if (rhs == 0) throw new InvalidCodeException();
+            if (rhs == 0) throw Traps.DivideByZero();
             return lhs / rhs;
         }
     }
@@ -1055,7 +1053,7 @@ namespace WaaS.Models
         {
             unchecked
             {
-                if (rhs == 0) throw new InvalidCodeException();
+                if (rhs == 0) throw Traps.DivideByZero();
                 var j1 = (long)lhs;
                 var j2 = (long)rhs;
                 if (j1 < 0 && j2 < 0 && j1 != j2) j2 = -j2;
@@ -1073,7 +1071,7 @@ namespace WaaS.Models
     {
         protected override ulong Operate(ulong lhs, ulong rhs)
         {
-            if (rhs == 0) throw new InvalidCodeException();
+            if (rhs == 0) throw Traps.DivideByZero();
             return lhs - rhs * (lhs / rhs);
         }
     }
@@ -1564,7 +1562,7 @@ namespace WaaS.Models
     {
         protected override uint Operate(float value)
         {
-            return unchecked((uint)checked((int)value));
+            return unchecked((uint)(int)Traps.Truncate(value, -2147483649.0, 2147483648.0));
         }
     }
 
@@ -1576,7 +1574,7 @@ namespace WaaS.Models
     {
         protected override uint Operate(float value)
         {
-            return checked((uint)value);
+            return (uint)Traps.Truncate(value, -1.0, 4294967296.0);
         }
     }
 
@@ -1588,7 +1586,7 @@ namespace WaaS.Models
     {
         protected override uint Operate(double value)
         {
-            return unchecked((uint)checked((int)value));
+            return unchecked((uint)(int)Traps.Truncate(value, -2147483649.0, 2147483648.0));
         }
     }
 
@@ -1600,7 +1598,7 @@ namespace WaaS.Models
     {
         protected override uint Operate(double value)
         {
-            return checked((uint)value);
+            return (uint)Traps.Truncate(value, -1.0, 4294967296.0);
         }
     }
 
@@ -1636,7 +1634,8 @@ namespace WaaS.Models
     {
         protected override ulong Operate(float value)
         {
-            return unchecked((ulong)checked((long)value));
+            // -2^63 is exactly representable and valid
+            return unchecked((ulong)(long)Traps.Truncate(value, -9223372036854777856.0, 9223372036854775808.0));
         }
     }
 
@@ -1648,7 +1647,7 @@ namespace WaaS.Models
     {
         protected override ulong Operate(float value)
         {
-            return checked((ulong)value);
+            return (ulong)Traps.Truncate(value, -1.0, 18446744073709551616.0);
         }
     }
 
@@ -1660,7 +1659,8 @@ namespace WaaS.Models
     {
         protected override ulong Operate(double value)
         {
-            return unchecked((ulong)checked((long)value));
+            // -2^63 is exactly representable and valid
+            return unchecked((ulong)(long)Traps.Truncate(value, -9223372036854777856.0, 9223372036854775808.0));
         }
     }
 
@@ -1672,7 +1672,7 @@ namespace WaaS.Models
     {
         protected override ulong Operate(double value)
         {
-            return checked((ulong)value);
+            return (ulong)Traps.Truncate(value, -1.0, 18446744073709551616.0);
         }
     }
 
@@ -2038,4 +2038,28 @@ namespace WaaS.Models
     }
 
     #endregion
+
+    internal static class Traps
+    {
+        public static TrapException DivideByZero()
+        {
+            return new TrapException("integer divide by zero");
+        }
+
+        public static TrapException IntegerOverflow()
+        {
+            return new TrapException("integer overflow");
+        }
+
+        /// <summary>
+        ///     Truncates the value toward zero, and traps if the result is not in (<paramref name="lowerExclusive" />,
+        ///     <paramref name="upperExclusive" />).
+        /// </summary>
+        public static double Truncate(double value, double lowerExclusive, double upperExclusive)
+        {
+            if (double.IsNaN(value)) throw new TrapException("invalid conversion to integer");
+            if (value <= lowerExclusive || value >= upperExclusive) throw IntegerOverflow();
+            return Math.Truncate(value);
+        }
+    }
 }

@@ -24,6 +24,32 @@ jobs:
       - name: Test
         run: dotnet test WaaS.Tests -c Release
 
+  # loads and runs random modules, with a different seed on each run
+  fuzz:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: WaaS
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-tools
+      - name: Fuzz
+        # the seed is printed so that a failure can be reproduced
+        run: |
+          seed=$(( ${{ github.run_id }} % 2147483647 ))
+          echo "seed: $seed"
+          dotnet run --project WaaS.Fuzz -c Release -- -n 500 -m 20 -s "$seed" -o "${{ runner.temp }}/fuzz-failures"
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: fuzz-failures
+          path: ${{ runner.temp }}/fuzz-failures
+
   wukuro-crates:
     runs-on: ubuntu-latest
     defaults:

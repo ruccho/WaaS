@@ -14,168 +14,178 @@ namespace WaaS.Models
 
         internal Module(ref ModuleReader reader, long? size = null)
         {
-            long rest = 0;
-            if (size.HasValue)
-                checked
-                {
-                    rest = reader.Available - size.Value;
-                }
-
-            if (rest < 0) throw new ArgumentException(nameof(size));
-
-            // offsets of the instructions are recorded relative to the start of this module
-            var previousOrigin = reader.Origin;
-            reader.Origin = reader.Position;
-
-            var preamble = reader.ReadUnaligned<Preamble>();
-
-            if (!preamble.IsValid())
-                throw new InvalidModuleException(
-                    $"invalid preamble (magic: 0x{preamble.magic:X8}, version: 0x{preamble.version:X8})");
-
-            List<Section> sections = new();
-
-            FunctionSection functionSection = null;
-            TypeSection typeSection = null;
-            CodeSection codeSection = null;
-
-            var lastSectionOrder = 0;
-            while (reader.Available > rest)
+            try
             {
-                var section = Section.Read(ref reader);
-                sections.Add(section);
+                long rest = 0;
+                if (size.HasValue)
+                    checked
+                    {
+                        rest = reader.Available - size.Value;
+                    }
 
-                // the sections except the custom sections appear at most once in the order
-                var order = GetSectionOrder(section);
-                if (order != 0)
+                if (rest < 0) throw new ArgumentException(nameof(size));
+
+                // offsets of the instructions are recorded relative to the start of this module
+                var previousOrigin = reader.Origin;
+                reader.Origin = reader.Position;
+
+                var preamble = reader.ReadUnaligned<Preamble>();
+
+                if (!preamble.IsValid())
+                    throw new InvalidModuleException(
+                        $"invalid preamble (magic: 0x{preamble.magic:X8}, version: 0x{preamble.version:X8})");
+
+                List<Section> sections = new();
+
+                FunctionSection functionSection = null;
+                TypeSection typeSection = null;
+                CodeSection codeSection = null;
+
+                var lastSectionOrder = 0;
+                while (reader.Available > rest)
                 {
-                    if (order <= lastSectionOrder) throw new InvalidModuleException("unexpected content after last section");
-                    lastSectionOrder = order;
+                    var section = Section.Read(ref reader);
+                    sections.Add(section);
+
+                    // the sections except the custom sections appear at most once in the order
+                    var order = GetSectionOrder(section);
+                    if (order != 0)
+                    {
+                        if (order <= lastSectionOrder) throw new InvalidModuleException("unexpected content after last section");
+                        lastSectionOrder = order;
+                    }
+
+                    switch (section)
+                    {
+                        case FunctionSection s:
+                        {
+                            functionSection = s;
+                            break;
+                        }
+                        case TypeSection s:
+                        {
+                            TypeSection = typeSection = s;
+                            break;
+                        }
+                        case CodeSection s:
+                        {
+                            codeSection = s;
+                            break;
+                        }
+                        case MemorySection s:
+                        {
+                            MemorySection = s;
+                            break;
+                        }
+                        case ImportSection s:
+                        {
+                            ImportSection = s;
+                            break;
+                        }
+                        case GlobalSection s:
+                        {
+                            GlobalSection = s;
+                            break;
+                        }
+                        case ElementSection s:
+                        {
+                            ElementSection = s;
+                            break;
+                        }
+                        case TableSection s:
+                        {
+                            TableSection = s;
+                            break;
+                        }
+                        case DataSection s:
+                        {
+                            DataSection = s;
+                            break;
+                        }
+                        case StartSection s:
+                        {
+                            if (StartSection != null) throw new InvalidModuleException("junk after last section");
+                            StartSection = s;
+                            break;
+                        }
+                        case ExportSection s:
+                        {
+                            ExportSection = s;
+                            break;
+                        }
+                        case DataCountSection s:
+                        {
+                            DataCountSection = s;
+                            break;
+                        }
+                    }
                 }
 
-                switch (section)
+                if (DataCountSection != null && DataCountSection.Count != (DataSection?.Data.Length ?? 0))
+                    throw new InvalidModuleException("data count and data section have inconsistent lengths");
+
+                reader.Origin = previousOrigin;
+
+                Preamble = preamble;
+                Sections = sections.ToArray();
+
+                var functions = codeSection != null ? codeSection.Functions.Span : ReadOnlySpan<FunctionBody>.Empty;
+                var typeIndices = functionSection != null ? functionSection.TypeIndices.Span : ReadOnlySpan<uint>.Empty;
+                var types = typeSection != null ? typeSection.FuncTypes.Span : ReadOnlySpan<FunctionType>.Empty;
+
+                if (typeIndices.Length != functions.Length)
+                    throw new InvalidModuleException("function and code section have inconsistent lengths");
+                foreach (var typeIndex in typeIndices)
+                    if (typeIndex >= types.Length) throw new InvalidModuleException($"unknown type {typeIndex}");
+
+                var functionInstances = new Function[functions.Length];
+                for (var i = 0; i < functions.Length; i++)
                 {
-                    case FunctionSection s:
-                    {
-                        functionSection = s;
-                        break;
-                    }
-                    case TypeSection s:
-                    {
-                        TypeSection = typeSection = s;
-                        break;
-                    }
-                    case CodeSection s:
-                    {
-                        codeSection = s;
-                        break;
-                    }
-                    case MemorySection s:
-                    {
-                        MemorySection = s;
-                        break;
-                    }
-                    case ImportSection s:
-                    {
-                        ImportSection = s;
-                        break;
-                    }
-                    case GlobalSection s:
-                    {
-                        GlobalSection = s;
-                        break;
-                    }
-                    case ElementSection s:
-                    {
-                        ElementSection = s;
-                        break;
-                    }
-                    case TableSection s:
-                    {
-                        TableSection = s;
-                        break;
-                    }
-                    case DataSection s:
-                    {
-                        DataSection = s;
-                        break;
-                    }
-                    case StartSection s:
-                    {
-                        if (StartSection != null) throw new InvalidModuleException("junk after last section");
-                        StartSection = s;
-                        break;
-                    }
-                    case ExportSection s:
-                    {
-                        ExportSection = s;
-                        break;
-                    }
-                    case DataCountSection s:
-                    {
-                        DataCountSection = s;
-                        break;
-                    }
+                    var function = functions[i];
+                    var typeIndex = typeIndices[i];
+                    var functionType = types[checked((int)typeIndex)];
+
+                    functionInstances[i] = new Function(functionType, function, typeIndex, i);
                 }
+
+                InternalFunctions = functionInstances;
+
+                int numImportedFunctions = 0, numImportedTables = 0, numImportedMemories = 0, numImportedGlobals = 0;
+                if (ImportSection != null)
+                    foreach (var import in ImportSection.Imports.Span)
+                        switch (import.Descriptor.Kind)
+                        {
+                            case ImportKind.Type:
+                                numImportedFunctions++;
+                                break;
+                            case ImportKind.Table:
+                                numImportedTables++;
+                                break;
+                            case ImportKind.Memory:
+                                numImportedMemories++;
+                                break;
+                            case ImportKind.Global:
+                                numImportedGlobals++;
+                                break;
+                        }
+
+                ImportedFunctionCount = numImportedFunctions;
+                ImportedGlobalCount = numImportedGlobals;
+                FunctionCount = numImportedFunctions + functionInstances.Length;
+                TableCount = numImportedTables + (TableSection?.TableTypes.Length ?? 0);
+                MemoryCount = numImportedMemories + (MemorySection?.MemoryTypes.Length ?? 0);
+                GlobalCount = numImportedGlobals + (GlobalSection?.Globals.Length ?? 0);
+
+                ValidateModuleFields();
+
+                foreach (var functionInstance in functionInstances)
+                    functionInstance.Validate(new ValidationContext(this, functionInstance));
             }
-
-            if (DataCountSection != null && DataCountSection.Count != (DataSection?.Data.Length ?? 0))
-                throw new InvalidModuleException("data count and data section have inconsistent lengths");
-
-            reader.Origin = previousOrigin;
-
-            Preamble = preamble;
-            Sections = sections.ToArray();
-
-            var functions = codeSection != null ? codeSection.Functions.Span : ReadOnlySpan<FunctionBody>.Empty;
-            var typeIndices = functionSection != null ? functionSection.TypeIndices.Span : ReadOnlySpan<uint>.Empty;
-            var types = typeSection != null ? typeSection.FuncTypes.Span : ReadOnlySpan<FunctionType>.Empty;
-
-            if (typeIndices.Length != functions.Length)
-                throw new InvalidModuleException("function and code section have inconsistent lengths");
-
-            var functionInstances = new Function[functions.Length];
-            for (var i = 0; i < functions.Length; i++)
+            catch (Exception e) when (e is not (InvalidModuleException or Runtime.InvalidCodeException))
             {
-                var function = functions[i];
-                var typeIndex = typeIndices[i];
-                var functionType = types[checked((int)typeIndex)];
-
-                functionInstances[i] = new Function(functionType, function, typeIndex, i);
+                // malformed binaries may break the assumptions of the reader
+                throw new InvalidModuleException($"malformed module: {e.Message}", e);
             }
-
-            InternalFunctions = functionInstances;
-
-            int numImportedFunctions = 0, numImportedTables = 0, numImportedMemories = 0, numImportedGlobals = 0;
-            if (ImportSection != null)
-                foreach (var import in ImportSection.Imports.Span)
-                    switch (import.Descriptor.Kind)
-                    {
-                        case ImportKind.Type:
-                            numImportedFunctions++;
-                            break;
-                        case ImportKind.Table:
-                            numImportedTables++;
-                            break;
-                        case ImportKind.Memory:
-                            numImportedMemories++;
-                            break;
-                        case ImportKind.Global:
-                            numImportedGlobals++;
-                            break;
-                    }
-
-            ImportedFunctionCount = numImportedFunctions;
-            ImportedGlobalCount = numImportedGlobals;
-            FunctionCount = numImportedFunctions + functionInstances.Length;
-            TableCount = numImportedTables + (TableSection?.TableTypes.Length ?? 0);
-            MemoryCount = numImportedMemories + (MemorySection?.MemoryTypes.Length ?? 0);
-            GlobalCount = numImportedGlobals + (GlobalSection?.Globals.Length ?? 0);
-
-            ValidateModuleFields();
-
-            foreach (var functionInstance in functionInstances)
-                functionInstance.Validate(new ValidationContext(this, functionInstance));
         }
 
         /// <summary>
@@ -184,6 +194,36 @@ namespace WaaS.Models
         private void ValidateModuleFields()
         {
             var context = new ValidationContext(this, null);
+
+            foreach (var function in InternalFunctions.Span)
+            foreach (var local in function.Body.Locals.Span)
+                ValidateValueType(local.Type);
+
+            if (ExportSection != null)
+            {
+                var names = new HashSet<string>();
+                foreach (var export in ExportSection.Exports.Span)
+                {
+                    if (!names.Add(export.Name)) throw new InvalidModuleException("duplicate export name");
+                    var descriptor = export.Descriptor;
+                    var (index, count) = descriptor.Kind switch
+                    {
+                        ExportKind.Function => (descriptor.FunctionIndex!.Value, FunctionCount),
+                        ExportKind.Table => (descriptor.TableIndex!.Value, TableCount),
+                        ExportKind.Memory => (descriptor.MemoryIndex!.Value, MemoryCount),
+                        ExportKind.Global => (descriptor.GlobalIndex!.Value, GlobalCount),
+                        _ => throw new InvalidModuleException("malformed export kind")
+                    };
+                    if (index >= count) throw new InvalidModuleException($"unknown {descriptor.Kind} {index}");
+                }
+            }
+
+            if (StartSection != null)
+            {
+                var type = context.GetFunctionType(StartSection.FunctionIndex);
+                if (type.ParameterTypes.Length != 0 || type.ResultTypes.Length != 0)
+                    throw new InvalidModuleException("start function");
+            }
 
             if (TypeSection != null)
                 foreach (var type in TypeSection.FuncTypes.Span)
