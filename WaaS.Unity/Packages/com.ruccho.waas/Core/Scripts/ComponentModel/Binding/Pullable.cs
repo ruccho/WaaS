@@ -25,6 +25,9 @@ namespace WaaS.ComponentModel.Binding
 
         public STask<T> PullValueAsync<T>()
         {
+            // None has no values to pull, and the adapter of a payload without values is already disposed
+            // (such as the payload of a case of Result<TOk, TError> typed with None)
+            if (typeof(T) == typeof(None)) return new STask<T>(default(T)!);
             return Core.PullValueAsync<T>();
         }
 
