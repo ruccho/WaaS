@@ -375,9 +375,11 @@ fn expand_entry(func: &ItemFn, params: Vec<Parameter>, argument_types: Vec<Argum
 
             #(#with_imports)*
 
-            ::wit_bindgen::generate!({
+            // wit-bindgen is used through wukuro, so that the scripts do not need to depend on it
+            ::wukuro::__private::wit_bindgen::generate!({
                 inline: #wit,
                 path: #core_wit,
+                runtime_path: "::wukuro::__private::wit_bindgen::rt",
                 with: {
                     "wukuro:core/types": ::wukuro::wukuro::core::types,
                     #(#with_entries)*
