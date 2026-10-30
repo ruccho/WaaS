@@ -453,6 +453,25 @@ public class ComponentAbiExtendedTests
     }
 
     [Test]
+    public async Task ExportsRoundTripFlags()
+    {
+        var values = new[]
+        {
+            (default(IExtValues.SmallFlags), default(IExtValues.MediumFlags), default(IExtValues.LargeFlags)),
+            (IExtValues.SmallFlags.F0 | IExtValues.SmallFlags.F2, IExtValues.MediumFlags.F0 | IExtValues.MediumFlags.F11,
+                IExtValues.LargeFlags.F0 | IExtValues.LargeFlags.F31),
+            ((IExtValues.SmallFlags)0b111, (IExtValues.MediumFlags)0xFFF, (IExtValues.LargeFlags)uint.MaxValue)
+        };
+
+        foreach (var value in values)
+        {
+            Assert.That(await CallExport(e => e.FlagsValue(value.Item1, value.Item2, value.Item3)),
+                Is.EqualTo(value));
+            Assert.That(await LastCall(), Is.EqualTo($"({(byte)value.Item1}, {(ushort)value.Item2}, {(uint)value.Item3})"));
+        }
+    }
+
+    [Test]
     public async Task ExportsSpillManyParametersToMemory()
     {
         var result = await CallExport(e => e.ManyParams(-1, long.MinValue, 1.5f, -2.25, 255, -128, 65535, -32768,

@@ -27,6 +27,7 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - Comparing component types and instance types no longer throws `NotImplementedException`.
 - A failure to resolve a type while validating an import is reported as a mismatch of the import instead of an empty `LinkException`.
 - The layout of variants whose payloads are aligned to 1 byte or have no payload (such as `option<u8>` and enums) in the memory: the payload was aligned to 2 bytes.
+- Lowering flags from C# `[Flags]` enums (passing flags to components) threw `InvalidOperationException`.
 
 ## [0.3.0]
 
