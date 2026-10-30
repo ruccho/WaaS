@@ -71,3 +71,38 @@ public class WitGenerationTests
         Assert.That(await exports.TestEnumFlags(), Is.EqualTo("Red:Read;GreenBlue:Read, Write"));
     }
 }
+
+[ComponentInterface(@"test:fields/types")]
+public partial interface IFieldTypes
+{
+    // a record with fields instead of properties, such as a type serialized by Unity
+    [ComponentRecord]
+    public partial struct Pair
+    {
+        [ComponentField] public int First;
+        [ComponentField] public string Second;
+    }
+}
+
+public class FieldRecordTests
+{
+    [Test]
+    public void GeneratesRecordFromFields()
+    {
+        var packages = WitPackageBuilder.Build(new[] { typeof(IFieldTypes) });
+
+        Assert.That(packages["test:fields"], Is.EqualTo(
+            """
+            package test:fields;
+
+            interface types {
+                record pair {
+                    first: s32,
+                    second: string,
+                }
+            }
+
+            """.ReplaceLineEndings("\n")));
+        Assert.That(FormatterProvider.GetFormatter<IFieldTypes.Pair>(), Is.Not.Null);
+    }
+}
