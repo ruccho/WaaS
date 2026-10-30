@@ -30,6 +30,7 @@ namespace WaaS.Models
             if (numActualLocals > ushort.MaxValue) throw new InvalidModuleException("Too many locals");
 
             Locals = locals;
+            LocalCount = (int)numActualLocals;
 
             Instructions = InstructionReader.ReadTillEnd(ref reader);
 
@@ -37,6 +38,9 @@ namespace WaaS.Models
         }
 
         public ReadOnlyMemory<Local> Locals { get; }
+
+        // the number of the locals excluding the parameters
+        internal int LocalCount { get; }
         public ReadOnlyMemory<Instruction> Instructions { get; }
     }
 }

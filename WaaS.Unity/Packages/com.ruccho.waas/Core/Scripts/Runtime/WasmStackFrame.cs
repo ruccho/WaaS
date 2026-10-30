@@ -11,6 +11,8 @@ namespace WaaS.Runtime
     /// </summary>
     public class WasmStackFrame : IStackFrameCore
     {
+        private const int MaxRetainedBufferLength = 1024;
+
         [ThreadStatic] private static Stack<WasmStackFrame> pool;
 
         private bool isEnd;
@@ -40,27 +42,41 @@ namespace WaaS.Runtime
         {
             if (version != Version) return;
 
-            if (stackBuffer != null) ArrayPool<StackValueItem>.Shared.Return(stackBuffer);
-
-            if (labelDepthStack != null) ArrayPool<int>.Shared.Return(labelDepthStack);
-
             isEnd = default;
             isFramePushed = default;
             pushedFrame = default;
-            labelDepthStack = default;
             labelDepthStackPointer = default;
             locals = default;
             programCounter = default;
             stack = default;
-            stackBuffer = default;
             stackPointer = default;
             Context = default;
             Function = default;
 
             if (++Version != ushort.MaxValue)
             {
+                // small buffers are kept with the pooled frame to reuse them
+                if (stackBuffer is { Length: > MaxRetainedBufferLength })
+                {
+                    ArrayPool<StackValueItem>.Shared.Return(stackBuffer);
+                    stackBuffer = default;
+                }
+
+                if (labelDepthStack is { Length: > MaxRetainedBufferLength })
+                {
+                    ArrayPool<int>.Shared.Return(labelDepthStack);
+                    labelDepthStack = default;
+                }
+
                 pool ??= new Stack<WasmStackFrame>();
                 pool.Push(this);
+            }
+            else
+            {
+                if (stackBuffer != null) ArrayPool<StackValueItem>.Shared.Return(stackBuffer);
+                if (labelDepthStack != null) ArrayPool<int>.Shared.Return(labelDepthStack);
+                stackBuffer = default;
+                labelDepthStack = default;
             }
         }
 
@@ -154,14 +170,10 @@ namespace WaaS.Runtime
             var parameters = Function.function.Type.ParameterTypes.Span;
             var numParams = parameters.Length;
 
-            var functionLocalTypes = Function.function.Body.Locals.Span;
+            var body = Function.function.Body;
+            var functionLocalTypes = body.Locals.Span;
 
-            var numLocals = numParams;
-            for (var i = 0; i < functionLocalTypes.Length; i++)
-            {
-                var functionLocal = functionLocalTypes[i];
-                numLocals += (int)functionLocal.Count;
-            }
+            var numLocals = numParams + body.LocalCount;
 
             // alloc
 
@@ -174,11 +186,21 @@ namespace WaaS.Runtime
             if (!maxLabelDepths.HasValue)
                 throw new InvalidOperationException("This function is not properly validated.");
 
-            stackBuffer = ArrayPool<StackValueItem>.Shared.Rent(stackBufferSize);
-            labelDepthStack = ArrayPool<int>.Shared.Rent(checked((int)maxLabelDepths.Value));
+            var labelDepthStackSize = checked((int)maxLabelDepths.Value);
+            if (stackBuffer == null || stackBuffer.Length < stackBufferSize)
+            {
+                if (stackBuffer != null) ArrayPool<StackValueItem>.Shared.Return(stackBuffer);
+                stackBuffer = ArrayPool<StackValueItem>.Shared.Rent(stackBufferSize);
+            }
 
-            Array.Clear(stackBuffer, 0, stackBuffer.Length);
-            Array.Clear(labelDepthStack, 0, labelDepthStack.Length);
+            if (labelDepthStack == null || labelDepthStack.Length < labelDepthStackSize)
+            {
+                if (labelDepthStack != null) ArrayPool<int>.Shared.Return(labelDepthStack);
+                labelDepthStack = ArrayPool<int>.Shared.Rent(labelDepthStackSize);
+            }
+
+            Array.Clear(stackBuffer, 0, stackBufferSize);
+            Array.Clear(labelDepthStack, 0, labelDepthStackSize);
 
             locals = stackBuffer.AsMemory(0, numLocals);
             stack = stackBuffer.AsMemory(numLocals, checked((int)maxStackDepth.Value));
