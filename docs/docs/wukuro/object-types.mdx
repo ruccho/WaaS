@@ -3,11 +3,14 @@ title: Object Types
 sidebar_position: 6
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Object Types
 
-Any `UnityEngine.Object` can be passed to a parameter `&Object` of an entry point. When the type of the parameter is `&ObjectOf<T>`, the inspector accepts only objects of type `T`. The types are defined starting from C#.
+Any `UnityEngine.Object` can be passed to a parameter of type `Object` of an entry point. When the type of the parameter is `ObjectOf<T>` (`ObjectOf[T]` in MoonBit), the inspector accepts only objects of type `T`. The types are defined starting from C#.
 
-## Declaring types
+## Declaring types {#declaring-types}
 
 Declare the types received as arguments of scripts with the assembly attribute `WukuroObjectType`.
 
@@ -21,9 +24,12 @@ using Wukuro;
 [assembly: WukuroObjectType(typeof(MyGame.Door))]
 ```
 
-## Generating Rust types
+## Generating the types of scripts {#generating-the-types-of-scripts}
 
-For each declared type, generate a Rust type implementing `wukuro::ObjectType` and include it in the game-specific crate. Use `WukuroObjectTypeExporter` (`Wukuro.Editor`) to generate it.
+For each declared type, generate a marker type of the language of the scripts and include it in the guest library of the game. Use `WukuroObjectTypeExporter` (`Wukuro.Editor`) to generate it. The marker type has the name of the C# type (`Namespace.TypeName, AssemblyName`).
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 ```csharp
 var types = WukuroObjectTypeExporter.CollectTypes();
@@ -31,7 +37,7 @@ var source = WukuroObjectTypeExporter.GenerateRust(types, "// generated from Wuk
 File.WriteAllText("rust/my-game/src/object_types.rs", source);
 ```
 
-The generated code looks like the following. `TYPE_NAME` is the name of the C# type (`Namespace.TypeName, AssemblyName`).
+The generated code implements `wukuro::ObjectType`.
 
 ```rust
 /// `UnityEngine.Transform`
@@ -48,11 +54,34 @@ Publish the generated file as a module of the crate.
 pub mod object_types;
 ```
 
-To regenerate it automatically when the C# declarations change, prepare an editor extension that generates it after compilation, and register the generated file with `ExternalFileDependency.Register` ([Generating Rust code from the data of the game](./extending.mdx#generating-rust-code-from-the-data-of-the-game)).
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
 
-For MoonBit scripts, `WukuroObjectTypeExporter.GenerateMoonBit` generates the marker types in the same way ([Writing Scripts in MoonBit](./moonbit.mdx#object-types)).
+```csharp
+var types = WukuroObjectTypeExporter.CollectTypes();
+var source = WukuroObjectTypeExporter.GenerateMoonBit(types, "// generated from WukuroObjectType\n");
+File.WriteAllText("moonbit/my-game/object_types/object_types.mbt", source);
+```
 
-## Using typed parameters
+The generated code declares structs with the attribute `#wukuro.object_type`.
+
+```moonbit
+///|
+#wukuro.object_type("UnityEngine.Transform, UnityEngine.CoreModule")
+pub struct Transform {}
+```
+
+The marker types can be in the script or in a package of a local module the script depends on, such as `object_types` of the module of the game with `moon.pkg`.
+
+</TabItem>
+</Tabs>
+
+To regenerate them automatically when the C# declarations change, prepare an editor extension that generates them after compilation, and register the generated file with `ExternalFileDependency.Register` ([Generating code from the data of the game](./extending.mdx#generating-code-from-the-data-of-the-game)).
+
+## Using typed parameters {#using-typed-parameters}
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 ```rust
 use wukuro::{entry, ObjectOf};
@@ -69,10 +98,32 @@ fn open_door(cx: &Context, door: &ObjectOf<Door>, camera_target: &ObjectOf<Trans
 
 `ObjectOf<T>` can be converted (Deref) to `Object`, so it can be passed as it is to functions taking `&Object`.
 
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
+
+```moonbit
+///|
+#wukuro.entry
+pub fn open_door(
+  cx : @wukuro.Context,
+  door : @wukuro.ObjectOf[@object_types.Door],
+  camera_target : @wukuro.ObjectOf[@object_types.Transform],
+) -> Unit {
+  let game = @functions.get_game_module(cx)
+  game.move_camera(camera_target.object(), 1.0)
+  // ...
+}
+```
+
+`object()` returns the `Object` of `ObjectOf[T]`.
+
+</TabItem>
+</Tabs>
+
 In the inspector, the field of the parameter becomes an ObjectField of the type, and an error is shown when a value of a different type is set. A GameObject is accepted only when it has a component of the type.
 
-## How it works
+## How it works {#how-it-works}
 
-`#[entry]` records the type names of the `ObjectOf<T>` parameters in the custom section `wukuro-entry-types` of the WebAssembly binary. The inspector reads the records with `WukuroEntryPoints.GetObjectTypes(script)` and checks the types. The type of the parameter in WIT remains `borrow<object>`, and the type constraints are used only to check the input in the inspector.
+The entry points (`#[entry]` in Rust, and **Wukuro Entry Points** in MoonBit) record the type names of the `ObjectOf` parameters in the custom section `wukuro-entry-types` of the WebAssembly binary. The inspector reads the records with `WukuroEntryPoints.GetObjectTypes(script)` and checks the types. The type of the parameter in WIT remains `borrow<object>`, and the type constraints are used only to check the input in the inspector.
 
 At runtime, the types are checked when host functions take out the objects with `WukuroObjects.Get<T>`.

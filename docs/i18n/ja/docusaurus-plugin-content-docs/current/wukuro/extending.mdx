@@ -3,6 +3,9 @@ title: 機能の追加
 sidebar_position: 5
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # 機能の追加
 
 Wukuro 自体が提供する機能は、待機、変数、ログ、ダイアログなどの基本的なものに限られます。サウンドの再生、カメラの操作、アイテムの付与などのゲーム固有の機能は、ゲーム側で追加して使うことを前提としています。
@@ -15,12 +18,10 @@ Wukuro 自体が提供する機能は、待機、変数、ログ、ダイアロ�
 2. **C# で実装する**: 定義したインターフェースを実装し、ゲームの処理を呼び出します。
 3. **インポートを登録する**: 実装を `WukuroRunner` に登録します。
 4. **WIT を書き出す**: 定義から WIT ファイルを書き出します。
-5. **Rust のクレートを作る**: WIT からバインディングを生成するクレートを作ります。
-6. **スクリプトから使う**: スクリプトの依存にクレートを追加し、関数を呼び出します。
+5. **ゲスト側のライブラリを作る**: WIT から生成したバインディングを持つ、ゲームの Rust のクレートまたは MoonBit のモジュールを作ります。
+6. **スクリプトから使う**: スクリプトの依存にゲスト側のライブラリを追加し、関数を呼び出します。
 
-定義の起点は C# です。WIT は C# の定義から自動で生成されるため、手で書く必要はありません。
-
-MoonBit のスクリプトでは、手順 5 と 6 でクレートの代わりにゲーム固有の MoonBit のモジュールを作成します（[MoonBit でのスクリプトの記述](./moonbit.mdx#extending)）。
+定義の起点は C# です。WIT は C# の定義から自動で生成されるため、手で書く必要はありません。手順 1 から 4 は言語によらず共通で、手順 5 と 6 はスクリプトの言語ごとに行います。
 
 ## モジュールの設計
 
@@ -246,16 +247,21 @@ await runner.RunAsync(entry, variables);
 
 `Create` > `WaaS` > `WIT Export Settings` から設定アセットを作成し、C# の定義から WIT ファイルを書き出します（[WIT の書き出し](../component-model/binding-generator/wit-export.mdx)）。
 
-Rust のクレートに WIT を同梱するため、書き出し先にはクレートのディレクトリの中を指定します。クレートの WIT は `wukuro:core` の型を参照するため、`wukuro:core` も同じ場所に書き出します。
+ゲスト側のライブラリに WIT を同梱するため、書き出し先にはクレートまたはモジュールのディレクトリの中を指定します。WIT は `wukuro:core` の型を参照するため、`wukuro:core` も同じ場所に書き出します。たとえば Rust のクレートでは次のようにします。
 
-- **Output Directory**: `rust/my-game/wit`
+- **Output Directory**: `rust/my-game/wit`（MoonBit のモジュールでは `moonbit/my-game/wit`）
 - **Packages**: `wukuro:core`、`my-game:events`
 
-`rust/my-game/wit/wukuro-core/wukuro-core.wit` と `rust/my-game/wit/my-game-events/my-game-events.wit` が作られます。C# の定義を変更すると、コンパイルのたびに自動で書き出され、そのクレートに依存するスクリプトが再インポートされます。
+`rust/my-game/wit/wukuro-core/wukuro-core.wit` と `rust/my-game/wit/my-game-events/my-game-events.wit` が作られます。C# の定義を変更すると、コンパイルのたびに自動で書き出され、そのゲスト側のライブラリに依存するスクリプトが再インポートされます。両方の言語に対応する場合は、ゲスト側のライブラリごとに設定アセットを追加します。
 
-## 5. Rust のクレートを作る
+## 5. ゲスト側のライブラリを作る {#5-creating-a-guest-library}
 
-Unity プロジェクトのルートの `Cargo.toml` に、クレートをワークスペースのメンバーと依存として追加します（[ワークスペースの依存を利用する](./installation.mdx#ワークスペースの依存を利用する)）。
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
+
+### Rust のクレートを作る {#creating-a-rust-crate}
+
+Unity プロジェクトのルートの `Cargo.toml` に、クレートをワークスペースのメンバーと依存として追加します（[ワークスペースの依存の利用](./installation.mdx#using-workspace-dependencies)）。
 
 ```toml title="Cargo.toml"
 [workspace]
@@ -263,8 +269,8 @@ members = ["Library/com.ruccho.waas/rust/crates/*", "rust/*"] # Used by WaaS
 resolver = "2" # Used by WaaS
 
 [workspace.dependencies]
-wukuro = "0.3.0"
-wukuro_dialog = { package = "wukuro-dialog", version = "0.3.0" }
+wukuro = "0.4.0"
+wukuro_dialog = { package = "wukuro-dialog", version = "0.4.0" }
 my-game = { path = "./rust/my-game" }
 ```
 
@@ -315,7 +321,26 @@ mod bindings {
 
 クレートには、スクリプトから使いやすくするための補助（定数、関数、型など）を追加できます。
 
-## 6. スクリプトから使う
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
+
+### MoonBit のモジュールを作る {#creating-a-moonbit-module}
+
+`moon.mod`（`name = "my-name/my-game"`）を持つ `moonbit/my-game` のような、ゲームの MoonBit のモジュールを作り、書き出した WIT から MoonBit のバインディングを生成します。
+
+1. `wukuro:core` を含めて、モジュールの `wit` ディレクトリに WIT を書き出します（手順 4）。
+2. [MoonBit Bindings Settings](../unity-integration/moonbit.mdx#generating-bindings) で、モジュールの中にバインディングを生成します。`Context`、`Object` などの型を `ruccho/wukuro` と共有するため、**External Interfaces** に `wukuro:core/types` をパッケージ `ruccho/wukuro/bindings/wukuro_core_types` として追加します。
+3. 必要に応じて、モジュールに補助（定数、関数、型など）を追加します。
+
+C# の定義を変更すると、WIT とバインディングが再度書き出され、スクリプトが再インポートされます。
+
+</TabItem>
+</Tabs>
+
+## 6. スクリプトから使う {#6-using-from-scripts}
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 スクリプトのインポート設定の Dependencies に、**via Workspace** で `my-game` を追加します。
 
@@ -332,7 +357,25 @@ fn arrival(cx: &Context, camera_target: &Object) {
 }
 ```
 
-## ダイアログを実装する
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
+
+スクリプトの **Dependencies** にモジュールを追加して **Local Path** にそのディレクトリ（`moonbit/my-game`）を指定し、**Imports** にそのパッケージ（たとえば `my-game:events/functions` のバインディング `my-name/my-game/bindings/my_game_events_functions` を `functions` として）を追加します。
+
+```moonbit
+///|
+#wukuro.entry
+pub fn arrival(cx : @wukuro.Context, camera_target : @wukuro.Object) -> Unit {
+  let game = @functions.get_game_module(cx)
+  game.play_sound("door")
+  game.move_camera(camera_target, 1.5)
+}
+```
+
+</TabItem>
+</Tabs>
+
+## ダイアログを実装する {#implementing-dialogs}
 
 `wukuro:dialog` の関数は Wukuro のパッケージが提供しますが、ダイアログの表示そのものはゲームの UI で行います。`IDialogModule` を実装し、モジュールとして追加します。
 
@@ -357,14 +400,14 @@ runner.AddModule(new MyDialogModule());
 
 `MessageInfo` の `Speaker` と `Face` は、スクリプトで指定した話者と表情の名前です。`Styles` は、ホストが自由に解釈できる表示のスタイルの名前の一覧です。テキスト（`Text`）は、`Plain` であればそのまま表示し、`Localized` であればテーブル名とキーからローカライズされた文字列を取得して表示します。
 
-## ゲームのデータから Rust のコードを生成する
+## ゲームのデータからコードを生成する {#generating-code-from-the-data-of-the-game}
 
-話者の一覧、シナリオの進行状態、アイテムの ID など、ゲームのデータに含まれる名前をスクリプトから参照する場合は、その名前を定数や型として Rust のコードに生成しておくと、名前の誤りをコンパイル時に検出できます。
+話者の一覧、シナリオの進行状態、アイテムの ID など、ゲームのデータに含まれる名前をスクリプトから参照する場合は、その名前を定数や型としてゲスト側のライブラリのコードに生成しておくと、名前の誤りをコンパイル時に検出できます。
 
-生成はエディタ拡張で行い、ゲーム固有のクレートのソースとして書き出します。書き出したファイルを `ExternalFileDependency.Register(path)`（`WaaS.Unity.Editor`）で登録すると、ファイルが変わったときに、そのファイルに依存するスクリプトが再インポートされます。
+生成はエディタ拡張で行い、ゲーム固有のクレートまたはモジュールのソースとして書き出します。書き出したファイルを `ExternalFileDependency.Register(path)`（`WaaS.Unity.Editor`）で登録すると、ファイルが変わったときに、そのファイルに依存するスクリプトが再インポートされます。
 
 ```csharp
-var source = GenerateSpeakers(); // ゲームのデータから Rust のコードを作る
+var source = GenerateSpeakers(); // ゲームのデータから Rust または MoonBit のコードを作る
 if (!File.Exists(path) || File.ReadAllText(path) != source)
 {
     File.WriteAllText(path, source);
@@ -373,4 +416,4 @@ if (!File.Exists(path) || File.ReadAllText(path) != source)
 ExternalFileDependency.Register(path);
 ```
 
-オブジェクトの型の宣言から Rust の型を生成する機能は Wukuro に含まれています（[オブジェクトの型](./object-types.mdx)）。
+オブジェクトの型の宣言から型を生成する機能は、両方の言語について Wukuro に含まれています（[オブジェクトの型](./object-types.mdx)）。

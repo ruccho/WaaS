@@ -3,6 +3,9 @@ title: WIT Reference
 sidebar_position: 7
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # WIT Reference
 
 The functions and types between the host of Wukuro and scripts are defined as the following WIT packages. The WIT is generated from the C# definitions in `Definitions/` of the Unity package and included in `wit/` of each crate.
@@ -157,14 +160,31 @@ interface types {
 }
 ```
 
-## Entry points
+## Entry points {#entry-points}
 
-An entry point `foo_bar` of a script is exported as the following interface. The parameters of `run` correspond to the parameters of the function of the entry point (including `&Context`), with the names in kebab-case.
+An entry point `foo_bar` of a script is exported as the following interface. The parameters of `run` correspond to the parameters of the function of the entry point (including the context), with the names in kebab-case.
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 ```rust
 #[entry]
 fn foo_bar(cx: &Context, camera_target: &Object, count: i32) { /* ... */ }
 ```
+
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
+
+```moonbit
+///|
+#wukuro.entry
+pub fn foo_bar(cx : @wukuro.Context, camera_target : @wukuro.Object, count : Int) -> Unit {
+  ...
+}
+```
+
+</TabItem>
+</Tabs>
 
 ```wit
 package wukuro-entry:foo-bar;

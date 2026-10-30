@@ -3,6 +3,9 @@ title: Extending
 sidebar_position: 5
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Extending
 
 Wukuro itself provides only basic features such as waiting, variables, logging and dialogs. Game-specific features such as playing sounds, controlling the camera and giving items are expected to be added by the game.
@@ -15,12 +18,10 @@ This page explains the steps to add features through an example that makes playi
 2. **Implement in C#**: implement the defined interfaces and call the processes of the game.
 3. **Register the imports**: register the implementations to `WukuroRunner`.
 4. **Export WIT**: export WIT files from the definitions.
-5. **Create a Rust crate**: create a crate that generates the bindings from the WIT.
-6. **Use from scripts**: add the crate to the dependencies of scripts and call the functions.
+5. **Create a guest library**: create a Rust crate or a MoonBit module of the game, which has the bindings generated from the WIT.
+6. **Use from scripts**: add the guest library to the dependencies of scripts and call the functions.
 
-The definitions start from C#. WIT is generated automatically from the C# definitions, so you do not have to write it by hand.
-
-For MoonBit scripts, a game-specific MoonBit module is created instead of a crate in steps 5 and 6 ([Writing Scripts in MoonBit](./moonbit.mdx#extending)).
+The definitions start from C#. WIT is generated automatically from the C# definitions, so you do not have to write it by hand. Steps 1 to 4 are common to the languages, and steps 5 and 6 are done for each language of the scripts.
 
 ## Designing modules
 
@@ -246,14 +247,19 @@ An error occurs at runtime when the implementation of an interface imported by t
 
 Create a settings asset from `Create` > `WaaS` > `WIT Export Settings` and export the WIT files from the C# definitions ([Exporting WIT](../component-model/binding-generator/wit-export.mdx)).
 
-To include the WIT in the Rust crate, specify a directory in the crate as the destination. The WIT of the crate refers to the types of `wukuro:core`, so export `wukuro:core` to the same place as well.
+To include the WIT in the guest library, specify a directory in the crate or the module as the destination. The WIT refers to the types of `wukuro:core`, so export `wukuro:core` to the same place as well. For example, for a Rust crate:
 
-- **Output Directory**: `rust/my-game/wit`
+- **Output Directory**: `rust/my-game/wit` (`moonbit/my-game/wit` for a MoonBit module)
 - **Packages**: `wukuro:core`, `my-game:events`
 
-`rust/my-game/wit/wukuro-core/wukuro-core.wit` and `rust/my-game/wit/my-game-events/my-game-events.wit` are created. When the C# definitions change, they are exported automatically on every compilation, and the scripts depending on the crate are reimported.
+`rust/my-game/wit/wukuro-core/wukuro-core.wit` and `rust/my-game/wit/my-game-events/my-game-events.wit` are created. When the C# definitions change, they are exported automatically on every compilation, and the scripts depending on the guest library are reimported. To support both languages, add a settings asset for each guest library.
 
-## 5. Creating a Rust crate
+## 5. Creating a guest library {#5-creating-a-guest-library}
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
+
+### Creating a Rust crate {#creating-a-rust-crate}
 
 Add the crate to the members and dependencies of the workspace in `Cargo.toml` at the root of the Unity project ([Using workspace dependencies](./installation.mdx#using-workspace-dependencies)).
 
@@ -263,8 +269,8 @@ members = ["Library/com.ruccho.waas/rust/crates/*", "rust/*"] # Used by WaaS
 resolver = "2" # Used by WaaS
 
 [workspace.dependencies]
-wukuro = "0.3.0"
-wukuro_dialog = { package = "wukuro-dialog", version = "0.3.0" }
+wukuro = "0.4.0"
+wukuro_dialog = { package = "wukuro-dialog", version = "0.4.0" }
 my-game = { path = "./rust/my-game" }
 ```
 
@@ -315,7 +321,26 @@ Without `wukuro:core/types` in `with`, the types of `wukuro:core` (`Context`, `O
 
 The crate can also contain helpers to make it easier to use from scripts, such as constants, functions and types.
 
-## 6. Using from scripts
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
+
+### Creating a MoonBit module {#creating-a-moonbit-module}
+
+Create a MoonBit module of the game, such as `moonbit/my-game` with `moon.mod` (`name = "my-name/my-game"`), and generate MoonBit bindings into it from the exported WIT.
+
+1. Export the WIT to the `wit` directory of the module, including `wukuro:core` (step 4).
+2. Generate the bindings into the module with [MoonBit Bindings Settings](../unity-integration/moonbit.mdx#generating-bindings). Add `wukuro:core/types` to **External Interfaces** with the package `ruccho/wukuro/bindings/wukuro_core_types`, so that `Context`, `Object` and the other types are shared with `ruccho/wukuro`.
+3. Add helpers to the module if needed, such as constants, functions and types.
+
+When the C# definitions change, the WIT and the bindings are exported again, and the scripts are reimported.
+
+</TabItem>
+</Tabs>
+
+## 6. Using from scripts {#6-using-from-scripts}
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 Add `my-game` **via Workspace** to Dependencies of the import settings of scripts.
 
@@ -331,6 +356,24 @@ fn arrival(cx: &Context, camera_target: &Object) {
     game.move_camera(camera_target, 1.5);
 }
 ```
+
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
+
+Add the module to **Dependencies** with **Local Path** set to its directory (`moonbit/my-game`), and its packages to **Imports** of the scripts (e.g. `my-name/my-game/bindings/my_game_events_functions`, the bindings of `my-game:events/functions`, as `functions`).
+
+```moonbit
+///|
+#wukuro.entry
+pub fn arrival(cx : @wukuro.Context, camera_target : @wukuro.Object) -> Unit {
+  let game = @functions.get_game_module(cx)
+  game.play_sound("door")
+  game.move_camera(camera_target, 1.5)
+}
+```
+
+</TabItem>
+</Tabs>
 
 ## Implementing dialogs
 
@@ -357,14 +400,14 @@ runner.AddModule(new MyDialogModule());
 
 `Speaker` and `Face` of `MessageInfo` are the names of the speaker and the face specified in the script. `Styles` is a list of the names of display styles that the host can interpret freely. A text (`Text`) is shown as it is if it is `Plain`, and if it is `Localized`, the localized string is obtained from the table name and the key.
 
-## Generating Rust code from the data of the game
+## Generating code from the data of the game {#generating-code-from-the-data-of-the-game}
 
-When scripts refer to names in the data of the game, such as the list of speakers, the progress of the scenario and the IDs of items, generating the names as constants or types in Rust code lets mistakes in the names be detected at compile time.
+When scripts refer to names in the data of the game, such as the list of speakers, the progress of the scenario and the IDs of items, generating the names as constants or types in the code of the guest library lets mistakes in the names be detected at compile time.
 
-Generate the code with an editor extension and write it out as a source of the game-specific crate. Registering the written file with `ExternalFileDependency.Register(path)` (`WaaS.Unity.Editor`) makes the scripts depending on the file reimported when it changes.
+Generate the code with an editor extension and write it out as a source of the game-specific crate or module. Registering the written file with `ExternalFileDependency.Register(path)` (`WaaS.Unity.Editor`) makes the scripts depending on the file reimported when it changes.
 
 ```csharp
-var source = GenerateSpeakers(); // make Rust code from the data of the game
+var source = GenerateSpeakers(); // make Rust or MoonBit code from the data of the game
 if (!File.Exists(path) || File.ReadAllText(path) != source)
 {
     File.WriteAllText(path, source);
@@ -373,4 +416,4 @@ if (!File.Exists(path) || File.ReadAllText(path) != source)
 ExternalFileDependency.Register(path);
 ```
 
-Generating Rust types from the declarations of object types is included in Wukuro ([Object Types](./object-types.mdx)).
+Generating the types of the declarations of object types is included in Wukuro for both languages ([Object Types](./object-types.mdx)).

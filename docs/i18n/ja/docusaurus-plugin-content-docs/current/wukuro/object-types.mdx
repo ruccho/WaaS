@@ -3,11 +3,14 @@ title: オブジェクトの型
 sidebar_position: 6
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # オブジェクトの型
 
-エントリポイントの引数 `&Object` には、任意の `UnityEngine.Object` を渡せます。引数の型を `&ObjectOf<T>` にすると、インスペクタは型 `T` のオブジェクトだけを受け付けるようになります。型の定義の起点は C# です。
+エントリポイントの `Object` 型の引数には、任意の `UnityEngine.Object` を渡せます。引数の型を `ObjectOf<T>`（MoonBit では `ObjectOf[T]`）にすると、インスペクタは型 `T` のオブジェクトだけを受け付けるようになります。型の定義の起点は C# です。
 
-## 型を宣言する
+## 型を宣言する {#declaring-types}
 
 スクリプトの引数として受け取る型を、アセンブリ属性 `WukuroObjectType` で宣言します。
 
@@ -21,9 +24,12 @@ using Wukuro;
 [assembly: WukuroObjectType(typeof(MyGame.Door))]
 ```
 
-## Rust の型を生成する
+## スクリプトの型を生成する {#generating-the-types-of-scripts}
 
-宣言した型ごとに、`wukuro::ObjectType` を実装した Rust の型を生成し、ゲーム固有のクレートに含めます。生成には `WukuroObjectTypeExporter`（`Wukuro.Editor`）を使います。
+宣言した型ごとに、スクリプトの言語のマーカー型を生成し、ゲームのゲスト側のライブラリに含めます。生成には `WukuroObjectTypeExporter`（`Wukuro.Editor`）を使います。マーカー型は C# の型の名前（`Namespace.TypeName, AssemblyName`）を持ちます。
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 ```csharp
 var types = WukuroObjectTypeExporter.CollectTypes();
@@ -31,7 +37,7 @@ var source = WukuroObjectTypeExporter.GenerateRust(types, "// generated from Wuk
 File.WriteAllText("rust/my-game/src/object_types.rs", source);
 ```
 
-生成されるコードは次のようになります。`TYPE_NAME` は C# の型の名前（`名前空間.型名, アセンブリ名`）です。
+生成されるコードは `wukuro::ObjectType` を実装します。
 
 ```rust
 /// `UnityEngine.Transform`
@@ -42,17 +48,40 @@ impl ::wukuro::ObjectType for Transform {
 }
 ```
 
-生成したファイルをクレートのモジュールとして公開します。
+生成したファイルを、クレートのモジュールとして公開します。
 
 ```rust title="rust/my-game/src/lib.rs"
 pub mod object_types;
 ```
 
-C# の宣言を変えたときに自動で生成し直すには、コンパイルの後に生成を行うエディタ拡張を用意し、生成したファイルを `ExternalFileDependency.Register` で登録します（[ゲームのデータから Rust のコードを生成する](./extending.mdx#ゲームのデータから-rust-のコードを生成する)）。
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
 
-MoonBit のスクリプトでは、`WukuroObjectTypeExporter.GenerateMoonBit` で同様にマーカー型を生成します（[MoonBit でのスクリプトの記述](./moonbit.mdx#object-types)）。
+```csharp
+var types = WukuroObjectTypeExporter.CollectTypes();
+var source = WukuroObjectTypeExporter.GenerateMoonBit(types, "// generated from WukuroObjectType\n");
+File.WriteAllText("moonbit/my-game/object_types/object_types.mbt", source);
+```
 
-## 型付きの引数を使う
+生成されるコードは、属性 `#wukuro.object_type` を付けた構造体を宣言します。
+
+```moonbit
+///|
+#wukuro.object_type("UnityEngine.Transform, UnityEngine.CoreModule")
+pub struct Transform {}
+```
+
+マーカー型は、スクリプトの中か、スクリプトが依存するローカルのモジュールのパッケージ（`moon.pkg` を持つゲームのモジュールの `object_types` など）に置けます。
+
+</TabItem>
+</Tabs>
+
+C# の宣言を変えたときに自動で生成し直すには、コンパイルの後に生成を行うエディタ拡張を用意し、生成したファイルを `ExternalFileDependency.Register` で登録します（[ゲームのデータからコードを生成する](./extending.mdx#generating-code-from-the-data-of-the-game)）。
+
+## 型付きの引数を使う {#using-typed-parameters}
+
+<Tabs groupId="language">
+<TabItem value="rust" label="Rust">
 
 ```rust
 use wukuro::{entry, ObjectOf};
@@ -69,10 +98,32 @@ fn open_door(cx: &Context, door: &ObjectOf<Door>, camera_target: &ObjectOf<Trans
 
 `ObjectOf<T>` は `Object` に変換（Deref）できるため、`&Object` を受け取る関数にそのまま渡せます。
 
-インスペクタでは、引数の入力欄がその型の ObjectField になり、型に合わない値が設定されているとエラーを表示します。GameObject は、その型のコンポーネントを持つ場合に限り受け付けます。
+</TabItem>
+<TabItem value="moonbit" label="MoonBit">
 
-## 仕組み
+```moonbit
+///|
+#wukuro.entry
+pub fn open_door(
+  cx : @wukuro.Context,
+  door : @wukuro.ObjectOf[@object_types.Door],
+  camera_target : @wukuro.ObjectOf[@object_types.Transform],
+) -> Unit {
+  let game = @functions.get_game_module(cx)
+  game.move_camera(camera_target.object(), 1.0)
+  // ...
+}
+```
 
-`#[entry]` は、`ObjectOf<T>` の引数の型の名前を、WebAssembly のカスタムセクション `wukuro-entry-types` に記録します。インスペクタは `WukuroEntryPoints.GetObjectTypes(script)` でこの記録を読み、型を検査します。WIT 上の引数の型は `borrow<object>` のままであり、型の制約はインスペクタでの入力の検査にのみ用いられます。
+`object()` は `ObjectOf[T]` の `Object` を返します。
 
-実行時には、ホストの関数が `WukuroObjects.Get<T>` でオブジェクトを取り出す際に型が検査されます。
+</TabItem>
+</Tabs>
+
+インスペクタでは、引数の欄がその型の ObjectField になり、異なる型の値を設定するとエラーが表示されます。GameObject は、その型のコンポーネントを持つ場合にだけ受け付けます。
+
+## 仕組み {#how-it-works}
+
+エントリポイント（Rust では `#[entry]`、MoonBit では **Wukuro Entry Points**）は、`ObjectOf` の引数の型名を WebAssembly のバイナリのカスタムセクション `wukuro-entry-types` に記録します。インスペクタは `WukuroEntryPoints.GetObjectTypes(script)` で記録を読み取り、型を確認します。WIT での引数の型は `borrow<object>` のままであり、型の制約はインスペクタでの入力の確認にだけ使われます。
+
+実行時には、ホスト関数が `WukuroObjects.Get<T>` でオブジェクトを取り出すときに型が確認されます。

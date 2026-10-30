@@ -56,7 +56,7 @@ await runner.RunAsync(entry, variables, arguments);
 
 `RunAsync` は、ほかのスクリプトの実行中にも呼び出せます。たとえば、ホストの関数の実装の中から別のエントリポイントを実行し、その完了を待つことができます。
 
-## 変数
+## 変数 {#variables}
 
 スクリプトの変数（`cx.get_variable(name)`）の保存先は、`RunAsync` に渡す `IVariables` が決めます。
 
@@ -129,11 +129,11 @@ public class SaveDataVariables : IVariables
 
 スクリプトは Play モードを終了せずに編集できます。スクリプトが再インポートされると（**Auto Refresh** による。無効の場合は **Assets > Refresh** による）、その後に開始したエントリポイントは新しいスクリプトで実行され、変数を含むゲームの状態は保たれます。すでに実行中のエントリポイントは、終了するまで古いスクリプトのまま実行されます。
 
-Rust のスクリプトのビルドが終わるまでエディタは操作できず、その間はゲームも停止します。
+スクリプトのビルドが終わるまでエディタは操作できず、その間はゲームも停止します。
 
 ## スクリプトのテスト
 
-import するインターフェースをスタブの実装に置き換えると、スクリプトを EditMode テストで実行できます。たとえば、ホスト関数の定義を変更した後に、すべてのエントリポイントが最後まで実行されることを確認できます。
+`import` するインターフェースをスタブの実装に置き換えると、スクリプトを EditMode テストで実行できます。たとえば、ホスト関数の定義を変更した後に、すべてのエントリポイントが最後まで実行されることを確認できます。
 
 - `WukuroEntryPoints.CreateDefaultArguments` は、エントリポイントの引数を既定値（0、`false`、空の文字列、何もしない action、null のオブジェクト、record と enum の既定値）で作成します。
 - `WukuroClock.Current` に `WukuroClock.Immediate` を設定すると、スクリプトの待機（`delay`、`delay-frame`、`schedule`）は、指定した時間に関わらず次のフレームで完了します。テストの後に `null` に戻してください。
