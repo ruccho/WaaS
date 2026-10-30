@@ -10,7 +10,20 @@ sidebar_position: 2
 
 ### インストール
 
-[Rustのツールチェインをインストール](https://www.rust-lang.org/ja/tools/install)してから、次のコマンドで `wit2waas` をインストールします。
+#### ビルド済みバイナリ
+
+ビルド済みバイナリのアーカイブが、各 [GitHub のリリース](https://github.com/ruccho/WaaS/releases)に添付されています。お使いのプラットフォーム向けのアーカイブをダウンロードして展開し、`wit2waas` を `PATH` の通ったディレクトリに配置してください。
+
+| プラットフォーム | アーカイブ |
+|---|---|
+| Windows (x86_64) | `wit2waas-x86_64-pc-windows-msvc.zip` |
+| macOS (Apple シリコン) | `wit2waas-aarch64-apple-darwin.tar.gz` |
+| macOS (Intel) | `wit2waas-x86_64-apple-darwin.tar.gz` |
+| Linux (x86_64) | `wit2waas-x86_64-unknown-linux-gnu.tar.gz` |
+
+#### ソースからのビルド
+
+あるいは、[Rustのツールチェインをインストール](https://www.rust-lang.org/ja/tools/install)してから、次のコマンドで `wit2waas` をインストールします。
 
 ```sh
 cargo install wit2waas

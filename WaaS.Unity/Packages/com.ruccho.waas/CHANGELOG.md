@@ -11,6 +11,7 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - WebAssembly stack traces of traps (`WasmStackTrace`), with the function names in the `name` section.
 - MoonBit Importer, which imports `*.mbt` files as scripts, and **MoonBit Bindings Settings**, which generate MoonBit bindings of WIT interfaces.
 - wit2waas: inline interfaces of worlds.
+- Prebuilt wit2waas binaries for Windows, macOS and Linux, attached to each GitHub release.
 
 ### Changed
 
