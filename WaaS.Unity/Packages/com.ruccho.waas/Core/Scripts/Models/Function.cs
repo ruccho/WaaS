@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using WaaS.Runtime;
 
@@ -83,10 +84,39 @@ namespace WaaS.Models
                     var blockResultTypes = new BlockResultType[maxBlockDepth];
                     var blockResultTypeStack = new BlockResultTypeStack(blockResultTypes);
 
-                    blockResultTypeStack.Push(new BlockResultType(context.CurrentFunction.Type));
+                    // the blocks are validated one by one without recursion, which would overflow the stack of the
+                    // thread on deeply nested blocks
+                    var pendingBlocks = new Stack<PendingBlock>();
+                    var nestedBlocks = new List<PendingBlock>();
+                    var stackBuffer = Array.Empty<ValueType>();
+                    var maxStackDepth = 0u;
 
-                    ValidateBlock(context, ref blockResultTypeStack, 0, ReadOnlySpan<ValueType>.Empty,
-                        out var maxStackDepth);
+                    pendingBlocks.Push(new PendingBlock
+                    {
+                        StartIndex = 0,
+                        ParameterTypes = ReadOnlyMemory<ValueType>.Empty,
+                        ResultType = new BlockResultType(context.CurrentFunction.Type),
+                        LabelDepth = 1,
+                        BaseStackDepth = 0
+                    });
+
+                    while (pendingBlocks.Count > 0)
+                    {
+                        var block = pendingBlocks.Pop();
+
+                        // the labels of the enclosing blocks are already on the stack
+                        blockResultTypeStack.Unwind(block.LabelDepth - 1);
+                        blockResultTypeStack.Push(block.ResultType);
+
+                        nestedBlocks.Clear();
+                        ValidateBlock(context, ref blockResultTypeStack, block, nestedBlocks, ref stackBuffer,
+                            out var blockMaxStackDepth);
+                        if (maxStackDepth < block.BaseStackDepth + blockMaxStackDepth)
+                            maxStackDepth = block.BaseStackDepth + blockMaxStackDepth;
+
+                        for (var i = nestedBlocks.Count - 1; i >= 0; i--) pendingBlocks.Push(nestedBlocks[i]);
+                    }
+
                     MaxStackDepth = maxStackDepth;
                     MaxBlockDepth = (uint)maxBlockDepth;
                 }
@@ -102,21 +132,27 @@ namespace WaaS.Models
             }
         }
 
+        /// <summary>
+        ///     Validates the instructions of a block except the nested blocks, which are added to
+        ///     <paramref name="nestedBlocks" /> to be validated after this one.
+        /// </summary>
+        /// <param name="maxStackDepth">The maximum stack depth of the block from its start, excluding the nested blocks.</param>
         private void ValidateBlock(
             in ValidationContext context,
             ref BlockResultTypeStack blockResultTypeStack,
-            int startIndex,
-            ReadOnlySpan<ValueType> parameterTypes,
+            in PendingBlock block,
+            List<PendingBlock> nestedBlocks,
+            ref ValueType[] stackBuffer,
             out uint maxStackDepth)
         {
             checked
             {
                 var instructions = Body.Instructions.Span;
+                var startIndex = block.StartIndex;
+                var parameterTypes = block.ParameterTypes.Span;
 
-                // Count max stack depth of current block to avoid heap allocation of type tracking of stack values.
-                // Counting max stack depth of current block requires to know result count of the nested blocks.
-                // Result count of the nested blocks are not always same as the arity of the block.
-                // So first we run recursive ValidateBlock() calls to know the result state of the nested blocks.
+                // Count max stack depth of current block to know the size of the type tracking of stack values.
+                // The nested blocks leave their results on the stack, whose types are known from the block types.
 
                 // stack depth to evaluate this block
                 // the parameters of the block are on the stack at the beginning
@@ -146,38 +182,22 @@ namespace WaaS.Models
 
                     if (instr is BlockInstruction blockInstr)
                     {
-                        var innerParameterTypes = blockInstr.ParameterTypes.Span;
-
-                        var blockResultTypeDepth = blockResultTypeStack.Depth;
-                        blockResultTypeStack.Push(new BlockResultType(blockInstr));
-
+                        var nestedBlock = new PendingBlock
                         {
-                            ValidateBlock(
-                                context,
-                                ref blockResultTypeStack,
-                                i + 1,
-                                innerParameterTypes,
-                                out var innerMaxStackDepth);
-
-                            var globalMaxDepth = initialDepth + innerMaxStackDepth;
-                            if (maxStackDepth < globalMaxDepth) maxStackDepth = globalMaxDepth;
-                        }
+                            StartIndex = i + 1,
+                            ParameterTypes = blockInstr.ParameterTypes,
+                            ResultType = new BlockResultType(blockInstr),
+                            LabelDepth = block.LabelDepth + 1,
+                            BaseStackDepth = block.BaseStackDepth + initialDepth
+                        };
+                        nestedBlocks.Add(nestedBlock);
 
                         if (instr is If @if)
                         {
                             if (@if.Else is not null)
                             {
-                                var @else = @if.Else;
-
-                                ValidateBlock(
-                                    context,
-                                    ref blockResultTypeStack,
-                                    (int)(@else.Index + 1),
-                                    innerParameterTypes,
-                                    out var innerMaxStackDepth);
-
-                                var globalMaxDepth = initialDepth + innerMaxStackDepth;
-                                if (maxStackDepth < globalMaxDepth) maxStackDepth = globalMaxDepth;
+                                nestedBlock.StartIndex = (int)(@if.Else.Index + 1);
+                                nestedBlocks.Add(nestedBlock);
                             }
                             else if (!MemoryMarshal.AsBytes(@if.ParameterTypes.Span)
                                          .SequenceEqual(MemoryMarshal.AsBytes(@if.ResultTypes.Span)))
@@ -186,8 +206,6 @@ namespace WaaS.Models
                                 throw new InvalidCodeException("type mismatch");
                             }
                         }
-
-                        blockResultTypeStack.Unwind(blockResultTypeDepth);
 
                         // push results
                         localStackDepth += pushCount;
@@ -276,7 +294,8 @@ namespace WaaS.Models
 
                 // we got max size of stack then evaluate stack
 
-                Span<ValueType> stack = stackalloc ValueType[(int)localMaxStackDepth];
+                if (stackBuffer.Length < localMaxStackDepth) stackBuffer = new ValueType[localMaxStackDepth];
+                var stack = stackBuffer.AsSpan(0, (int)localMaxStackDepth);
                 var stackState = new ValidationBlockStackState(stack);
                 foreach (var parameterType in parameterTypes) stackState.Push(parameterType);
 
@@ -362,6 +381,19 @@ namespace WaaS.Models
                     }
                 }
             }
+        }
+
+        private struct PendingBlock
+        {
+            public int StartIndex;
+            public ReadOnlyMemory<ValueType> ParameterTypes;
+            public BlockResultType ResultType;
+
+            // the number of the labels including the block
+            public int LabelDepth;
+
+            // the stack depth of the function at the start of the block
+            public uint BaseStackDepth;
         }
 
         private ref struct BlockResultTypeStack

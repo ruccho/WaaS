@@ -20,6 +20,10 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - The formatters created by reflection are preserved from managed code stripping.
 - The native editor library generates MoonBit bindings, and binds `spectest.print_char` (`println` of MoonBit) to a no-op when componentizing.
 
+### Fixed
+
+- Stack overflow when reading and validating deeply nested blocks, which rustc emits for large `match` expressions. The blocks are read and validated without recursion.
+
 ## [0.3.0]
 
 ### Added
