@@ -361,7 +361,8 @@ namespace WaaS.ComponentModel.Models
         {
             get
             {
-                byte s = 1;
+                // log2 of the alignment: starts from 0 (1 byte), as max_case_alignment of the Canonical ABI
+                byte s = 0;
                 foreach (var @case in Cases.Span)
                 {
                     var type = @case.Type;

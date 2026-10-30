@@ -356,6 +356,22 @@ public class ComponentAbiExtendedTests
         Assert.That((await CallExport(e => e.Texts(Array.Empty<string>()))).ToArray(), Is.Empty);
     }
 
+    [Test]
+    public async Task ExportsRoundTripLists()
+    {
+        var bytes = new byte[] { 0, 1, 127, 128, 255 };
+        Assert.That((await CallExport(e => e.Bytes(bytes))).ToArray(), Is.EqualTo(bytes));
+        Assert.That(await LastCall(), Is.EqualTo("[0, 1, 127, 128, 255]"));
+
+        var shorts = new short[] { -1, short.MinValue, short.MaxValue, 0, 1 };
+        Assert.That((await CallExport(e => e.Shorts(shorts))).ToArray(), Is.EqualTo(shorts));
+        Assert.That(await LastCall(), Is.EqualTo("[-1, -32768, 32767, 0, 1]"));
+
+        var levels = new[] { IExtValues.Level.High, IExtValues.Level.Low, IExtValues.Level.Mid };
+        Assert.That((await CallExport(e => e.Levels(levels))).ToArray(), Is.EqualTo(levels));
+        Assert.That(await LastCall(), Is.EqualTo("[Level::High, Level::Low, Level::Mid]"));
+    }
+
     private static IExtValues.Inner Inner(byte a, short? b, params string[] c)
     {
         return new IExtValues.Inner { A = a, B = b, C = c };
