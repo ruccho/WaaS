@@ -3,7 +3,7 @@
 namespace WaaS.Unity.Editor
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
-    internal class ManagedReferenceTypeDisplayNameAttribute : Attribute
+    public class ManagedReferenceTypeDisplayNameAttribute : Attribute
     {
         public ManagedReferenceTypeDisplayNameAttribute(string name)
         {

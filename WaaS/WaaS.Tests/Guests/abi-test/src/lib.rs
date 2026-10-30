@@ -163,6 +163,18 @@ impl Guest for AbiTest {
         std::mem::forget(counter);
         value
     }
+
+    fn test_leak(value: i32) {
+        std::mem::forget(host::make_counter(value));
+    }
+
+    fn test_panic(message: String) {
+        panic!("{message}");
+    }
+
+    fn test_host_failure(message: String) {
+        host::fail(&message);
+    }
 }
 
 export!(AbiTest);

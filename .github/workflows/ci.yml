@@ -39,6 +39,20 @@ jobs:
       - name: Publish (dry run)
         run: cargo publish --workspace --dry-run --locked
 
+  wukuro-moonbit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Wukuro/moonbit/wukuro
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the MoonBit toolchain
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Check
+        run: moon check --target wasm
+
   rust-tools:
     runs-on: ubuntu-latest
     strategy:

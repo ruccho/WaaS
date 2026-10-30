@@ -1,0 +1,17 @@
+package a:b;
+
+interface types {
+  record point { x: u32, y: u32 }
+}
+
+world w {
+  import foo: interface {
+    f: func(x: u32) -> string;
+  }
+  export bar: interface {
+    use types.{point};
+    record local { v: s32 }
+    g: func(p: point) -> local;
+  }
+  export types;
+}

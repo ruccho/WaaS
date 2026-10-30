@@ -1,0 +1,106 @@
+---
+title: MoonBit Importer の使用
+sidebar_position: 2
+---
+
+# MoonBit Importer の使用
+
+[MoonBit](https://www.moonbitlang.com/) のコードをアセットとしてインポートすると、WebAssembly に直接コンパイルできます。スクリプトは 1 つの `*.mbt` ファイル、またはプロジェクト内の MoonBit のパッケージ（[スクリプトパッケージ](#script-packages)）であり、既定では component にコンパイルされます。
+
+:::info
+MoonBit Importer を利用するには、[MoonBit のツールチェイン](https://www.moonbitlang.com/download)（`PATH` 上の `moon`）が必要です。`wasm` バックエンド（`wasm-gc` ではない）を使用します。
+:::
+
+## インポート設定
+
+- **Script**: ソースファイルをスクリプトとして扱うかどうかを指定します。チェックを外すとコンパイルされません。`moon.pkg` のあるディレクトリのファイル（プロジェクト内に置いたライブラリなど、MoonBit のパッケージのファイル）は、スクリプトとして扱われません。
+- **Preset**: 以下の設定のプリセットです。[プリセットの使用](#using-presets)を参照してください。
+- **Dependencies**: スクリプトが依存するモジュールです。
+  - **Name**: モジュールの名前です（例: `ruccho/wukuro`）。
+  - **Version**: [mooncakes.io](https://mooncakes.io/) のモジュールのバージョンです。ローカルのモジュールでは無視されます。
+  - **Local Path**: ローカルのファイルシステム上のモジュールのディレクトリを、Unity プロジェクトのルートからの相対パスで指定します。空にすると mooncakes.io から取得します。
+- **Imports**: スクリプトがインポートするパッケージと、スクリプト内での別名です（例: `ruccho/wukuro` を `@wukuro`）。別名が空の場合は、パスの最後の部分が使われます。
+- **Componentize**: WebAssembly のモジュールを component に変換します。[Componentization](#componentization) を参照してください。
+- **WIT Directories**: component がインポートする WIT パッケージを、パッケージごとのサブディレクトリに含むディレクトリです。Unity プロジェクトのルートからの相対パスで指定します。ローカルのモジュールの `wit` ディレクトリも使われます。
+- **Generators**: エントリパッケージのコードの生成器です。[Wukuro](../wukuro/moonbit.mdx) などのフレームワークが提供します。
+
+:::warning
+MoonBit Importer は、ソースファイルや、WaaS が生成したローカルのモジュールのファイル（[バインディング](#generating-bindings)など）が変更されると、スクリプトを再コンパイルします。Unity の管理外にあるそれ以外のファイルの変更は検知されません。その場合は、スクリプトを右クリックして `Reimport` を選択してください。`Assets` > `Recompile MoonBit scripts for WaaS` を選択すると、プロジェクト内のすべての MoonBit のスクリプトを再コンパイルします。
+:::
+
+### プリセットの使用 {#using-presets}
+
+`Create` > `WaaS` > `MoonBit Importer Preset` でプリセットのアセットを作成し、インポート設定の **Preset** に設定すると、複数のスクリプトで設定を共有できます。
+
+## スクリプトのビルド
+
+MoonBit Importer は、スクリプトごとに `Library/com.ruccho.waas/moonbit/<hash>` にワークスペースを作成します。
+
+- `moon.work`: メンバーは、スクリプトのモジュールと **Dependencies** のローカルのモジュールです。
+- `module/script`: スクリプトのパッケージ（ソースファイルのコピー）です。
+- `module/main`: component の関数（`cabi_realloc` と生成器が追加したコード）を export するエントリパッケージです。
+
+スクリプトは `moon build --target wasm --release` でビルドされます。コンパイルエラーは、ソースファイルのパスとともに Unity のコンソールに表示されます。
+
+:::warning
+ワークスペース内のファイルのパスは長くなります。Windows でパスの長さの制限のためにビルドが失敗する場合は、Unity プロジェクトを短いパスのディレクトリに置いてください。
+:::
+
+## スクリプトパッケージ {#script-packages}
+
+`Assets` 内の `moon.pkg` のあるディレクトリは MoonBit のパッケージであり、スクリプトとしてインポートされます。`moon.pkg` のアセットが component になります。ディレクトリ内のすべての `*.mbt` ファイルがスクリプトのソースであり、インポートするパッケージは、インポート設定の **Imports** ではなく `moon.pkg` に記述します。
+
+```text title="Assets/Scripts/Villager/moon.pkg"
+import {
+  "ruccho/wukuro" @wukuro,
+}
+```
+
+スクリプトパッケージは、1 つの `*.mbt` ファイルのスクリプトと同じく、生成器がファイルを追加できるようにワークスペース内のコピーからビルドされます。パッケージは、Unity プロジェクトのルートの `moon.mod` である**プロジェクトモジュール**に属します。プロジェクトモジュールのソースディレクトリは `Assets` です。パッケージ `Assets/Scripts/Villager` は `<モジュール名>/Scripts/Villager` となるため、ディレクトリの名前には英数字、`_`、`-` のみを使用してください。スクリプトパッケージをインポートすると、MoonBit Importer は、プロジェクトモジュールとワークスペース `moon.work` がなければプロジェクトのルートに作成し、インポート設定の **Dependencies** を追加します。
+
+```text title="moon.mod"
+name = "unity/project"
+
+source = "Assets"
+
+preferred_target = "wasm"
+
+import {
+  "ruccho/wukuro@0.0.0",
+}
+```
+
+```text title="moon.work"
+members = [
+  "../WaaS/Wukuro/moonbit/wukuro",
+  ".",
+]
+```
+
+### IDE の機能の使用
+
+MoonBit に対応した IDE でプロジェクトのルートフォルダを開くと、Rust Importer と `Cargo.toml` の場合と同じく、スクリプトパッケージでコード補完や診断などの機能を使用できます。1 つの `*.mbt` ファイルのスクリプトはワークスペース内のコピーからビルドされるため、これらの機能を使用できません。IDE でスクリプトを編集する場合は、スクリプトパッケージを使用してください。
+
+`moon.mod` と `moon.work` はバージョン管理に追加し、IDE が作成するルートの `_build/` と `pkg.generated.mbti` は無視することを推奨します。
+
+## Componentization {#componentization}
+
+**Componentize** を有効にすると、モジュールがインポートするインターフェースを import し、生成器が追加したインターフェースを export する world で component に変換されます。インポートするインターフェースの WIT パッケージは、**WIT Directories** とローカルのモジュールの `wit` ディレクトリから探されます。文字列は、MoonBit の文字列のエンコーディングである UTF-16 で受け渡されます。
+
+MoonBit の `println` は、component が提供できない関数をインポートします。この関数は、`wasm32-unknown-unknown` での Rust の `println` と同様に、何もしない関数に結び付けられます。
+
+## バインディングの生成 {#generating-bindings}
+
+WIT のインターフェースの MoonBit のバインディングは、**MoonBit Bindings Settings**（`Create` > `WaaS` > `MoonBit Bindings Settings`）によって MoonBit のモジュールに生成されます。スクリプトのコンパイルのたびに [WIT の書き出し](../component-model/binding-generator/wit-export.mdx)の後で生成され、変更されたファイルのみ書き込まれます。
+
+- **WIT Directory**: WIT パッケージを含むディレクトリです。WIT Export Settings の書き出し先などを指定します。
+- **Interfaces**: バインディングを生成するインターフェースです（例: `my-game:events/functions`）。
+- **Output Directory**: バインディングの書き出し先です。バインディング専用のディレクトリを指定します。
+- **Package Path**: 書き出し先のディレクトリのパッケージパスです（例: `my-name/my-game/bindings`）。
+- **External Interfaces**: 他のパッケージがバインディングを提供するインターフェースです。生成されるコードは、インターフェースを再度生成せずに指定したパッケージを参照するため、型を他のモジュールと共有できます。
+
+インターフェース `ns:pkg/iface` のバインディングは、パッケージ `<Package Path>/ns_pkg_iface` として生成されます。
+
+## MoonBit Importer の無効化
+
+MoonBit Importer を無効化するには、`WAAS_DISABLE_MOONBIT_IMPORTER` シンボルを定義してください。

@@ -50,6 +50,8 @@ pub mod object_types;
 
 C# の宣言を変えたときに自動で生成し直すには、コンパイルの後に生成を行うエディタ拡張を用意し、生成したファイルを `ExternalFileDependency.Register` で登録します（[ゲームのデータから Rust のコードを生成する](./extending.mdx#ゲームのデータから-rust-のコードを生成する)）。
 
+MoonBit のスクリプトでは、`WukuroObjectTypeExporter.GenerateMoonBit` で同様にマーカー型を生成します（[MoonBit でのスクリプトの記述](./moonbit.mdx#object-types)）。
+
 ## 型付きの引数を使う
 
 ```rust

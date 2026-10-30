@@ -8,18 +8,63 @@ namespace WaaS.Models
     /// </summary>
     public readonly struct BlockType : IEquatable<BlockType>
     {
+        /// <summary>
+        ///     The result type of the block when it is specified as a single value type.
+        /// </summary>
         public ValueType? Type { get; }
+
+        /// <summary>
+        ///     The index of the function type of the block when it is specified as a type index (multi-value).
+        /// </summary>
+        public uint? TypeIndex { get; }
 
         internal BlockType(ref ModuleReader reader)
         {
+            Type = null;
+            TypeIndex = null;
+
             var t = reader.ReadUnaligned<byte>();
-            if (t == 0x40) Type = null;
-            else Type = (ValueType)t;
+            if (t == 0x40) return;
+
+            if (t is >= (byte)ValueType.V128 and <= (byte)ValueType.I32)
+            {
+                Type = (ValueType)t;
+                return;
+            }
+
+            // s33 type index (must be non-negative)
+            const int maxNumSrcBytes = 5; // ceil(33 / 7)
+            ulong result = 0;
+            var source = t;
+            for (var i = 0;; i++)
+            {
+                result |= (ulong)(source & 0x7F) << (7 * i);
+
+                if (source >> 7 == 0)
+                {
+                    if (i == maxNumSrcBytes - 1)
+                    {
+                        // the last byte holds bit 28-32 and the sign extension
+                        if ((source & 0b01110000) != 0) throw new InvalidModuleException("invalid block type");
+                    }
+                    else
+                    {
+                        if ((source & 0b01000000) != 0) throw new InvalidModuleException("invalid block type");
+                    }
+
+                    break;
+                }
+
+                if (i == maxNumSrcBytes - 1) throw new InvalidModuleException("invalid block type");
+                source = reader.ReadUnaligned<byte>();
+            }
+
+            TypeIndex = (uint)result;
         }
 
         public bool Equals(BlockType other)
         {
-            return Type == other.Type;
+            return Type == other.Type && TypeIndex == other.TypeIndex;
         }
 
         public override bool Equals(object obj)
@@ -29,7 +74,7 @@ namespace WaaS.Models
 
         public override int GetHashCode()
         {
-            return Type.GetHashCode();
+            return HashCode.Combine(Type, TypeIndex);
         }
 
         public static bool operator ==(BlockType left, BlockType right)
@@ -51,7 +96,7 @@ namespace WaaS.Models
     {
         public override void Execute(WasmStackFrame current)
         {
-            throw new TrapException();
+            throw new TrapException("unreachable");
         }
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)
@@ -89,19 +134,65 @@ namespace WaaS.Models
     /// </summary>
     public abstract partial class BlockInstruction : Instruction
     {
+        // indexed by (type - V128)
+        private static readonly ValueType[][] SingleValueTypes =
+        {
+            new[] { ValueType.V128 },
+            new[] { ValueType.F64 },
+            new[] { ValueType.F32 },
+            new[] { ValueType.I64 },
+            new[] { ValueType.I32 }
+        };
+
         [Operand(0)] public BlockType BlockType { get; }
 
         public End End { get; private set; }
 
+        /// <summary>
+        ///     Types of the values the block takes from the enclosing stack. Available after validation.
+        /// </summary>
+        public ReadOnlyMemory<ValueType> ParameterTypes { get; private set; }
+
+        /// <summary>
+        ///     Types of the values the block leaves on the enclosing stack. Available after validation.
+        /// </summary>
+        public ReadOnlyMemory<ValueType> ResultTypes { get; private set; }
+
+        /// <summary>
+        ///     Number of the values a branch to this block carries.
+        /// </summary>
         public abstract uint Arity { get; }
+
+        public override void Validate(in ValidationContext context)
+        {
+            base.Validate(context);
+
+            if (BlockType.TypeIndex is { } typeIndex)
+            {
+                var funcTypes = context.Module.TypeSection?.FuncTypes ?? default;
+                if (typeIndex >= funcTypes.Length) throw new InvalidCodeException("unknown type");
+                var functionType = funcTypes.Span[(int)typeIndex];
+                ParameterTypes = functionType.ParameterTypes;
+                ResultTypes = functionType.ResultTypes;
+            }
+            else
+            {
+                ParameterTypes = ReadOnlyMemory<ValueType>.Empty;
+                ResultTypes = BlockType.Type is { } type
+                    ? SingleValueTypes[(byte)type - (byte)ValueType.V128]
+                    : ReadOnlyMemory<ValueType>.Empty;
+            }
+        }
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)
         {
-            return (0, 0);
+            return ((uint)ParameterTypes.Length, (uint)ResultTypes.Length);
         }
 
         public override void ValidateStackState(in ValidationContext context, ref ValidationBlockStackState stackState)
         {
+            var paramTypes = ParameterTypes.Span;
+            for (var i = paramTypes.Length - 1; i >= 0; i--) stackState.Pop(paramTypes[i]);
         }
 
         protected abstract void OnBeforeBlockEnter(WasmStackFrame current, out uint continuationIndex);
@@ -109,7 +200,7 @@ namespace WaaS.Models
         public sealed override void Execute(WasmStackFrame current)
         {
             OnBeforeBlockEnter(current, out var continuationIndex);
-            current.EnterBlock(new Label(Index, continuationIndex));
+            current.EnterBlock(new Label(Index, continuationIndex), ParameterTypes.Length);
         }
 
         public virtual void InjectDelimiter(BlockDelimiterInstruction delimiter)
@@ -131,7 +222,7 @@ namespace WaaS.Models
     [OpCode(0x02)]
     public partial class Block : BlockInstruction
     {
-        public override uint Arity => BlockType.Type.HasValue ? 1u : 0u;
+        public override uint Arity => (uint)ResultTypes.Length;
 
         protected override void OnBeforeBlockEnter(WasmStackFrame current, out uint continuationIndex)
         {
@@ -145,7 +236,7 @@ namespace WaaS.Models
     [OpCode(0x03)]
     public partial class Loop : BlockInstruction
     {
-        public override uint Arity => 0;
+        public override uint Arity => (uint)ParameterTypes.Length;
 
         protected override void OnBeforeBlockEnter(WasmStackFrame current, out uint continuationIndex)
         {
@@ -159,18 +250,20 @@ namespace WaaS.Models
     [OpCode(0x04)]
     public partial class If : BlockInstruction
     {
-        public override uint Arity => BlockType.Type.HasValue ? 1u : 0u;
+        public override uint Arity => (uint)ResultTypes.Length;
 
         public Else Else { get; private set; } // optional
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)
         {
-            return (1, Arity);
+            var (popCount, pushCount) = base.PreValidateStackState(context);
+            return (popCount + 1, pushCount);
         }
 
         public override void ValidateStackState(in ValidationContext context, ref ValidationBlockStackState stackState)
         {
             stackState.Pop(ValueType.I32);
+            base.ValidateStackState(context, ref stackState);
         }
 
         protected override void OnBeforeBlockEnter(WasmStackFrame current, out uint continuationIndex)

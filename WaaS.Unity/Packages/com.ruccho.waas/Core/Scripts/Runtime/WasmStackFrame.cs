@@ -69,6 +69,7 @@ namespace WaaS.Runtime
             if (isEnd) return StackFrameState.Completed;
 
             var instrs = Function.function.Body.Instructions.Span;
+            var context = Context;
 
             while (true)
             {
@@ -79,9 +80,10 @@ namespace WaaS.Runtime
                 isFramePushed = false;
                 try
                 {
+                    if (--context.fuel < 0) context.OnFuelExhausted();
                     instr.Execute(this);
                 }
-                catch (Exception ex) when (ex is not WasmException)
+                catch (Exception ex) when (ex is not WasmException and not OperationCanceledException)
                 {
                     throw new WasmException(Function, instr, innerException: ex);
                 }
@@ -191,6 +193,26 @@ namespace WaaS.Runtime
             inputValues.CopyTo(localsSpan.Slice(0, numParams));
         }
 
+        /// <summary>
+        ///     Gets the instruction being executed. Used to build the stack trace on failure.
+        /// </summary>
+        /// <param name="isInnermost">
+        ///     Whether the frame is the innermost one. Otherwise, the frame is suspended after the instruction which
+        ///     pushed the next frame, and the program counter already points to the instruction after it.
+        /// </param>
+        internal Instruction GetCurrentInstruction(bool isInnermost)
+        {
+            if (Function == null) return null;
+            var instrs = Function.function.Body.Instructions.Span;
+            if (instrs.IsEmpty) return null;
+
+            var index = (long)programCounter;
+            if (!isInnermost && isFramePushed) index--;
+            if (index < 0) index = 0;
+            if (index >= instrs.Length) index = instrs.Length - 1;
+            return instrs[(int)index];
+        }
+
         private void ThrowIfOutdated(ushort version)
         {
             if (version != Version) throw new InvalidOperationException();
@@ -205,6 +227,8 @@ namespace WaaS.Runtime
         {
             isEnd = true;
         }
+
+        internal uint? MaxMemoryPages => Context.MaxMemoryPages;
 
         public void PushFrame(IInvocableFunction function, Span<StackValueItem> parameters)
         {
@@ -237,6 +261,12 @@ namespace WaaS.Runtime
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Push(V128 value)
+        {
+            Push(new StackValueItem(value));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Push(StackValueItem value)
         {
             stack.Span[checked(stackPointer++)] = value;
@@ -263,10 +293,25 @@ namespace WaaS.Runtime
             programCounter = index - 1;
         }
 
-        public void EnterBlock(Label label)
+        public void EnterBlock(Label label, int numParameters = 0)
         {
+            if (numParameters == 0)
+            {
+                Push(new StackValueItem(label));
+                PushLabelDepth(stackPointer);
+                return;
+            }
+
+            // move the parameters above the label
+            var parameters = stack.Span.Slice(checked(stackPointer - numParameters), numParameters);
+            Span<StackValueItem> tempParameters = stackalloc StackValueItem[numParameters];
+            parameters.CopyTo(tempParameters);
+            stackPointer -= numParameters;
+
             Push(new StackValueItem(label));
             PushLabelDepth(stackPointer);
+
+            foreach (var parameter in tempParameters) Push(parameter);
         }
 
         public void EndBlock()
@@ -298,6 +343,9 @@ namespace WaaS.Runtime
 
         public void JumpLabel(uint depth)
         {
+            // every loop iteration takes a branch, so this is enough to abort a running loop
+            Context.CancellationToken.ThrowIfCancellationRequested();
+
             for (var i = 0; i < depth; i++) PopLabelDepth();
 
             if (labelDepthStackPointer == 0)

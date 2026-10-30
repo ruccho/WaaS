@@ -7,7 +7,8 @@ namespace WaaS
         I32 = 0x7F,
         I64 = 0x7E,
         F32 = 0x7D,
-        F64 = 0x7C
+        F64 = 0x7C,
+        V128 = 0x7B
     }
 
     internal static class ValueTypeRegistry
@@ -18,6 +19,7 @@ namespace WaaS
             Registry<ulong>.valueType = ValueType.I64;
             Registry<float>.valueType = ValueType.F32;
             Registry<double>.valueType = ValueType.F64;
+            Registry<V128>.valueType = ValueType.V128;
         }
 
         public static ValueType? GetFor<T>() where T : unmanaged
@@ -84,6 +86,19 @@ namespace WaaS
         }
 
         public void Push(WasmStackFrame frame, double value)
+        {
+            frame.Push(value);
+        }
+    }
+
+    public struct ValueTypeV128 : IValueType<V128>
+    {
+        public V128 Pop(WasmStackFrame frame)
+        {
+            return frame.Pop().ExpectValueV128();
+        }
+
+        public void Push(WasmStackFrame frame, V128 value)
         {
             frame.Push(value);
         }

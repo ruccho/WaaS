@@ -14,13 +14,24 @@ using DialogTypes = Wukuro.Dialog.ITypes;
 namespace Wukuro.Tests
 {
     /// <summary>
-    ///     Runs the entry points of wukuro-tests.rs.
+    ///     Runs the entry points of wukuro-tests.rs, wukuro-tests.mbt and MoonBitPackage, which are the same scripts written
+    ///     in Rust, in a MoonBit source file and in a MoonBit package.
     /// </summary>
+    [TestFixture("Assets/Tests/Wukuro/wukuro-tests.rs")]
+    [TestFixture("Assets/Tests/Wukuro/wukuro-tests.mbt")]
+    [TestFixture("Assets/Tests/Wukuro/MoonBitPackage/moon.pkg")]
     public class WukuroTests
     {
-        private const string ScriptPath = "Assets/Tests/Wukuro/wukuro-tests.rs";
+        private string ScriptPath { get; }
 
         private ComponentAsset script;
+
+        public WukuroTests(string scriptPath)
+        {
+            ScriptPath = scriptPath;
+        }
+
+        private bool IsRust => ScriptPath.EndsWith(".rs");
 
         [OneTimeSetUp]
         public void SetUp()
@@ -54,6 +65,15 @@ namespace Wukuro.Tests
                 .Where(p => p.IsArgument)
                 .Select(p => $"{p.Name}: {p.WitType}");
             Assert.That(parameters, Is.EqualTo(new[] { "count: s32", "label: string", "flag: bool" }));
+        }
+
+        [Test]
+        public void SmallIntegersAreDeclaredWithTheirTypes()
+        {
+            var parameters = WukuroEntryPoints.Parse(script.Wit).Single(e => e.Name == "small-integers").Parameters
+                .Where(p => p.IsArgument)
+                .Select(p => $"{p.WitType}");
+            Assert.That(parameters, Is.EqualTo(new[] { "s16", "u16" }));
         }
 
         [Test]
@@ -111,6 +131,29 @@ namespace Wukuro.Tests
         {
             Assert.That(async () => await RunAsync(new WukuroRunner(), Entry("missing"), new MemoryVariables()),
                 Throws.ArgumentException);
+        }
+
+        [Test]
+        public async Task PanicMessageIsReported()
+        {
+            var arguments = new WukuroRuntimeArguments().Add("message", "script failure");
+
+            WukuroPanicException exception = null;
+            try
+            {
+                await RunAsync(new WukuroRunner(), Entry("panics"), new MemoryVariables(), arguments);
+            }
+            catch (WukuroPanicException ex)
+            {
+                exception = ex;
+            }
+
+            Assert.That(exception, Is.Not.Null);
+            // e.g. "panicked at src/lib.rs:10:5:\nscript failure" in Rust, the message passed to fail in MoonBit
+            if (IsRust) Assert.That(exception.PanicMessage, Does.StartWith("panicked at "));
+            Assert.That(exception.PanicMessage, Does.Contain("script failure"));
+            Assert.That(exception.WasmStackTrace, Is.Not.Null);
+            Assert.That(exception.Message, Does.Contain("wasm backtrace:"));
         }
 
         [Test]

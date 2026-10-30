@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using WaaS.Runtime;
 
 namespace WaaS.Models
@@ -8,61 +9,26 @@ namespace WaaS.Models
     /// </summary>
     internal readonly struct BlockResultType
     {
-        public readonly bool IsLoop;
-        private readonly bool useTypeIndex;
-        private readonly uint typeIndex;
-        private readonly ValueType? type;
-        private readonly uint arity;
+        /// <summary>
+        ///     Types of the values a branch to the block carries. Parameters for a loop, results otherwise.
+        /// </summary>
+        public readonly ReadOnlyMemory<ValueType> LabelTypes;
 
-        public bool MatchSignature(in ValidationContext context, BlockResultType other)
+        /// <summary>
+        ///     Types of the values on the stack at the end of the block.
+        /// </summary>
+        public readonly ReadOnlyMemory<ValueType> ResultTypes;
+
+        public BlockResultType(BlockInstruction blockInstruction)
         {
-            var aritySelf = IsLoop ? 0 : GetArity(context);
-            var arityOther = other.IsLoop ? 0 : other.GetArity(context);
-
-            if (aritySelf != arityOther) return false;
-
-            for (var i = 0; i < aritySelf; i++)
-            {
-                var elementSelf = GetElement(context, i);
-                var elementOther = other.GetElement(context, i);
-                if (elementSelf != elementOther) return false;
-            }
-
-            return true;
+            LabelTypes = blockInstruction is Loop ? blockInstruction.ParameterTypes : blockInstruction.ResultTypes;
+            ResultTypes = blockInstruction.ResultTypes;
         }
 
-        public uint GetArity(in ValidationContext context)
+        public BlockResultType(FunctionType functionType)
         {
-            if (useTypeIndex) return (uint)context.Module.TypeSection.FuncTypes.Span[(int)typeIndex].ResultTypes.Length;
-
-            return arity;
-        }
-
-        public ValueType GetElement(in ValidationContext context, int index)
-        {
-            if (useTypeIndex) return context.Module.TypeSection.FuncTypes.Span[(int)typeIndex].ResultTypes.Span[index];
-
-            if (index != 0) throw new InvalidOperationException();
-            return type!.Value;
-        }
-
-
-        public BlockResultType(BlockType blockType, bool isLoop)
-        {
-            IsLoop = isLoop;
-            useTypeIndex = false;
-            typeIndex = 0;
-            type = blockType.Type;
-            arity = blockType.Type.HasValue ? 1u : 0u;
-        }
-
-        public BlockResultType(uint typeIndex)
-        {
-            IsLoop = false;
-            useTypeIndex = true;
-            this.typeIndex = typeIndex;
-            type = null;
-            arity = 0;
+            LabelTypes = functionType.ResultTypes;
+            ResultTypes = functionType.ResultTypes;
         }
     }
 
@@ -114,12 +80,12 @@ namespace WaaS.Models
 
                     if (blockDepth != 0) throw new InvalidCodeException();
 
-                    Span<BlockResultType> blockResultTypes = stackalloc BlockResultType[maxBlockDepth];
+                    var blockResultTypes = new BlockResultType[maxBlockDepth];
                     var blockResultTypeStack = new BlockResultTypeStack(blockResultTypes);
 
-                    blockResultTypeStack.Push(new BlockResultType(context.CurrentFunction.TypeIndex));
+                    blockResultTypeStack.Push(new BlockResultType(context.CurrentFunction.Type));
 
-                    ValidateBlock(context, ref blockResultTypeStack, 0,
+                    ValidateBlock(context, ref blockResultTypeStack, 0, ReadOnlySpan<ValueType>.Empty,
                         out var maxStackDepth);
                     MaxStackDepth = maxStackDepth;
                     MaxBlockDepth = (uint)maxBlockDepth;
@@ -140,6 +106,7 @@ namespace WaaS.Models
             in ValidationContext context,
             ref BlockResultTypeStack blockResultTypeStack,
             int startIndex,
+            ReadOnlySpan<ValueType> parameterTypes,
             out uint maxStackDepth)
         {
             checked
@@ -152,11 +119,12 @@ namespace WaaS.Models
                 // So first we run recursive ValidateBlock() calls to know the result state of the nested blocks.
 
                 // stack depth to evaluate this block
-                uint localStackDepth = 0;
-                uint localMaxStackDepth = 0;
+                // the parameters of the block are on the stack at the beginning
+                var localStackDepth = (uint)parameterTypes.Length;
+                var localMaxStackDepth = localStackDepth;
 
                 // max stack depth include nested blocks
-                maxStackDepth = 0;
+                maxStackDepth = localStackDepth;
 
                 var isUnreachable = false;
                 for (var i = startIndex;; i++)
@@ -178,16 +146,17 @@ namespace WaaS.Models
 
                     if (instr is BlockInstruction blockInstr)
                     {
-                        var innerBlockType = blockInstr.BlockType;
+                        var innerParameterTypes = blockInstr.ParameterTypes.Span;
 
                         var blockResultTypeDepth = blockResultTypeStack.Depth;
-                        blockResultTypeStack.Push(new BlockResultType(innerBlockType, blockInstr is Loop));
+                        blockResultTypeStack.Push(new BlockResultType(blockInstr));
 
                         {
                             ValidateBlock(
                                 context,
                                 ref blockResultTypeStack,
                                 i + 1,
+                                innerParameterTypes,
                                 out var innerMaxStackDepth);
 
                             var globalMaxDepth = initialDepth + innerMaxStackDepth;
@@ -204,13 +173,16 @@ namespace WaaS.Models
                                     context,
                                     ref blockResultTypeStack,
                                     (int)(@else.Index + 1),
+                                    innerParameterTypes,
                                     out var innerMaxStackDepth);
 
                                 var globalMaxDepth = initialDepth + innerMaxStackDepth;
                                 if (maxStackDepth < globalMaxDepth) maxStackDepth = globalMaxDepth;
                             }
-                            else if (@if.BlockType.Type.HasValue)
+                            else if (!MemoryMarshal.AsBytes(@if.ParameterTypes.Span)
+                                         .SequenceEqual(MemoryMarshal.AsBytes(@if.ResultTypes.Span)))
                             {
+                                // without "else", the parameters are passed through as the results
                                 throw new InvalidCodeException("type mismatch");
                             }
                         }
@@ -218,8 +190,7 @@ namespace WaaS.Models
                         blockResultTypeStack.Unwind(blockResultTypeDepth);
 
                         // push results
-                        localStackDepth +=
-                            innerBlockType.Type.HasValue ? 1u : 0u;
+                        localStackDepth += pushCount;
                         if (localMaxStackDepth < localStackDepth) localMaxStackDepth = localStackDepth;
                         if (maxStackDepth < localStackDepth) maxStackDepth = localStackDepth;
 
@@ -236,8 +207,14 @@ namespace WaaS.Models
                     {
                         // check arity
                         var info = blockResultTypeStack.Get((int)brIf.LabelIndex);
-                        if (!info.IsLoop && !isUnreachable && localStackDepth < info.GetArity(context))
+                        var arity = (uint)info.LabelTypes.Length;
+                        if (!isUnreachable && localStackDepth < arity)
                             throw new InvalidCodeException();
+
+                        // the label types are pushed back even on the unreachable stack
+                        if (localStackDepth < arity) localStackDepth = arity;
+                        if (localMaxStackDepth < localStackDepth) localMaxStackDepth = localStackDepth;
+                        if (maxStackDepth < localStackDepth) maxStackDepth = localStackDepth;
                     }
 
                     if (instr is BrTable brTable)
@@ -249,18 +226,22 @@ namespace WaaS.Models
                         {
                             var info = blockResultTypeStack.Get((int)brTable.DefaultLabelIndex);
                             cursor = info;
-                            if (!info.IsLoop && !isUnreachable && localStackDepth < info.GetArity(context))
+                            if (!isUnreachable && localStackDepth < info.LabelTypes.Length)
                                 throw new InvalidCodeException();
                         }
 
                         foreach (var index in brTable.LabelIndices.Span)
                         {
                             var info = blockResultTypeStack.Get((int)index);
-                            if (!cursor.MatchSignature(context, info))
-                                throw new InvalidCodeException(); // signature consistency check
-                            if (!info.IsLoop && !isUnreachable && localStackDepth < info.GetArity(context))
+                            if (cursor.LabelTypes.Length != info.LabelTypes.Length)
+                                throw new InvalidCodeException(); // arity consistency check
+                            if (!isUnreachable && localStackDepth < info.LabelTypes.Length)
                                 throw new InvalidCodeException();
                         }
+
+                        // the label types are pushed back temporarily even on the unreachable stack
+                        if (localMaxStackDepth < cursor.LabelTypes.Length)
+                            localMaxStackDepth = (uint)cursor.LabelTypes.Length;
 
                         isUnreachable = true;
                         localStackDepth = 0;
@@ -270,7 +251,7 @@ namespace WaaS.Models
                     {
                         // check arity
                         var info = blockResultTypeStack.Get((int)br.LabelIndex);
-                        if (!info.IsLoop && !isUnreachable && localStackDepth < info.GetArity(context))
+                        if (!isUnreachable && localStackDepth < info.LabelTypes.Length)
                             throw new InvalidCodeException();
                         isUnreachable = true;
                         localStackDepth = 0;
@@ -278,9 +259,6 @@ namespace WaaS.Models
 
                     if (instr is Unreachable)
                     {
-                        var info = blockResultTypeStack.Get(0);
-                        if (!info.IsLoop && !isUnreachable && info.GetArity(context) is not (0 or 1))
-                            throw new InvalidCodeException();
                         isUnreachable = true;
                         localStackDepth = 0;
                     }
@@ -300,6 +278,7 @@ namespace WaaS.Models
 
                 Span<ValueType> stack = stackalloc ValueType[(int)localMaxStackDepth];
                 var stackState = new ValidationBlockStackState(stack);
+                foreach (var parameterType in parameterTypes) stackState.Push(parameterType);
 
                 // isUnreachable = false;
                 for (var i = startIndex;; i++)
@@ -310,8 +289,7 @@ namespace WaaS.Models
 
                     if (instr is BlockInstruction blockInstr)
                     {
-                        var type = blockInstr.BlockType.Type;
-                        if (type.HasValue) stackState.Push(type.Value);
+                        foreach (var resultType in blockInstr.ResultTypes.Span) stackState.Push(resultType);
 
                         // go to next
                         i = (int)blockInstr.End.Index;
@@ -320,29 +298,29 @@ namespace WaaS.Models
 
                     if (instr is BrIf brIf)
                     {
-                        var info = blockResultTypeStack.Get((int)brIf.LabelIndex);
-                        if (!info.IsLoop)
-                        {
-                            stackState.ValidateResults(context, info, false);
+                        var labelTypes = blockResultTypeStack.Get((int)brIf.LabelIndex).LabelTypes.Span;
+                        stackState.ValidateResults(labelTypes, false);
 
-                            // pop and push results to close "any" values as actual type on the unreachable stack
-                            var arity = info.GetArity(context);
-                            for (var j = 0; j < arity; j++) stackState.PopAny();
-                            for (var j = 0; j < arity; j++) stackState.Push(info.GetElement(context, j));
-                        }
+                        // pop and push results to close "any" values as actual type on the unreachable stack
+                        for (var j = 0; j < labelTypes.Length; j++) stackState.PopAny();
+                        foreach (var labelType in labelTypes) stackState.Push(labelType);
                     }
 
                     if (instr is BrTable brTable)
                     {
                         foreach (var index in brTable.LabelIndices.Span)
                         {
-                            var info = blockResultTypeStack.Get((int)index);
-                            if (!info.IsLoop) stackState.ValidateResults(context, info, false);
+                            var labelTypes = blockResultTypeStack.Get((int)index).LabelTypes.Span;
+                            stackState.ValidateResults(labelTypes, false);
+
+                            // pop and push to close "any" values so that every label sees the same types
+                            for (var j = 0; j < labelTypes.Length; j++) stackState.PopAny();
+                            foreach (var labelType in labelTypes) stackState.Push(labelType);
                         }
 
                         {
                             var info = blockResultTypeStack.Get((int)brTable.DefaultLabelIndex);
-                            if (!info.IsLoop) stackState.ValidateResults(context, info, false);
+                            stackState.ValidateResults(info.LabelTypes.Span, false);
                         }
                         stackState.MakeUnreachable();
                     }
@@ -351,7 +329,7 @@ namespace WaaS.Models
                     {
                         // check block type
                         var info = blockResultTypeStack.Get((int)br.LabelIndex);
-                        if (!info.IsLoop) stackState.ValidateResults(context, info, false);
+                        stackState.ValidateResults(info.LabelTypes.Span, false);
                         stackState.MakeUnreachable();
                     }
 
@@ -372,7 +350,7 @@ namespace WaaS.Models
                         {
                             // end of block
                             var info = blockResultTypeStack.Get(0);
-                            stackState.ValidateResults(context, info, true);
+                            stackState.ValidateResults(info.ResultTypes.Span, true);
                         }
                         else
                         {

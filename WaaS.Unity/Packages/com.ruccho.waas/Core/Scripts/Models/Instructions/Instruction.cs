@@ -18,6 +18,11 @@ namespace WaaS.Models
         public uint Index { get; }
 
         /// <summary>
+        ///     Byte offset of the instruction from the start of the module binary.
+        /// </summary>
+        public uint Offset { get; internal set; }
+
+        /// <summary>
         ///     Executes the instruction.
         /// </summary>
         /// <param name="current"></param>

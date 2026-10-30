@@ -37,6 +37,12 @@ fn run_action(cx: &Context, callback: &Action) {
     callback.run();
 }
 
+/// panics with the message
+#[entry]
+fn panics(cx: &Context, message: String) {
+    panic!("{message}");
+}
+
 #[entry]
 fn typed_object(cx: &Context, target: &ObjectOf<TestTransform>, untyped: &Object) {}
 
@@ -54,3 +60,6 @@ fn talk(cx: &Context) {
     let chosen = d.opts(["first", "second"]);
     cx.get_variable("chosen").set(Argument::TyS32(chosen));
 }
+
+#[entry]
+fn small_integers(cx: &Context, small: i16, unsigned_small: u16) {}

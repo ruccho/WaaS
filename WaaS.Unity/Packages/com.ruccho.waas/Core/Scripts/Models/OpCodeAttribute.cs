@@ -9,13 +9,16 @@ namespace WaaS.Models
             OpCode = opCode;
         }
 
-        public OpCodeAttribute(byte opCode, byte opCode1)
+        /// <summary>
+        ///     Specifies a prefixed opcode. The sub-opcode follows the prefix byte as LEB128 u32.
+        /// </summary>
+        public OpCodeAttribute(byte opCode, uint opCode1)
         {
             OpCode = opCode;
             OpCode1 = opCode1;
         }
 
         public byte OpCode { get; }
-        public byte? OpCode1 { get; }
+        public uint? OpCode1 { get; }
     }
 }

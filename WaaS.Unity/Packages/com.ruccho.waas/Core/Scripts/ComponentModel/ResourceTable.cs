@@ -77,6 +77,21 @@ namespace WaaS.ComponentModel
             }
         }
 
+        /// <summary>
+        ///     Removes all elements and returns them.
+        /// </summary>
+        public T[] RemoveAll()
+        {
+            lock (locker)
+            {
+                var result = new System.Collections.Generic.List<T>();
+                for (var i = reserveZero ? 1 : 0; i < elements.Length; i++)
+                    if (elements[i].isOccupied)
+                        result.Add(RemoveAt(i));
+                return result.ToArray();
+            }
+        }
+
         public bool TryGet(int index, out T value)
         {
             lock (locker)

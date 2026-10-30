@@ -61,5 +61,28 @@ namespace Wukuro.Editor
 
             return builder.ToString();
         }
+
+        /// <summary>
+        ///     Generates the MoonBit marker types. The type name is read from the attribute by the MoonBit importer.
+        /// </summary>
+        public static string GenerateMoonBit(IEnumerable<Type> types, string header)
+        {
+            var builder = new StringBuilder(header);
+            var names = new HashSet<string>();
+            foreach (var type in types)
+            {
+                var name = GetRustName(type);
+                if (!names.Add(name))
+                    throw new InvalidOperationException($"The MoonBit name {name} of {type.FullName} is duplicated.");
+
+                builder.Append('\n');
+                builder.Append("///|\n");
+                builder.Append($"/// `{type.FullName}`\n");
+                builder.Append($"#wukuro.object_type(\"{GetTypeName(type)}\")\n");
+                builder.Append($"pub struct {name} {{}}\n");
+            }
+
+            return builder.ToString();
+        }
     }
 }

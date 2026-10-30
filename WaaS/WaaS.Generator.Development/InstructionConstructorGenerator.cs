@@ -47,7 +47,7 @@ public class InstructionConstructorGenerator : IIncrementalGenerator
                       private static partial global::WaaS.Models.Instruction Read(ref global::WaaS.Models.ModuleReader reader, uint count)
                       {
                           var opCode = reader.ReadUnaligned<byte>();
-                          byte opCode1;
+                          uint opCode1;
                           return opCode switch
                           {
               """);
@@ -61,7 +61,7 @@ public class InstructionConstructorGenerator : IIncrementalGenerator
             {
                 sourceBuilder.AppendLine(
 /*  lang=c# */$$"""
-                                0x{{group0.Key.Value:X2}} => (opCode1 = reader.ReadUnaligned<byte>()) switch
+                                0x{{group0.Key.Value:X2}} => (opCode1 = reader.ReadUnalignedLeb128U32()) switch
                                 {
                 """);
                 foreach (var group1 in group0.GroupBy(t => t.opCode1))
@@ -69,13 +69,13 @@ public class InstructionConstructorGenerator : IIncrementalGenerator
                     if (group1.Key is null) continue;
                     sourceBuilder.AppendLine(
 /*  lang=c# */$$"""
-                                    0x{{group1.Key.Value:X2}} => {{group1.First().type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}.Read(ref reader, count),
+                                    0x{{group1.Key.Value:X2}}u => {{group1.First().type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}}.Read(ref reader, count),
                 """);
                 }
 
                 sourceBuilder.AppendLine(
 /*  lang=c# */"""
-                                  _ => throw new global::System.InvalidOperationException($"Unsupported OpCpde:0x{opCode:X2} 0x{opCode1:X2} at 0x{(reader.Position - 2):X8}")
+                                  _ => throw new global::System.InvalidOperationException($"Unsupported OpCpde:0x{opCode:X2} {opCode1} at 0x{reader.Position:X8}")
                               },
               """);
             }
@@ -293,7 +293,7 @@ public class InstructionConstructorGenerator : IIncrementalGenerator
     private readonly record struct InstructionTypeInfo
     {
         public readonly byte? opCode0;
-        public readonly byte? opCode1;
+        public readonly uint? opCode1;
         public readonly ITypeSymbol type;
 
         public InstructionTypeInfo(ITypeSymbol type)
@@ -310,7 +310,7 @@ public class InstructionConstructorGenerator : IIncrementalGenerator
                 : null;
 
             opCode1 = opCodeAttr.ConstructorArguments.Length > 1
-                ? (byte?)opCodeAttr.ConstructorArguments[1].Value
+                ? (uint?)opCodeAttr.ConstructorArguments[1].Value
                 : null;
         }
     }

@@ -2,6 +2,24 @@
 
 WaaS and its derived distributions (the NuGet packages, the Unity packages and the Rust crates) are released together with the same version.
 
+## [Unreleased]
+
+### Added
+
+- WebAssembly features: multi-value, fixed-width SIMD, non-trapping float-to-int conversions and the data count section.
+- Execution limits of `ExecutionContext`: `Fuel`, `FuelPerResume`, `MaxMemoryPages` and `CancellationToken`.
+- WebAssembly stack traces of traps (`WasmStackTrace`), with the function names in the `name` section.
+- MoonBit Importer, which imports `*.mbt` files as scripts, and **MoonBit Bindings Settings**, which generate MoonBit bindings of WIT interfaces.
+- wit2waas: inline interfaces of worlds.
+
+### Changed
+
+- The stack value (`StackValueItem`) is 24 bytes to hold v128 values.
+- The sub-opcodes of prefixed instructions are decoded as LEB128 (`OpCodeAttribute.OpCode1` is `uint?`).
+- The messages of `TrapException` and `WasmException` include the WebAssembly stack trace.
+- The formatters created by reflection are preserved from managed code stripping.
+- The native editor library generates MoonBit bindings, and binds `spectest.print_char` (`println` of MoonBit) to a no-op when componentizing.
+
 ## [0.3.0]
 
 ### Added

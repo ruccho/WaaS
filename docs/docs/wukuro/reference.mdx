@@ -19,6 +19,7 @@ Basic features used by all scripts. The implementation is included in the Wukuro
 | `delay` | Waits for the specified seconds. |
 | `delay-frame` | Waits for the specified number of frames. |
 | `schedule` | Runs `action` after `delay` seconds without waiting for it. The completion can be waited for with the returned `task`. |
+| `panic` | Reports a panic of the script and aborts the execution. Called by the panic hook that `#[entry]` installs; scripts do not need to call it. |
 
 ### types
 
@@ -44,6 +45,7 @@ interface functions {
     delay: func(duration: f32, update-mode: update-mode-kind);
     delay-frame: func(num-frames: u32);
     schedule: func(action: borrow<action>, delay: f32, update-mode: update-mode-kind) -> task;
+    panic: func(message: string);
 }
 
 interface types {

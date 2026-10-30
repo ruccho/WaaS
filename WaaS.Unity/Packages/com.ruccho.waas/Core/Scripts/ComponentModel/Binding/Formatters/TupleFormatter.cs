@@ -11,6 +11,8 @@ namespace WaaS.ComponentModel.Binding
 {
 
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class TupleFormatter<T1> : IFormatter<Tuple<T1>>
     {
         public async STask<Tuple<T1>> PullAsync(Pullable pullable)
@@ -26,6 +28,8 @@ namespace WaaS.ComponentModel.Binding
         }
     }
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class ValueTupleFormatter<T1> : IFormatter<ValueTuple<T1>>
     {
         public async STask<ValueTuple<T1>> PullAsync(Pullable pullable)
@@ -42,6 +46,8 @@ namespace WaaS.ComponentModel.Binding
     }
 
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class TupleFormatter<T1, T2> : IFormatter<Tuple<T1, T2>>
     {
         public async STask<Tuple<T1, T2>> PullAsync(Pullable pullable)
@@ -58,6 +64,8 @@ namespace WaaS.ComponentModel.Binding
         }
     }
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class ValueTupleFormatter<T1, T2> : IFormatter<ValueTuple<T1, T2>>
     {
         public async STask<ValueTuple<T1, T2>> PullAsync(Pullable pullable)
@@ -75,6 +83,8 @@ namespace WaaS.ComponentModel.Binding
     }
 
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class TupleFormatter<T1, T2, T3> : IFormatter<Tuple<T1, T2, T3>>
     {
         public async STask<Tuple<T1, T2, T3>> PullAsync(Pullable pullable)
@@ -92,6 +102,8 @@ namespace WaaS.ComponentModel.Binding
         }
     }
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class ValueTupleFormatter<T1, T2, T3> : IFormatter<ValueTuple<T1, T2, T3>>
     {
         public async STask<ValueTuple<T1, T2, T3>> PullAsync(Pullable pullable)
@@ -110,6 +122,8 @@ namespace WaaS.ComponentModel.Binding
     }
 
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class TupleFormatter<T1, T2, T3, T4> : IFormatter<Tuple<T1, T2, T3, T4>>
     {
         public async STask<Tuple<T1, T2, T3, T4>> PullAsync(Pullable pullable)
@@ -128,6 +142,8 @@ namespace WaaS.ComponentModel.Binding
         }
     }
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class ValueTupleFormatter<T1, T2, T3, T4> : IFormatter<ValueTuple<T1, T2, T3, T4>>
     {
         public async STask<ValueTuple<T1, T2, T3, T4>> PullAsync(Pullable pullable)
@@ -147,6 +163,8 @@ namespace WaaS.ComponentModel.Binding
     }
 
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class TupleFormatter<T1, T2, T3, T4, T5> : IFormatter<Tuple<T1, T2, T3, T4, T5>>
     {
         public async STask<Tuple<T1, T2, T3, T4, T5>> PullAsync(Pullable pullable)
@@ -166,6 +184,8 @@ namespace WaaS.ComponentModel.Binding
         }
     }
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class ValueTupleFormatter<T1, T2, T3, T4, T5> : IFormatter<ValueTuple<T1, T2, T3, T4, T5>>
     {
         public async STask<ValueTuple<T1, T2, T3, T4, T5>> PullAsync(Pullable pullable)
@@ -186,6 +206,8 @@ namespace WaaS.ComponentModel.Binding
     }
 
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class TupleFormatter<T1, T2, T3, T4, T5, T6> : IFormatter<Tuple<T1, T2, T3, T4, T5, T6>>
     {
         public async STask<Tuple<T1, T2, T3, T4, T5, T6>> PullAsync(Pullable pullable)
@@ -206,6 +228,8 @@ namespace WaaS.ComponentModel.Binding
         }
     }
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class ValueTupleFormatter<T1, T2, T3, T4, T5, T6> : IFormatter<ValueTuple<T1, T2, T3, T4, T5, T6>>
     {
         public async STask<ValueTuple<T1, T2, T3, T4, T5, T6>> PullAsync(Pullable pullable)
@@ -227,6 +251,8 @@ namespace WaaS.ComponentModel.Binding
     }
 
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class TupleFormatter<T1, T2, T3, T4, T5, T6, T7> : IFormatter<Tuple<T1, T2, T3, T4, T5, T6, T7>>
     {
         public async STask<Tuple<T1, T2, T3, T4, T5, T6, T7>> PullAsync(Pullable pullable)
@@ -248,6 +274,8 @@ namespace WaaS.ComponentModel.Binding
         }
     }
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class ValueTupleFormatter<T1, T2, T3, T4, T5, T6, T7> : IFormatter<ValueTuple<T1, T2, T3, T4, T5, T6, T7>>
     {
         public async STask<ValueTuple<T1, T2, T3, T4, T5, T6, T7>> PullAsync(Pullable pullable)
@@ -270,6 +298,8 @@ namespace WaaS.ComponentModel.Binding
     }
 
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class TupleFormatter<T1, T2, T3, T4, T5, T6, T7, TRest> : IFormatter<Tuple<T1, T2, T3, T4, T5, T6, T7, TRest>>
         where TRest : notnull
     {
@@ -293,6 +323,8 @@ namespace WaaS.ComponentModel.Binding
         }
     }
 
+    // instantiated via Activator.CreateInstance in TupleFormatterProvider
+    [Preserve]
     internal class ValueTupleFormatter<T1, T2, T3, T4, T5, T6, T7, TRest> : IFormatter<ValueTuple<T1, T2, T3, T4, T5, T6, T7, TRest>>
         where TRest : struct
     {

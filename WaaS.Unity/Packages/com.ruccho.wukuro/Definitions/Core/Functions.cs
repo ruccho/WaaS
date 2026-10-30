@@ -21,6 +21,13 @@ namespace Wukuro.Core
         [global::WaaS.ComponentModel.Binding.ComponentApi(@"schedule")]
         global::System.Threading.Tasks.ValueTask<global::WaaS.ComponentModel.Binding.Owned<Wukuro.Core.ITypes.ITaskResourceImpl>> Schedule(global::WaaS.ComponentModel.Binding.Borrowed<Wukuro.Core.ITypes.IActionResourceImpl> @action, float @delay, Wukuro.Core.ITypes.UpdateModeKind @updateMode);
 
+        /// <summary>
+        ///     Reports a panic of the script and aborts the execution. It does not return to the script.
+        ///     The message includes the location of the panic.
+        /// </summary>
+        [global::WaaS.ComponentModel.Binding.ComponentApi(@"panic")]
+        global::System.Threading.Tasks.ValueTask Panic(string @message);
+
 
     }
 }

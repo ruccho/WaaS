@@ -1,0 +1,182 @@
+---
+title: Writing Scripts in MoonBit
+sidebar_position: 3.5
+---
+
+# Writing Scripts in MoonBit
+
+Wukuro scripts can also be written in [MoonBit](https://www.moonbitlang.com/). A MoonBit script has the same features as a Rust script: the entry points, their parameters, the context, the functions, the texts, the dialogs and the object types. Scripts in both languages can be used together in a project, and they are run in the same way ([Running Scripts](./running-scripts.mdx)).
+
+## Setting up
+
+MoonBit scripts are imported with [MoonBit Importer](../unity-integration/moonbit.mdx). A script is a single `*.mbt` file, or a [script package](../unity-integration/moonbit.mdx#script-packages), which can be edited with an IDE. Install the [MoonBit toolchain](https://www.moonbitlang.com/download) so that `moon` is on `PATH`.
+
+The guest library of Wukuro is the MoonBit module `ruccho/wukuro`. It contains the following packages.
+
+| Package | Usage |
+| --- | --- |
+| `ruccho/wukuro` | Required by all scripts. The same as the `wukuro` crate. |
+| `ruccho/wukuro/dialog` | Required by scripts that show dialogs. The same as the `wukuro-dialog` crate. |
+
+The module is in `Wukuro/moonbit/wukuro` of the [WaaS repository](https://github.com/ruccho/WaaS). Specify it in the import settings, preferably in a [preset](../unity-integration/moonbit.mdx#using-presets), as follows.
+
+- **Dependencies**: `ruccho/wukuro` with **Local Path** set to the directory of the module (e.g. `../WaaS/Wukuro/moonbit/wukuro` when the repository is cloned next to the Unity project).
+- **Imports**: `ruccho/wukuro` as `wukuro`, and `ruccho/wukuro/dialog` as `dialog`. For a script package, write them in its `moon.pkg` instead.
+- **Componentize**: enabled. **WIT Directories** can be empty, because the WIT of `wukuro:core` and `wukuro:dialog` is in the `wit` directory of the module.
+- **Generators**: add **Wukuro Entry Points**.
+
+:::warning
+The WIT of the module is generated from the C# definitions in the Unity package. Use the module of the same version as the Unity package.
+:::
+
+## Entry points
+
+A public function with the attribute `#wukuro.entry` becomes an entry point. A file can have multiple entry points, and they can share the constants and functions in the same file.
+
+```moonbit
+///|
+let greeting = "Hello"
+
+///|
+fn greet(name : String) -> Unit {
+  @wukuro.log("\{greeting}, \{name}")
+}
+
+///|
+#wukuro.entry
+pub fn morning(_cx : @wukuro.Context) -> Unit {
+  greet("early bird")
+}
+
+///|
+#wukuro.entry
+pub fn night(_cx : @wukuro.Context) -> Unit {
+  greet("night owl")
+}
+```
+
+As in Rust, an entry point `foo_bar` is exported as the function `run` of the interface `wukuro-entry:foo-bar/entry`. An entry point must be `pub` and return `Unit`.
+
+### Parameters
+
+The first parameter of an entry point is `@wukuro.Context`. The following parameters can have the types below.
+
+| MoonBit type | WIT type | Input in the inspector |
+| --- | --- | --- |
+| `Bool` | `bool` | Checkbox |
+| `Byte`, `Int16`, `UInt16`, `Int`, `UInt`, `Int64`, `UInt64` | `u8`, `s16`, `u16`, `s32`, `u32`, `s64`, `u64` | Integer |
+| `Float`, `Double` | `f32`, `f64` | Decimal |
+| `Char` | `char` | Character |
+| `String` | `string` | String |
+| `@wukuro.Action` | `borrow<action>` | UnityEvent |
+| `@wukuro.Object` | `borrow<object>` | Any `UnityEngine.Object` |
+| `@wukuro.ObjectOf[T]` | `borrow<object>` | An object of type `T` ([Object types](#object-types)) |
+
+MoonBit has no type for `s8`. The values of the parameters are matched by the parameter name in kebab-case, as in Rust.
+
+## Context and functions
+
+The context, the values and the functions are the same as in Rust ([Writing Scripts](./writing-scripts.mdx)).
+
+```moonbit
+///|
+#wukuro.entry
+pub fn counter(cx : @wukuro.Context) -> Unit {
+  let variable = cx.get_variable("count")
+  let count = match variable.get() {
+    Some(TyS32(value)) => value
+    _ => 0
+  }
+  variable.set(TyS32(count + 1))
+  @wukuro.log("count: \{count + 1}")
+}
+```
+
+Resources a script obtains, such as `Variable`, are dropped when the run of the entry point ends, as they are dropped at the end of their scope in Rust. Call `drop()` to release them earlier.
+
+`ruccho/wukuro` provides `log`, `delay`, `delay_frame` and `schedule`, and the types `Context`, `Variable`, `Action`, `Task`, `Object`, `Argument`, `Text`, `TextId` and `UpdateModeKind`.
+
+## Texts
+
+A localized text is created with `@wukuro.l10n(table, key, source?)`. Functions taking texts take `IntoText`, which is implemented by `String` and `Text`.
+
+```moonbit
+let greeting = @wukuro.l10n("Dialogs", "greeting", source="Hello")
+```
+
+## Dialogs
+
+```moonbit
+///|
+#wukuro.entry
+pub fn shopkeeper(cx : @wukuro.Context) -> Unit {
+  let module = @dialog.get_dialog_module(cx)
+  @dialog.dialog(module, fn(d) {
+    d.msg(shopkeeper, "Welcome!")
+    d.show(@dialog.message(shopkeeper, "Would you like to buy something?").face("smile"))
+    match d.opts(["Buy", "Leave"]) {
+      0 => d.msg(shopkeeper, "Thank you!")
+      _ => d.msg(shopkeeper, "Come again!")
+    }
+  })
+}
+```
+
+- `@dialog.dialog(module, provider?, f)` opens a dialog, runs `f` and closes the dialog, as `DialogSession` of Rust does when it is dropped.
+- `msg(speaker, text)`, `show(message)` and `opts(options)` are the same as in Rust.
+- `@dialog.message(speaker, text)` creates a message, and the methods `face`, `auto`, `forbid_skip`, `forbid_accel` and `style` change the settings.
+- `@dialog.fade(module, duration_in?, duration_out?, f)` fades the screen during `f`.
+
+A speaker is a value of a type implementing `@dialog.DialogSpeaker` (`name` and `default_face`), and a face is a value implementing `@dialog.DialogFace` (`String` implements it). Use `@dialog.no_speaker` for messages without a speaker.
+
+```moonbit
+///|
+pub(all) enum Shopkeeper {
+  Shopkeeper
+}
+
+///|
+pub impl @dialog.DialogSpeaker for Shopkeeper with name(_) {
+  "shopkeeper"
+}
+
+///|
+pub impl @dialog.DialogSpeaker for Shopkeeper with default_face(_) {
+  "normal"
+}
+
+///|
+let shopkeeper : Shopkeeper = Shopkeeper
+```
+
+## Failures
+
+`abort(message)` stops the script, and the message is reported to the host as `WukuroPanicException` with the WebAssembly stack trace, as a panic of a Rust script is. **Wukuro Entry Points** overrides `abort` in the copy of the script that is built, because the MoonBit compiler drops the messages of `abort`. `@wukuro.fail(message)` does the same and can also be used in libraries. The other failures, such as `panic()` and an index out of bounds, stop the script without a message.
+
+## Object types
+
+A marker type of `ObjectOf[T]` is a struct with the attribute `#wukuro.object_type("<C# type name>")`.
+
+```moonbit
+///|
+#wukuro.object_type("UnityEngine.Transform, UnityEngine.CoreModule")
+pub struct Transform {}
+
+///|
+#wukuro.entry
+pub fn look(_cx : @wukuro.Context, target : @wukuro.ObjectOf[Transform]) -> Unit {
+  ignore(target.object())
+}
+```
+
+The marker types of the types declared with `WukuroObjectType` are generated by `WukuroObjectTypeExporter.GenerateMoonBit`, as `GenerateRust` generates them for Rust ([Object Types](./object-types.mdx)). The marker types can be in the script or in a local module the script depends on.
+
+## Extending
+
+A game-specific module is created in the same way as a game-specific crate ([Extending](./extending.mdx)), with MoonBit bindings generated from the exported WIT.
+
+1. Export the WIT of the game to the `wit` directory of the module (WIT Export Settings), including `wukuro:core`.
+2. Generate the bindings into the module with [MoonBit Bindings Settings](../unity-integration/moonbit.mdx#generating-bindings). Add `wukuro:core/types` to **External Interfaces** with the package `ruccho/wukuro/bindings/wukuro_core_types`, so that `Context`, `Object` and the other types are shared with `ruccho/wukuro`.
+3. Add helpers to the module if needed, and add the module to **Dependencies** and its packages to **Imports** of the scripts.
+
+When the C# definitions change, the WIT and the bindings are exported again, and the scripts are reimported.

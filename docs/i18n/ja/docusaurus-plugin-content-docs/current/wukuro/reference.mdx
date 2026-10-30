@@ -19,6 +19,7 @@ Wukuro のホストとスクリプトの間の関数と型は、次の WIT の�
 | `delay` | 指定した秒数だけ待機します。 |
 | `delay-frame` | 指定したフレーム数だけ待機します。 |
 | `schedule` | `action` を、待機せずに `delay` 秒後に実行します。返される `task` で完了を待てます。 |
+| `panic` | スクリプトの panic を報告し、実行を中断します。`#[entry]` が設定する panic hook から呼ばれるため、スクリプトから呼ぶ必要はありません。 |
 
 ### types
 
@@ -44,6 +45,7 @@ interface functions {
     delay: func(duration: f32, update-mode: update-mode-kind);
     delay-frame: func(num-frames: u32);
     schedule: func(action: borrow<action>, delay: f32, update-mode: update-mode-kind) -> task;
+    panic: func(message: string);
 }
 
 interface types {

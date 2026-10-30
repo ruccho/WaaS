@@ -7,6 +7,8 @@ using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
+    // instantiated via Activator.CreateInstance in EnumFormatterProvider
+    [Preserve]
     internal class EnumFormatter<TEnum> : IFormatter<TEnum> where TEnum : unmanaged, Enum
     {
         private readonly uint[] values;

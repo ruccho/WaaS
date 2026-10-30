@@ -43,6 +43,11 @@ namespace WaaS.Runtime.Bindings
                 ValueType.F64,
                 &MarshalF64,
                 &UnmarshalF64);
+
+            MarshallerRegistry<V128>.Instance = new MarshallerRegistry<V128>(
+                ValueType.V128,
+                &MarshalV128,
+                &UnmarshalV128);
         }
 
         private CoreBinder()
@@ -69,6 +74,11 @@ namespace WaaS.Runtime.Bindings
             stackValue = new StackValueItem(source);
         }
 
+        private static void MarshalV128(V128 source, out StackValueItem stackValue)
+        {
+            stackValue = new StackValueItem(source);
+        }
+
         private static void UnmarshalI32(in StackValueItem stackValue, out uint result)
         {
             result = stackValue.ExpectValueI32();
@@ -87,6 +97,11 @@ namespace WaaS.Runtime.Bindings
         private static void UnmarshalF64(in StackValueItem stackValue, out double result)
         {
             result = stackValue.ExpectValueF64();
+        }
+
+        private static void UnmarshalV128(in StackValueItem stackValue, out V128 result)
+        {
+            result = stackValue.ExpectValueV128();
         }
 
         public override IMarshalContext GetMarshalContext()

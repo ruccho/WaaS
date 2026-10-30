@@ -15,6 +15,12 @@ namespace WaaS.Models
         private byte[] tempBuffer;
 
         public int Position { get; private set; }
+
+        /// <summary>
+        ///     Position of the start of the module being read. Used to compute offsets relative to the module.
+        /// </summary>
+        public int Origin { get; set; }
+
         public long Available => first.Length + next.Length;
 
         public ModuleReader(in ReadOnlySequence<byte> buffer)
@@ -23,6 +29,7 @@ namespace WaaS.Models
             next = buffer.Slice(first.Length);
             tempBuffer = null;
             Position = 0;
+            Origin = 0;
         }
 
         public ModuleReader(ReadOnlySpan<byte> buffer)
@@ -31,6 +38,7 @@ namespace WaaS.Models
             first = buffer;
             tempBuffer = null;
             Position = 0;
+            Origin = 0;
         }
 
         public ref byte ReadRef(int size)
@@ -93,7 +101,8 @@ namespace WaaS.Models
             {
                 first = first,
                 next = next,
-                Position = Position
+                Position = Position,
+                Origin = Origin
             };
 
             return result;

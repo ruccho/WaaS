@@ -65,6 +65,16 @@ public class AssertReturnCommand(uint line, Action action, Const[] expected) : C
     public override void Execute(WastRunner runner)
     {
         var returns = Action.Invoke(runner);
+
+        if (Expected.Any(e => e is ConstV128))
+        {
+            // v128 lanes are compared exactly, with the NaN patterns taken into account
+            if (returns.Length != Expected.Length || !Expected.Zip(returns).All(pair => pair.First.Matches(pair.Second)))
+                throw new InvalidOperationException(
+                    $"Assertion failed. expected: [{string.Join(", ", Expected.Select(e => e.ToString()))}], actual: [{string.Join(", ", returns.Select(r => r.ToString()))}] ");
+            return;
+        }
+
         if (!returns.SequenceEqual(Expected.Select(e => e.GetValue())))
         {
             if (!returns.SequenceEqual(Expected.Select(e => e.GetValue()),
@@ -342,10 +352,146 @@ public class GetAction(string? module, string field) : Action(module, field)
 [JsonDerivedType(typeof(ConstI64), "i64")]
 [JsonDerivedType(typeof(ConstF32), "f32")]
 [JsonDerivedType(typeof(ConstF64), "f64")]
+[JsonDerivedType(typeof(ConstV128), "v128")]
+[JsonDerivedType(typeof(ConstFuncRef), "funcref")]
+[JsonDerivedType(typeof(ConstExternRef), "externref")]
 public abstract class Const
 {
     public abstract string Value { get; set; }
     public abstract StackValueItem GetValue();
+
+    /// <summary>
+    ///     Determines whether the actual value matches the expected value.
+    /// </summary>
+    public virtual bool Matches(StackValueItem actual)
+    {
+        var expected = GetValue();
+        return actual.Equals(expected) || ApproximateStackValueItemEqualityComparer.Instance.Equals(actual, expected);
+    }
+
+    public override string ToString()
+    {
+        return GetValue().ToString();
+    }
+}
+
+/// <summary>
+///     A value of a type that WaaS does not support yet. Commands using it are reported as unsupported.
+/// </summary>
+public abstract class ConstUnsupported : Const
+{
+    [JsonIgnore] public override string Value { get; set; } = "";
+
+    // "value" is kept as is
+    [JsonExtensionData] public Dictionary<string, JsonElement>? Properties { get; set; }
+
+    public override StackValueItem GetValue()
+    {
+        throw new NotSupportedException();
+    }
+}
+
+public class ConstV128 : Const
+{
+    [JsonIgnore] public override string Value { get; set; } = "";
+
+    public string LaneType { get; set; } = "";
+
+    [JsonPropertyName("value")] public string[] Lanes { get; set; } = [];
+
+    private int LaneSize => LaneType switch
+    {
+        "i8" => 1,
+        "i16" => 2,
+        "i32" or "f32" => 4,
+        "i64" or "f64" => 8,
+        _ => throw new NotSupportedException($"unknown lane type: {LaneType}")
+    };
+
+    private static ulong ParseLane(string lane)
+    {
+        // lanes are usually emitted as unsigned decimals, but accept signed ones as well
+        return lane.StartsWith('-') ? unchecked((ulong)long.Parse(lane)) : ulong.Parse(lane);
+    }
+
+    public override StackValueItem GetValue()
+    {
+        var size = LaneSize;
+        if (Lanes.Length * size != 16) throw new InvalidOperationException("invalid number of lanes");
+
+        Span<byte> bytes = stackalloc byte[16];
+        for (var i = 0; i < Lanes.Length; i++)
+        {
+            if (Lanes[i].StartsWith("nan")) throw new InvalidOperationException("NaN pattern cannot be used as a value");
+            var lane = ParseLane(Lanes[i]);
+            for (var b = 0; b < size; b++) bytes[i * size + b] = (byte)(lane >> (b * 8));
+        }
+
+        return new StackValueItem(V128.Create(bytes));
+    }
+
+    public override bool Matches(StackValueItem actual)
+    {
+        if (!actual.TryGetValue(out V128 vector)) return false;
+
+        var size = LaneSize;
+        if (Lanes.Length * size != 16) return false;
+
+        Span<byte> bytes = stackalloc byte[16];
+        vector.CopyTo(bytes);
+
+        for (var i = 0; i < Lanes.Length; i++)
+        {
+            ulong lane = 0;
+            for (var b = 0; b < size; b++) lane |= (ulong)bytes[i * size + b] << (b * 8);
+
+            var expected = Lanes[i];
+            if (expected.StartsWith("nan"))
+            {
+                // "nan:canonical" requires the canonical NaN (any sign).
+                // "nan:arithmetic" requires a NaN with the most significant bit of the payload set.
+                var canonical = expected == "nan:canonical";
+                var matches = LaneType switch
+                {
+                    "f32" => canonical
+                        ? (lane & 0x7FFF_FFFF) == 0x7FC0_0000
+                        : (lane & 0x7FC0_0000) == 0x7FC0_0000,
+                    "f64" => canonical
+                        ? (lane & 0x7FFF_FFFF_FFFF_FFFF) == 0x7FF8_0000_0000_0000
+                        : (lane & 0x7FF8_0000_0000_0000) == 0x7FF8_0000_0000_0000,
+                    _ => false
+                };
+                if (!matches) return false;
+                continue;
+            }
+
+            var mask = size == 8 ? ulong.MaxValue : (1UL << (size * 8)) - 1;
+            if ((ParseLane(expected) & mask) != lane) return false;
+        }
+
+        return true;
+    }
+
+    public override string ToString()
+    {
+        return $"v128 {LaneType} [{string.Join(" ", Lanes)}]";
+    }
+}
+
+public class ConstFuncRef : ConstUnsupported
+{
+    public override string ToString()
+    {
+        return "funcref";
+    }
+}
+
+public class ConstExternRef : ConstUnsupported
+{
+    public override string ToString()
+    {
+        return "externref";
+    }
 }
 
 public class ConstI32 : Const

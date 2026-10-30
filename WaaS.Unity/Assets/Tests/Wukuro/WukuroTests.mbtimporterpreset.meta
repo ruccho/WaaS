@@ -1,0 +1,30 @@
+fileFormatVersion: 2
+guid: 4a594dd08df7ced4ea6846be91442826
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: 704a0bc999c267b41b429b0655a552b4, type: 3}
+  settings:
+    dependencies:
+    - name: ruccho/wukuro
+      version: 
+      localPath: ../Wukuro/moonbit/wukuro
+    imports:
+    - path: ruccho/wukuro
+      alias: wukuro
+    - path: ruccho/wukuro/dialog
+      alias: dialog
+    componentize: 1
+    witDirectories: []
+    generators:
+    - rid: 5494973863968374784
+  references:
+    version: 2
+    RefIds:
+    - rid: 5494973863968374784
+      type: {class: WukuroMoonBitEntryGenerator, ns: Wukuro.Editor, asm: Wukuro.Editor}
+      data: 

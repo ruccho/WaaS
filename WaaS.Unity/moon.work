@@ -1,0 +1,4 @@
+members = [
+  "../Wukuro/moonbit/wukuro",
+  ".",
+]

@@ -1677,6 +1677,139 @@ namespace WaaS.Models
     }
 
     /// <summary>
+    ///     Represents "i32.trunc_sat_f32_s" instruction.
+    /// </summary>
+    [OpCode(0xFC, 0x00)]
+    public partial class TruncSatF32I32S : UnaryInstruction<float, ValueTypeF32, uint, ValueTypeI32>
+    {
+        protected override uint Operate(float value)
+        {
+            return unchecked((uint)SaturatingTruncation.ToInt32(value));
+        }
+    }
+
+    /// <summary>
+    ///     Represents "i32.trunc_sat_f32_u" instruction.
+    /// </summary>
+    [OpCode(0xFC, 0x01)]
+    public partial class TruncSatF32I32U : UnaryInstruction<float, ValueTypeF32, uint, ValueTypeI32>
+    {
+        protected override uint Operate(float value)
+        {
+            return SaturatingTruncation.ToUInt32(value);
+        }
+    }
+
+    /// <summary>
+    ///     Represents "i32.trunc_sat_f64_s" instruction.
+    /// </summary>
+    [OpCode(0xFC, 0x02)]
+    public partial class TruncSatF64I32S : UnaryInstruction<double, ValueTypeF64, uint, ValueTypeI32>
+    {
+        protected override uint Operate(double value)
+        {
+            return unchecked((uint)SaturatingTruncation.ToInt32(value));
+        }
+    }
+
+    /// <summary>
+    ///     Represents "i32.trunc_sat_f64_u" instruction.
+    /// </summary>
+    [OpCode(0xFC, 0x03)]
+    public partial class TruncSatF64I32U : UnaryInstruction<double, ValueTypeF64, uint, ValueTypeI32>
+    {
+        protected override uint Operate(double value)
+        {
+            return SaturatingTruncation.ToUInt32(value);
+        }
+    }
+
+    /// <summary>
+    ///     Represents "i64.trunc_sat_f32_s" instruction.
+    /// </summary>
+    [OpCode(0xFC, 0x04)]
+    public partial class TruncSatF32I64S : UnaryInstruction<float, ValueTypeF32, ulong, ValueTypeI64>
+    {
+        protected override ulong Operate(float value)
+        {
+            return unchecked((ulong)SaturatingTruncation.ToInt64(value));
+        }
+    }
+
+    /// <summary>
+    ///     Represents "i64.trunc_sat_f32_u" instruction.
+    /// </summary>
+    [OpCode(0xFC, 0x05)]
+    public partial class TruncSatF32I64U : UnaryInstruction<float, ValueTypeF32, ulong, ValueTypeI64>
+    {
+        protected override ulong Operate(float value)
+        {
+            return SaturatingTruncation.ToUInt64(value);
+        }
+    }
+
+    /// <summary>
+    ///     Represents "i64.trunc_sat_f64_s" instruction.
+    /// </summary>
+    [OpCode(0xFC, 0x06)]
+    public partial class TruncSatF64I64S : UnaryInstruction<double, ValueTypeF64, ulong, ValueTypeI64>
+    {
+        protected override ulong Operate(double value)
+        {
+            return unchecked((ulong)SaturatingTruncation.ToInt64(value));
+        }
+    }
+
+    /// <summary>
+    ///     Represents "i64.trunc_sat_f64_u" instruction.
+    /// </summary>
+    [OpCode(0xFC, 0x07)]
+    public partial class TruncSatF64I64U : UnaryInstruction<double, ValueTypeF64, ulong, ValueTypeI64>
+    {
+        protected override ulong Operate(double value)
+        {
+            return SaturatingTruncation.ToUInt64(value);
+        }
+    }
+
+    /// <summary>
+    ///     Conversions of the non-trapping float-to-int instructions. NaN is converted to zero and out-of-range values
+    ///     are clamped. Single-precision values are exactly representable as double.
+    /// </summary>
+    internal static class SaturatingTruncation
+    {
+        public static int ToInt32(double value)
+        {
+            if (double.IsNaN(value)) return 0;
+            if (value <= int.MinValue) return int.MinValue;
+            if (value >= 2147483648.0) return int.MaxValue;
+            return (int)value;
+        }
+
+        public static uint ToUInt32(double value)
+        {
+            if (double.IsNaN(value) || value <= 0) return 0;
+            if (value >= 4294967296.0) return uint.MaxValue;
+            return (uint)value;
+        }
+
+        public static long ToInt64(double value)
+        {
+            if (double.IsNaN(value)) return 0;
+            if (value <= long.MinValue) return long.MinValue;
+            if (value >= 9223372036854775808.0) return long.MaxValue;
+            return (long)value;
+        }
+
+        public static ulong ToUInt64(double value)
+        {
+            if (double.IsNaN(value) || value <= 0) return 0;
+            if (value >= 18446744073709551616.0) return ulong.MaxValue;
+            return (ulong)value;
+        }
+    }
+
+    /// <summary>
     ///     Represents "f32.convert_i32_s" instruction.
     /// </summary>
     [OpCode(0xB2)]

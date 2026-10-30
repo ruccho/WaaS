@@ -102,6 +102,9 @@ public partial interface IAbiHost
 
     [ComponentApi(@"describe-tagged")]
     ValueTask<string> DescribeTagged(Tagged value);
+
+    [ComponentApi(@"fail")]
+    ValueTask Fail(string message);
 }
 
 [ComponentInterface(@"waas:abi-test/guest-types")]
@@ -132,6 +135,9 @@ public partial interface IAbiTestExports
 {
     [ComponentApi(@"test-resource")]
     ValueTask<int> TestResource();
+
+    [ComponentApi(@"test-leak")]
+    ValueTask TestLeak(int value);
 
     [ComponentApi(@"test-borrow-param")]
     ValueTask<int> TestBorrowParam(Borrowed<IAbiHost.ICounterResourceImpl> counter);
@@ -168,6 +174,12 @@ public partial interface IAbiTestExports
 
     [ComponentApi(@"test-forged-handle")]
     ValueTask<int> TestForgedHandle(uint handle);
+
+    [ComponentApi(@"test-panic")]
+    ValueTask TestPanic(string message);
+
+    [ComponentApi(@"test-host-failure")]
+    ValueTask TestHostFailure(string message);
 }
 
 /// <summary>
@@ -217,6 +229,20 @@ public class ComponentAbiTests
         // 10 + 2 increments: read through borrow (12) + get (12)
         Assert.That(await Call(e => e.TestResource()), Is.EqualTo(24));
         Assert.That(host.CounterType.Dropped, Is.EqualTo(new[] { 12 }));
+    }
+
+    [Test]
+    public async Task OwnedResourcesNotDroppedByGuestAreDroppedWithInstance()
+    {
+        await Call(async e =>
+        {
+            await e.TestLeak(7);
+            return 0;
+        });
+        Assert.That(host.CounterType.Dropped, Is.Empty);
+
+        instance.DropOwnedResources();
+        Assert.That(host.CounterType.Dropped, Is.EqualTo(new[] { 7 }));
     }
 
     [Test]
@@ -276,6 +302,46 @@ public class ComponentAbiTests
         }
 
         owned.Dispose();
+    }
+
+    [Test]
+    public async Task GuestPanicHasStackTraceWithNames()
+    {
+        var exception = await Assert.CatchAsync(async () => await Call(async e =>
+        {
+            await e.TestPanic("guest failure");
+            return 0;
+        }));
+        TestContext.Out.WriteLine(exception);
+
+        var trace = WasmStackTrace.FromException(exception!);
+        Assert.That(trace, Is.Not.Null, exception!.ToString());
+        Assert.That(trace!.Frames, Is.Not.Empty);
+        Assert.That(trace.Frames.All(f => !f.IsHost && f.Offset.HasValue), Is.True);
+        // the names come from the name section emitted by the Rust toolchain
+        Assert.That(trace.Frames.Any(f => f.FunctionName?.Contains("test_panic") == true), Is.True,
+            trace.ToString());
+    }
+
+    [Test]
+    public async Task HostExceptionHasStackTraceOfGuest()
+    {
+        var exception = await Assert.CatchAsync(async () => await Call(async e =>
+        {
+            await e.TestHostFailure("host failure");
+            return 0;
+        }));
+        TestContext.Out.WriteLine(exception);
+
+        Assert.That(exception, Is.TypeOf<InvalidOperationException>(), exception!.ToString());
+        Assert.That(exception!.Message, Is.EqualTo("host failure"));
+
+        var trace = WasmStackTrace.FromException(exception);
+        Assert.That(trace, Is.Not.Null);
+        Assert.That(trace!.Frames[0].IsHost, Is.True, trace.ToString());
+        // the guest function is inlined into the export function named after the WIT
+        Assert.That(trace.Frames.Any(f => f.FunctionName?.Contains("test-host-failure") == true), Is.True,
+            trace.ToString());
     }
 
     [Test]
@@ -439,6 +505,11 @@ public class ComponentAbiTests
         public ValueTask<string> Describe(IAbiHost.Color color, IAbiHost.Permissions permissions)
         {
             return new ValueTask<string>($"{color}:{permissions}");
+        }
+
+        public ValueTask Fail(string message)
+        {
+            throw new InvalidOperationException(message);
         }
 
         private TaskCompletionSource? tick;

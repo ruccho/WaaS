@@ -7,6 +7,8 @@ using WaaS.ComponentModel.Runtime;
 
 namespace WaaS.ComponentModel.Binding
 {
+    // instantiated via Activator.CreateInstance in ReadOnlyMemoryFormatterProvider
+    [Preserve]
     internal class ReadOnlyMemoryFormatter<T> : IFormatter<ReadOnlyMemory<T>>
     {
         public async STask<ReadOnlyMemory<T>> PullAsync(Pullable adapter)

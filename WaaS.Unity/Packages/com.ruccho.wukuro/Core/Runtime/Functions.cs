@@ -47,6 +47,12 @@ namespace Wukuro
             }
         }
 
+        public ValueTask Panic(string message)
+        {
+            // Unwinds the frames of the script. The stack trace of the script is attached to the exception.
+            throw new WukuroPanicException(message);
+        }
+
         public ITypes.IContextResourceImpl Context => ContextImpl.Instance;
         public ITypes.IActionResourceImpl Action => ActionImpl.Instance;
         public ITypes.ITaskResourceImpl Task => WukuroTasks.ResourceType;
