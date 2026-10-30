@@ -42,19 +42,27 @@ namespace WaaS.ComponentModel.Runtime
                 return cachedTyped;
             }
 
-            if (!resolving.Add(unresolved)) throw new LinkException(); // circular resolution
-            var result = unresolved.ResolveFirstTime(this);
-            resolved.Add(unresolved, result);
-            resolving.Remove(unresolved);
-
-            return result;
+            if (!resolving.Add(unresolved)) throw new LinkException("Circular resolution detected");
+            try
+            {
+                var result = unresolved.ResolveFirstTime(this);
+                resolved.Add(unresolved, result);
+                return result;
+            }
+            finally
+            {
+                resolving.Remove(unresolved);
+            }
         }
 
         public T ResolveImport<T>(IImport<T> import) where T : ISortedExportable
         {
-            if (imports == null || !imports.TryGetValue(import.Name.Name, out var imported)) throw new LinkException();
+            if (imports == null || !imports.TryGetValue(import.Name.Name, out var imported))
+                throw new LinkException($"The import '{import.Name.Name}' is not provided");
 
-            if (imported is not T importedTyped) throw new LinkException();
+            if (imported is not T importedTyped)
+                throw new LinkException(
+                    $"The import '{import.Name.Name}' is not a {typeof(T).Name} (provided: {imported.GetType().Name})");
 
             return importedTyped;
         }
@@ -62,7 +70,8 @@ namespace WaaS.ComponentModel.Runtime
         public T ResolveExport<T>(IExportDeclarator<T> exportDecl) where T : ISortedExportable
         {
             if (exports == null || !exports.TryGetExport<T>(exportDecl.ImportName.Name, out var exported))
-                throw new LinkException();
+                throw new LinkException(
+                    $"The export '{exportDecl.ImportName.Name}' ({typeof(T).Name}) is not provided by the instance");
             return exported;
         }
     }

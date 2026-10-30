@@ -19,7 +19,18 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - The messages of `TrapException` and `WasmException` include the WebAssembly stack trace.
 - The formatters created by reflection are preserved from managed code stripping.
 - The native editor library generates MoonBit bindings, and binds `spectest.print_char` (`println` of MoonBit) to a no-op when componentizing.
+- Instantiating a component validates the labels of records, variants, enums and flags in the imports (ignoring the case and `-`/`_`), and the names and sorts of the imports and exports of imported components.
+- `LinkException` on instantiation reports the path of the mismatched import with the expected and provided types.
 - Calls of host functions from components are about twice as fast. `ExternalFunction.InvokeAsync` is called after all the arguments are pushed, and completes without suspension when the host function completes synchronously.
+
+### Fixed
+
+- Comparing component types and instance types no longer throws `NotImplementedException`.
+- A failure to resolve a type while validating an import is reported as a mismatch of the import instead of an empty `LinkException`.
+- The layout of variants whose payloads are aligned to 1 byte or have no payload (such as `option<u8>` and enums) in the memory: the payload was aligned to 2 bytes.
+- Lowering flags from C# `[Flags]` enums (passing flags to components) threw `InvalidOperationException`.
+- C# tuples of more than 7 elements: the elements after the 7th were formatted as a nested tuple instead of the elements of the same tuple.
+- Lowering a variant whose case is typed with a nullable type argument, such as `Option<int?>` holding `null` (`option<option<s32>>`), threw `InvalidOperationException`.
 
 ## [0.3.0]
 
