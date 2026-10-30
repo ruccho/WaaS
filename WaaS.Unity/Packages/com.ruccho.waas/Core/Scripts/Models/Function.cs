@@ -52,6 +52,11 @@ namespace WaaS.Models
         public uint? MaxStackDepth { get; private set; }
         public uint? MaxBlockDepth { get; private set; }
 
+        /// <summary>
+        ///     The body translated for the interpreter. Available after validation.
+        /// </summary>
+        internal CompiledFunction Compiled { get; private set; }
+
         internal void Validate(in ValidationContext context)
         {
             try
@@ -89,6 +94,8 @@ namespace WaaS.Models
                         out var maxStackDepth);
                     MaxStackDepth = maxStackDepth;
                     MaxBlockDepth = (uint)maxBlockDepth;
+
+                    Compiled = CompiledFunction.Compile(context, this);
                 }
             }
             catch (InvalidCodeException ex)

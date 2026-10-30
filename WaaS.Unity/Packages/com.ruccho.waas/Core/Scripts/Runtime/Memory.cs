@@ -30,6 +30,9 @@ namespace WaaS.Runtime
         public Limits PageLimits { get; }
         public Span<byte> Span => buffer.AsSpan()[..Length];
 
+        // the buffer is replaced when the memory grows
+        internal byte[] Buffer => buffer;
+
         public int Length { get; private set; }
         public int NumPages { get; private set; }
 

@@ -51,7 +51,10 @@ namespace WaaS.Runtime
             }
 
             Globals = globals;
+            GlobalArray = globals;
         }
+
+        internal Global[] GlobalArray { get; }
 
         public ReadOnlyMemory<Global> Globals { get; }
     }
