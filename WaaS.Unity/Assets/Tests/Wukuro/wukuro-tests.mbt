@@ -82,3 +82,14 @@ pub fn small_integers(
 ) -> Unit {
 
 }
+
+///|
+/// forwards the record and the enum to the host function
+#wukuro.entry
+pub fn forward_settings(
+  _cx : @wukuro.Context,
+  settings : @records.DoorSettings,
+  kind : @records.DoorKind,
+) -> Unit {
+  @record_functions.receive_settings(settings, kind)
+}

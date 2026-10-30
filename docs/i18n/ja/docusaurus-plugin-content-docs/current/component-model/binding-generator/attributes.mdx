@@ -106,7 +106,7 @@ public partial interface IEnv
 ```
 
 - `[ComponentInterface]`を付与した `interface` のメンバとして `partial` な `class` または `struct` を定義し、 `[ComponentRecord]` 属性を付与します。
-- プロパティには `[ComponentField]` 属性を付与します。
+- プロパティには `[ComponentField]` 属性を付与します。`[ComponentField]` を付与した public なフィールドもレコードのフィールドになるため、Unity でシリアライズする型をレコードにできます。
 - プロパティには `init` または `set` アクセサを付与します。アクセシビリティは問いません。
 - プロパティの型は、Component Model の型に対応する C# の型を使用します。使用できる型は [関数等で使用できる型](#関数等で使用できる型) と同じです。
 

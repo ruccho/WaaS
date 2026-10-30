@@ -13,6 +13,19 @@ namespace Wukuro
     public class WukuroRuntimeArguments : IArguments
     {
         private readonly Dictionary<string, Func<IContext, ITypes.Argument>> arguments = new();
+        private readonly Dictionary<string, object> values = new();
+
+        /// <summary>
+        ///     Adds a value of a record or an enum defined in C# (<see cref="WukuroArgumentTypes" />).
+        /// </summary>
+        public WukuroRuntimeArguments AddValue<T>(string name, T value)
+        {
+            if (!WukuroArgumentTypes.IsArgumentType(typeof(T)))
+                throw new ArgumentException(
+                    $"{typeof(T).Name} is not a record or an enum declared in a component interface.", nameof(value));
+            values[name] = value;
+            return this;
+        }
 
         public WukuroRuntimeArguments Add(string name, Action action)
         {
@@ -64,6 +77,11 @@ namespace Wukuro
             return false;
         }
 
+        public bool TryGetValue(string name, out object value)
+        {
+            return values.TryGetValue(name, out value);
+        }
+
         /// <summary>
         ///     Combines arguments. The former takes precedence over the latter.
         /// </summary>
@@ -82,6 +100,11 @@ namespace Wukuro
             {
                 return first.TryGetArgument(context, name, out argument) ||
                        second.TryGetArgument(context, name, out argument);
+            }
+
+            public bool TryGetValue(string name, out object value)
+            {
+                return first.TryGetValue(name, out value) || second.TryGetValue(name, out value);
             }
         }
     }

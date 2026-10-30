@@ -125,6 +125,89 @@ public class ExecutionLimitsTests
     }
 
     [Test]
+    public void FuelIsExactForEveryAmount()
+    {
+        // the interpreter executes some sequences of instructions at once, which must not change the consumption
+        var instance = Utils.GetInstance("""
+                                         (module
+                                           (func $double (param i32) (result i32)
+                                             (block (result i32) local.get 0 local.get 0 i32.add))
+                                           (func (export "run") (param $n i32) (result i32)
+                                             (local $i i32) (local $acc i32)
+                                             (loop $l
+                                               (block
+                                                 (local.set $acc (i32.add (local.get $acc) (call $double (local.get $i))))
+                                                 (local.set $i (i32.add (local.get $i) (i32.const 1))))
+                                               (br_if $l (i32.eqz (i32.ge_u (local.get $i) (local.get $n)))))
+                                             (local.get $acc)))
+                                         """, new Imports());
+        var run = GetFunction(instance, "run");
+        using var context = new ExecutionContext();
+
+        uint Run()
+        {
+            Span<StackValueItem> args = stackalloc StackValueItem[1];
+            args[0] = new StackValueItem(5u);
+            context.Invoke(run, args);
+            Span<StackValueItem> results = stackalloc StackValueItem[1];
+            context.TakeResults(results);
+            return results[0].ExpectValueI32();
+        }
+
+        context.Fuel = 10_000;
+        Assert.That(Run(), Is.EqualTo(20));
+        var consumed = 10_000 - context.Fuel!.Value;
+
+        for (var fuel = 0ul; fuel < consumed; fuel++)
+        {
+            context.Fuel = fuel;
+            var ex = Assert.Catch(() => Run());
+            Assert.That(FindException<FuelExhaustedException>(ex), Is.Not.Null, $"fuel: {fuel}");
+            Assert.That(context.Fuel, Is.EqualTo(0));
+        }
+
+        context.Fuel = consumed;
+        Assert.That(Run(), Is.EqualTo(20));
+        Assert.That(context.Fuel, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void CallsInFrameAreLimitedByMaxStackFrames()
+    {
+        var instance = Utils.GetInstance("""
+                                         (module
+                                           (func $depth (export "depth") (param $n i32) (result i32)
+                                             (if (result i32) (i32.eqz (local.get $n))
+                                               (then (i32.const 0))
+                                               (else (i32.add (call $depth (i32.sub (local.get $n) (i32.const 1)))
+                                                 (i32.const 1))))))
+                                         """, new Imports());
+        var depth = GetFunction(instance, "depth");
+
+        uint Run(ExecutionContext context, uint n)
+        {
+            Span<StackValueItem> args = stackalloc StackValueItem[1];
+            args[0] = new StackValueItem(n);
+            context.Invoke(depth, args);
+            Span<StackValueItem> results = stackalloc StackValueItem[1];
+            context.TakeResults(results);
+            return results[0].ExpectValueI32();
+        }
+
+        // n + 1 frames are needed
+        using (var context = new ExecutionContext(100)) Assert.That(Run(context, 99), Is.EqualTo(99));
+
+        using (var context = new ExecutionContext(100))
+        {
+            var ex = Assert.Catch(() => Run(context, 100));
+            Assert.That(ex!.ToString(), Does.Contain("Stack overflow"));
+        }
+
+        // deep recursion grows the stack of the frame
+        using (var context = new ExecutionContext()) Assert.That(Run(context, 100_000), Is.EqualTo(100_000));
+    }
+
+    [Test]
     public async ValueTask FuelPerResumeLimitsInstructionsBetweenSuspensions()
     {
         var imports = CreateAsyncImports(static (_, _, _) => default);

@@ -11,7 +11,11 @@ namespace WaaS.ComponentModel.Runtime
     public class LoweredFunction : ICoreSortedExportable<IInvocableFunction>, IInvocableFunction, ICanonOptions,
         ICanonContext
     {
+        private readonly bool flattenParameters;
         private readonly bool hasSerializedResult;
+        private readonly IDespecializedValueType[] parameterTypes;
+        private readonly IRecordType parameterType;
+        private readonly IDespecializedValueType? resultType;
 
         public LoweredFunction(IInstance instance, CanonOptionStringEncodingKind stringEncoding,
             IInvocableFunction? reallocFunction,
@@ -63,6 +67,12 @@ namespace WaaS.ComponentModel.Runtime
 
             Type = new FunctionType(paramTypes, resultTypes);
             this.hasSerializedResult = hasSerializedResult;
+            this.resultType = resultType;
+            parameterType = paramType;
+            var parameters = type.Parameters.Span;
+            parameterTypes = new IDespecializedValueType[parameters.Length];
+            for (var i = 0; i < parameters.Length; i++) parameterTypes[i] = parameters[i].Type.Despecialize();
+            flattenParameters = paramFlattenedCount <= 16 /* MAX_FLAT_PARAMS */;
         }
 
         public IInstance Instance { get; }
@@ -84,34 +94,22 @@ namespace WaaS.ComponentModel.Runtime
 
         public StackFrame CreateFrame(ExecutionContext context, ReadOnlySpan<StackValueItem> inputValues)
         {
-            var functionType = ComponentFunction.Type;
-
-            uint count = 0;
-            foreach (var parameter in functionType.Parameters.Span)
-            {
-                if (parameter.Type is not IDespecializedValueType despecialized)
-                    despecialized = parameter.Type.Despecialize();
-
-                count += despecialized.FlattenedCount;
-            }
-
             var inputValuesParams = hasSerializedResult ? inputValues[..^1] : inputValues;
 
             ValueLifter lifter;
             {
-                var flatten = count <= 16 /* MAX_FLAT_PARAMS */;
-                var typeSelector = ElementTypeSelector.FromRecord(functionType.ParameterType);
+                var typeSelector = ElementTypeSelector.FromRecord(parameterType);
 
-                if (!flatten && inputValuesParams.Length != 1) throw new InvalidOperationException();
+                if (!flattenParameters && inputValuesParams.Length != 1) throw new InvalidOperationException();
 
-                if (flatten)
+                if (flattenParameters)
                 {
                     lifter = new ValueLifter(this, typeSelector, inputValuesParams);
                 }
                 else
                 {
                     var ptr = inputValuesParams[0].ExpectValueI32();
-                    if (Utils.ElementSizeAlignTo(ptr, functionType.ParameterType.AlignmentRank) != ptr)
+                    if (Utils.ElementSizeAlignTo(ptr, parameterType.AlignmentRank) != ptr)
                         throw new TrapException("Parameter pointer is not aligned");
                     lifter = new ValueLifter(this, typeSelector,
                         MemoryToRealloc!.Span[checked((int)ptr)..]);
@@ -122,14 +120,15 @@ namespace WaaS.ComponentModel.Runtime
             if (hasSerializedResult)
             {
                 var ptr = inputValues[^1].ExpectValueI32();
-                if (Utils.ElementSizeAlignTo(ptr, functionType.Result!.Despecialize().AlignmentRank) != ptr)
+                if (Utils.ElementSizeAlignTo(ptr, resultType!.AlignmentRank) != ptr)
                     throw new TrapException("Result pointer is not aligned");
                 serializedResultPtr = ptr;
             }
 
             var binder = ComponentFunction.GetBinder(context);
-            for (var i = 0; i < functionType.Parameters.Length; i++)
-                ValueTransfer.TransferNext(ref lifter, binder.ArgumentPusher);
+            var argumentPusher = binder.ArgumentPusher;
+            foreach (var parameterType in parameterTypes)
+                ValueTransfer.TransferNext(ref lifter, argumentPusher, parameterType);
             return new StackFrame(Frame.Get(context, this, binder.CreateFrame(), binder,
                 serializedResultPtr));
         }
@@ -137,6 +136,10 @@ namespace WaaS.ComponentModel.Runtime
         private class Frame : IStackFrameCore, ICanonContext
         {
             [ThreadStatic] private static Stack<Frame>? pool;
+
+            // the flattened result is at most one value
+            private readonly StackValueItem[] flattenedResult = new StackValueItem[1];
+            private FlattenedLoweringPusher? flattenedResultPusher;
             private FunctionBinder binder;
             private ExecutionContext? context;
 
@@ -209,10 +212,18 @@ namespace WaaS.ComponentModel.Runtime
                 }
                 else
                 {
-                    using var pusher = LoweringPusherBase
-                        .GetRoot(this, false, 1, out var items).Wrap();
-                    binder.TakeResults(pusher);
-                    items.UnsafeItems.CopyTo(dest);
+                    var resultType = function.resultType;
+                    var count = checked((int)(resultType?.FlattenedCount ?? 0));
+                    flattenedResult[0] = default;
+                    if (flattenedResultPusher == null || flattenedResultPusher.Version == ushort.MaxValue)
+                        flattenedResultPusher = FlattenedLoweringPusher.CreateOwned();
+                    using (var pusher = flattenedResultPusher.InitRoot(this, flattenedResult.AsMemory(0, count),
+                               ElementTypeSelector.FromSingle(resultType)).Wrap())
+                    {
+                        binder.TakeResults(pusher);
+                    }
+
+                    flattenedResult.AsSpan(0, count).CopyTo(dest);
                 }
             }
 

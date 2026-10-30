@@ -22,6 +22,13 @@ namespace Wukuro
             {
                 if (container != null && container.Name == name)
                 {
+                    // values of argument types are given by TryGetValue
+                    if (container.IsArgumentType)
+                    {
+                        result = default;
+                        return false;
+                    }
+
                     result = container switch
                     {
                         ArgumentContainer<bool> c => ITypes.Argument.CreateTyBool(c.Value),
@@ -51,6 +58,19 @@ namespace Wukuro
             result = default;
             return false;
         }
+
+        public bool TryGetValue(string name, out object value)
+        {
+            foreach (var container in _arguments)
+                if (container != null && container.Name == name && container.IsArgumentType)
+                {
+                    value = container.BoxedValue;
+                    return true;
+                }
+
+            value = null;
+            return false;
+        }
     }
 
     [Serializable]
@@ -72,6 +92,32 @@ namespace Wukuro
         ///     Type of the value in WIT, such as "s32" or "borrow&lt;action&gt;".
         /// </summary>
         public abstract string WitType { get; }
+
+        /// <summary>
+        ///     Whether the value is of an argument type (<see cref="WukuroArgumentTypes" />).
+        /// </summary>
+        internal virtual bool IsArgumentType => false;
+
+        internal virtual object BoxedValue => null;
+
+        /// <summary>
+        ///     Creates a container for a parameter of an entry point, or returns null if the type is not supported.
+        ///     A parameter of a record or an enum is given a container of the C# type declaring it.
+        /// </summary>
+        public static ArgumentContainerBase Create(EntryParameterInfo parameter)
+        {
+            if (parameter.TypeInterface != null)
+            {
+                var type = WukuroArgumentTypes.Find(parameter.TypeInterface, parameter.WitType);
+                return type == null
+                    ? null
+                    : (ArgumentContainerBase)Activator.CreateInstance(
+                        typeof(ArgumentContainer<>).MakeGenericType(type), parameter.Name,
+                        type.IsValueType ? Activator.CreateInstance(type) : null);
+            }
+
+            return Create(parameter.Name, parameter.WitType);
+        }
 
         /// <summary>
         ///     Creates a container for a parameter of an entry point, or returns null if the type is not supported.
@@ -129,8 +175,16 @@ namespace Wukuro
             _ when typeof(T) == typeof(string) => "string",
             _ when typeof(T) == typeof(UnityEvent) => "borrow<action>",
             _ when typeof(Object).IsAssignableFrom(typeof(T)) => "borrow<object>",
+            _ when IsArgumentTypeOfT => WukuroArgumentTypes.GetWitName(typeof(T)),
             _ => ""
         };
+
+        // ReSharper disable once StaticMemberInGenericType
+        private static readonly bool IsArgumentTypeOfT = WukuroArgumentTypes.IsArgumentType(typeof(T));
+
+        internal override bool IsArgumentType => IsArgumentTypeOfT;
+
+        internal override object BoxedValue => _value;
     }
 
     [Serializable]

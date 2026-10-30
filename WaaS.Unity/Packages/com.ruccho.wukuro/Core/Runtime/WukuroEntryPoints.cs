@@ -17,7 +17,12 @@ namespace Wukuro
         public const string FunctionName = "run";
 
         private static readonly Regex EntryRegex = new(
-            @"package\s+wukuro-entry:(?<name>[a-z0-9-]+)\s*\{.*?interface\s+entry\s*\{.*?\brun:\s*func\((?<params>[^)]*)\)",
+            @"package\s+wukuro-entry:(?<name>[a-z0-9-]+)\s*\{.*?interface\s+entry\s*\{(?<uses>.*?)\brun:\s*func\((?<params>[^)]*)\)",
+            RegexOptions.Singleline | RegexOptions.CultureInvariant);
+
+        // e.g. "use my-game:events/types.{door-settings, door-kind};"
+        private static readonly Regex UseRegex = new(
+            @"\buse\s+(?<interface>[^\s{]+?)\.\{(?<names>[^}]*)\}",
             RegexOptions.Singleline | RegexOptions.CultureInvariant);
 
         public static string GetExportName(string entry)
@@ -34,7 +39,8 @@ namespace Wukuro
 
             return EntryRegex.Matches(wit).Cast<Match>()
                 .Where(m => wit.Contains($"export {GetExportName(m.Groups["name"].Value)};"))
-                .Select(m => new EntryPointInfo(m.Groups["name"].Value, ParseParameters(m.Groups["params"].Value)))
+                .Select(m => new EntryPointInfo(m.Groups["name"].Value,
+                    ParseParameters(m.Groups["params"].Value, ParseUses(m.Groups["uses"].Value))))
                 .OrderBy(e => e.Name)
                 .ToArray();
         }
@@ -63,7 +69,8 @@ namespace Wukuro
             return result;
         }
 
-        private static IReadOnlyList<EntryParameterInfo> ParseParameters(string parameters)
+        private static IReadOnlyList<EntryParameterInfo> ParseParameters(string parameters,
+            IReadOnlyDictionary<string, string> uses)
         {
             return parameters.Split(',')
                 .Select(p => p.Trim())
@@ -71,9 +78,32 @@ namespace Wukuro
                 .Select(p =>
                 {
                     var colon = p.IndexOf(':');
-                    return new EntryParameterInfo(p.Substring(0, colon).Trim(), p.Substring(colon + 1).Trim());
+                    var witType = p.Substring(colon + 1).Trim();
+                    return new EntryParameterInfo(p.Substring(0, colon).Trim(), witType,
+                        uses.TryGetValue(witType, out var @interface) ? @interface : null);
                 })
                 .ToArray();
+        }
+
+        /// <summary>
+        ///     Reads the types used from other interfaces: name of the type -> interface.
+        /// </summary>
+        private static IReadOnlyDictionary<string, string> ParseUses(string body)
+        {
+            var result = new Dictionary<string, string>();
+            foreach (Match use in UseRegex.Matches(body))
+            {
+                var @interface = use.Groups["interface"].Value;
+                // the types of wukuro:core are given by the runner or by the built-in arguments
+                if (@interface.StartsWith("wukuro:core/")) continue;
+                foreach (var name in use.Groups["names"].Value.Split(','))
+                {
+                    var trimmed = name.Trim();
+                    if (trimmed.Length > 0) result[trimmed] = @interface;
+                }
+            }
+
+            return result;
         }
     }
 
@@ -91,10 +121,11 @@ namespace Wukuro
 
     public class EntryParameterInfo
     {
-        public EntryParameterInfo(string name, string witType)
+        public EntryParameterInfo(string name, string witType, string typeInterface = null)
         {
             Name = name;
             WitType = witType;
+            TypeInterface = typeInterface;
         }
 
         /// <summary>
@@ -106,6 +137,12 @@ namespace Wukuro
         ///     Type of the parameter in WIT, such as "s32" or "borrow&lt;action&gt;".
         /// </summary>
         public string WitType { get; }
+
+        /// <summary>
+        ///     The interface that defines the type of the parameter, such as "my-game:events/types", if the type is a
+        ///     record or an enum used from another interface. Null for the built-in types.
+        /// </summary>
+        public string TypeInterface { get; }
 
         /// <summary>
         ///     Whether the value is given by the arguments. The context is given by the runner.
