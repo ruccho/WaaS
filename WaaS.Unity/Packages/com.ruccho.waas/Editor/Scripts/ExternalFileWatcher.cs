@@ -14,7 +14,8 @@ namespace WaaS.Unity.Editor
     ///     Reimports the assets when the files outside the asset database that they were built from change, such as the
     ///     sources of the crates referenced by the path in Rust scripts. The files are recorded by
     ///     <see cref="ExternalFileDependency.Track" /> with their timestamps and sizes at the import, and compared while the
-    ///     editor is active.
+    ///     editor is active if Auto Refresh is enabled in the preferences (Asset Pipeline). Otherwise they are compared
+    ///     with <c>Assets &gt; Reimport Scripts with Changed Files for WaaS</c>.
     /// </summary>
     [InitializeOnLoad]
     internal static class ExternalFileWatcher
@@ -56,16 +57,25 @@ namespace WaaS.Unity.Editor
 
             if (EditorApplication.isUpdating || EditorApplication.isCompiling) return;
             // the files are usually changed in other applications, and checked when the editor gets the focus
-            if (!InternalEditorUtility.isApplicationActive) return;
+            if (!InternalEditorUtility.isApplicationActive || !IsAutoRefreshEnabled()) return;
             if (EditorApplication.timeSinceStartup - lastCheckTime < IntervalSeconds) return;
             lastCheckTime = EditorApplication.timeSinceStartup;
 
             ReimportChangedAssets();
         }
 
+        // the reimports follow Auto Refresh of the preferences, so that the scripts are not built while it is disabled
+        private static bool IsAutoRefreshEnabled()
+        {
+            // the values of AssetPipelineAutoRefreshMode: 0 disabled, 1 enabled, 2 enabled outside play mode
+            var mode = EditorPrefs.GetInt("kAutoRefreshMode", EditorPrefs.GetBool("kAutoRefresh", true) ? 1 : 0);
+            return mode == 1 || (mode == 2 && !EditorApplication.isPlayingOrWillChangePlaymode);
+        }
+
         /// <summary>
         ///     Reimports the assets whose external files changed since their imports.
         /// </summary>
+        [MenuItem("Assets/Reimport Scripts with Changed Files for WaaS")]
         public static void ReimportChangedAssets()
         {
             var changedAssets = new List<string>();

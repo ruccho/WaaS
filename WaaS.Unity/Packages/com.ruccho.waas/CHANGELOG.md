@@ -13,7 +13,7 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - wit2waas: inline interfaces of worlds.
 - `[ComponentField]` can be applied to public fields, so that a type serialized by Unity can be a record.
 - Prebuilt wit2waas binaries for Windows, macOS and Linux, attached to each GitHub release.
-- Rust Importer and MoonBit Importer reimport the scripts when the files outside the asset database that they were built from change, such as the sources of the crates referenced by the path, by checking the timestamps and the sizes of the files while the editor is active (`ExternalFileDependency.Track`).
+- Rust Importer and MoonBit Importer reimport the scripts when the files outside the asset database that they were built from change, such as the sources of the crates referenced by the path, by checking the timestamps and the sizes of the files while the editor is active if Auto Refresh is enabled, or with **Assets > Reimport Scripts with Changed Files for WaaS** (`ExternalFileDependency.Track`).
 - WebAssembly features: reference types (`funcref`, `externref`, the reference and table instructions and multiple tables) and the rest of bulk memory (passive data and element segments, `memory.init`, `data.drop`, `table.init`, `elem.drop` and `table.copy`). WaaS satisfies WebAssembly Core Specification 2.0.
 - `StackValueItem.FromReference` and `StackValueItem.ExpectReference` to pass objects as reference values, and `Global.CreateReference` to create globals of reference types.
 
