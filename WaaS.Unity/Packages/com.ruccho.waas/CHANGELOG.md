@@ -28,7 +28,7 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages, the 
   - Objects of the host are passed as reference values with `StackValueItem.FromReference` and read with `StackValueItem.ExpectReference`. `Global.CreateReference` creates globals of reference types.
 - Execution limits of `ExecutionContext`: `Fuel`, `FuelPerResume`, `MaxMemoryPages` and `CancellationToken`.
 - Stack traces of WebAssembly on traps (`WasmStackTrace`), with the function names in the `name` section. The messages of `TrapException` and `WasmException` include them.
-- A debugger of the scripts in the Unity editor through the Debug Adapter Protocol, with breakpoints, steps, pausing, the stack frames and the values of WebAssembly ([Debugging Scripts](https://ruccho.com/WaaS/docs/unity-integration/debugging)).
+- A debugger of the scripts in the Unity editor through the Debug Adapter Protocol, with breakpoints, steps, pausing, the stack frames and the values of WebAssembly ([Debugging Scripts](https://ruccho.com/WaaS/unity-integration/debugging)).
   - **Assets > Enable Debugger for WaaS** starts the debugger in the editor, and **Assets > Build Rust Scripts with Debug Information for WaaS** builds the Rust scripts with the line tables of DWARF.
   - The extension of VS Code (`waas-debug-*.vsix`) is attached to the release.
   - `ExecutionContext.Debugger` (`IWasmDebugger`) and `DebugAdapterServer` can also be used outside Unity, and `Module.LineTable` reads the line tables of DWARF.
