@@ -25,6 +25,7 @@ namespace WaaS.Runtime
         ReturnIf,
         BrTable, // A: the start index in BranchTargets, B: the number of the targets excluding the default
         Call, // A: function index, B: the number of the parameters
+        CallIndirect, // A: type index, B: the number of the parameters
 
         // parametric
         Drop,
@@ -144,11 +145,13 @@ namespace WaaS.Runtime
     internal sealed class CompiledFunction
     {
         private CompiledFunction(CompiledInstruction[] code, BranchTarget[] branchTargets,
-            StackValueItem[] initialLocals, int maxStackDepth)
+            StackValueItem[] initialLocals, int numParameters, int numResults, int maxStackDepth)
         {
             Code = code;
             BranchTargets = branchTargets;
             InitialLocals = initialLocals;
+            NumParameters = numParameters;
+            NumResults = numResults;
             MaxStackDepth = maxStackDepth;
         }
 
@@ -159,6 +162,9 @@ namespace WaaS.Runtime
         ///     The initial values of the locals including the parameters.
         /// </summary>
         public StackValueItem[] InitialLocals { get; }
+
+        public int NumParameters { get; }
+        public int NumResults { get; }
 
         /// <summary>
         ///     The maximum height of the operand stack.
@@ -359,7 +365,8 @@ namespace WaaS.Runtime
                 // the stack depth from the validation also counts the labels and is not smaller
                 var maxStackDepth = Math.Max(maxHeight, (int)(function.MaxStackDepth ?? 0));
 
-                return new CompiledFunction(code, branchTargets.ToArray(), initialLocals, maxStackDepth);
+                return new CompiledFunction(code, branchTargets.ToArray(), initialLocals, parameterTypes.Length,
+                    function.Type.ResultTypes.Length, maxStackDepth);
             }
         }
 
@@ -374,6 +381,11 @@ namespace WaaS.Runtime
                     compiled.Op = Op.Call;
                     compiled.A = checked((int)call.FuncIndex);
                     compiled.B = context.GetFunctionType(call.FuncIndex).ParameterTypes.Length;
+                    return;
+                case CallIndirect callIndirect:
+                    compiled.Op = Op.CallIndirect;
+                    compiled.A = checked((int)callIndirect.FunctionTypeIndex);
+                    compiled.B = context.Module.TypeSection.FuncTypes.Span[compiled.A].ParameterTypes.Length;
                     return;
                 case Drop:
                     compiled.Op = Op.Drop;

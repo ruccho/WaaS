@@ -8,15 +8,22 @@ namespace WaaS.Runtime
 {
     /// <summary>
     ///     Represents a stack frame of a WebAssembly function loaded from binary.
+    ///     The calls from it to WebAssembly functions are also executed in the frame without pushing new frames, and the
+    ///     members such as <see cref="Function" /> reflect the innermost function being executed.
     /// </summary>
     public class WasmStackFrame : IStackFrameCore
     {
         // the buffer of a pooled frame is kept for the next use unless it is larger than this
-        private const int MaxRetainedBufferLength = 256;
+        private const int MaxRetainedBufferLength = 1024;
 
         [ThreadStatic] private static Stack<WasmStackFrame> pool;
 
+        // the callers of the function being executed
+        private int activationCount;
+        private Activation[] activations;
+
         private CompiledFunction compiled;
+        private Instance currentInstance;
         private IInvocableFunction[] functions;
         private Global[] globals;
         private bool isEnd;
@@ -24,7 +31,14 @@ namespace WaaS.Runtime
         private Memory memory;
         private uint programCounter;
 
-        // the number of the locals including the parameters. the operand stack starts here.
+        // the function this frame is created for
+        private InstanceFunction rootFunction;
+        private Table[] tables;
+
+        // index of the locals of the function being executed in the values
+        private int frameBase;
+
+        // index of the operand stack of the function being executed in the values, which follows the locals
         private int stackBase;
 
         // index of the next slot of the operand stack in the values
@@ -45,7 +59,7 @@ namespace WaaS.Runtime
         public int GetResultLength(ushort version)
         {
             ThrowIfOutdated(version);
-            return Function.function.Type.ResultTypes.Length;
+            return rootFunction.function.Type.ResultTypes.Length;
         }
 
         public void Dispose(ushort version)
@@ -58,15 +72,22 @@ namespace WaaS.Runtime
                 values = default;
             }
 
+            if (activationCount > 0) Array.Clear(activations, 0, activationCount);
+
+            activationCount = default;
             compiled = default;
+            currentInstance = default;
             functions = default;
             globals = default;
             isEnd = default;
             isFramePushed = default;
             memory = default;
             programCounter = default;
+            frameBase = default;
+            rootFunction = default;
             stackBase = default;
             stackPointer = default;
+            tables = default;
             Context = default;
             Function = default;
 
@@ -100,7 +121,7 @@ namespace WaaS.Runtime
         {
             ThrowIfOutdated(version);
             // validate
-            var resultTypes = Function.function.Type.ResultTypes;
+            var resultTypes = rootFunction.function.Type.ResultTypes;
             var resultLength = resultTypes.Length;
             if (resultLength > dest.Length) throw new ArgumentException();
             if (resultLength > stackPointer - stackBase)
@@ -142,6 +163,7 @@ namespace WaaS.Runtime
         {
             Context = context;
             Function = function;
+            rootFunction = function;
 
             compiled = function.function.Compiled ??
                        throw new InvalidOperationException("This function is not properly validated.");
@@ -169,14 +191,128 @@ namespace WaaS.Runtime
             initialLocals.AsSpan().CopyTo(values);
             inputValues.CopyTo(values);
 
+            frameBase = 0;
             stackBase = initialLocals.Length;
             stackPointer = stackBase;
 
-            var instance = function.instance;
+            SetInstance(function.instance);
+        }
+
+        private void SetInstance(Instance instance)
+        {
+            currentInstance = instance;
             functions = instance.FunctionInstance.FunctionArray;
             globals = instance.GlobalInstance.GlobalArray;
+            tables = instance.TableInstance.TableArray;
             var memories = instance.MemoryInstance.MemoryArray;
             memory = memories.Length > 0 ? memories[0] : null;
+        }
+
+        /// <summary>
+        ///     Starts executing the function called from the current function.
+        /// </summary>
+        /// <param name="callee">The function to call.</param>
+        /// <param name="returnIndex">The instruction index of the current function to continue after the call.</param>
+        /// <param name="frameBase">
+        ///     The index of the parameters on the operand stack, where the locals of the callee start.
+        /// </param>
+        private void EnterFunction(InstanceFunction callee, int returnIndex, int frameBase)
+        {
+            var calleeCompiled = callee.function.Compiled;
+            var initialLocals = calleeCompiled.InitialLocals;
+            var numParameters = calleeCompiled.NumParameters;
+            var calleeStackBase = frameBase + initialLocals.Length;
+
+            var values = this.values;
+            var requiredLength = calleeStackBase + calleeCompiled.MaxStackDepth;
+            if (values.Length < requiredLength) values = GrowValues(requiredLength, frameBase + numParameters);
+
+            // the parameters are already in place
+            for (var i = numParameters; i < initialLocals.Length; i++) values[frameBase + i] = initialLocals[i];
+
+            if (activations == null)
+                activations = new Activation[16];
+            else if (activationCount == activations.Length)
+                Array.Resize(ref activations, activations.Length * 2);
+
+            ref var caller = ref activations[activationCount++];
+            caller.Function = Function;
+            caller.Compiled = compiled;
+            caller.ReturnIndex = returnIndex;
+            caller.FrameBase = this.frameBase;
+            caller.StackBase = stackBase;
+
+            Function = callee;
+            compiled = calleeCompiled;
+            this.frameBase = frameBase;
+            stackBase = calleeStackBase;
+            if (callee.instance != currentInstance) SetInstance(callee.instance);
+        }
+
+        /// <summary>
+        ///     Returns from the function called in this frame to the caller.
+        /// </summary>
+        /// <returns>The stack pointer of the caller.</returns>
+        private int ReturnToCaller(int sp, out int returnIndex)
+        {
+            sp = MoveBranchValues(values, sp, frameBase, compiled.NumResults);
+
+            ref var caller = ref activations[--activationCount];
+            Function = caller.Function;
+            compiled = caller.Compiled;
+            frameBase = caller.FrameBase;
+            stackBase = caller.StackBase;
+            returnIndex = caller.ReturnIndex;
+            caller = default;
+
+            if (Function.instance != currentInstance) SetInstance(Function.instance);
+            return sp;
+        }
+
+        private StackValueItem[] GrowValues(int requiredLength, int usedLength)
+        {
+            var oldValues = values;
+            var length = Math.Max(requiredLength, oldValues.Length * 2);
+            var newValues = length > MaxRetainedBufferLength
+                ? ArrayPool<StackValueItem>.Shared.Rent(length)
+                : new StackValueItem[length];
+            Array.Copy(oldValues, newValues, usedLength);
+            if (oldValues.Length > MaxRetainedBufferLength) ArrayPool<StackValueItem>.Shared.Return(oldValues);
+            values = newValues;
+            return newValues;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private IInvocableFunction GetIndirectCallee(uint functionTypeIndex, uint functionIndex)
+        {
+            if (tables.Length == 0 || tables[0] is not Table<IInvocableFunction> table)
+                throw new InvalidOperationException();
+
+            var functionType = currentInstance.Module.TypeSection.FuncTypes.Span[checked((int)functionTypeIndex)];
+
+            var function = table.Elements[checked((int)functionIndex)];
+            if (function == null)
+                throw new TrapException($"[{nameof(CallIndirect)}] Function is null. index: {functionIndex}");
+
+            if (!function.Type.Match(functionType))
+                throw new TrapException($"[{nameof(CallIndirect)}] Function type mismatch.");
+
+            return function;
+        }
+
+        /// <summary>
+        ///     Adds the frames of the functions being executed in this frame to the stack trace, from the innermost one.
+        /// </summary>
+        internal void CaptureStackTrace(List<WasmStackTraceFrame> dest, bool isInnermost)
+        {
+            dest.Add(WasmStackTraceFrame.CaptureWasm(Function, GetCurrentInstruction(isInnermost)));
+            for (var i = activationCount - 1; i >= 0; i--)
+            {
+                ref var caller = ref activations[i];
+                var instrs = caller.Function.function.Body.Instructions.Span;
+                // the caller is suspended after the call instruction
+                dest.Add(WasmStackTraceFrame.CaptureWasm(caller.Function, instrs[caller.ReturnIndex - 1]));
+            }
         }
 
         /// <summary>
@@ -206,8 +342,8 @@ namespace WaaS.Runtime
 
         public ref StackValueItem GetLocal(int index)
         {
-            if ((uint)index >= (uint)stackBase) throw new ArgumentOutOfRangeException(nameof(index));
-            return ref values[index];
+            if ((uint)index >= (uint)(stackBase - frameBase)) throw new ArgumentOutOfRangeException(nameof(index));
+            return ref values[frameBase + index];
         }
 
         public void End()
@@ -271,6 +407,12 @@ namespace WaaS.Runtime
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowStackOverflow()
+        {
+            throw new InvalidOperationException("Stack overflow.");
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private static void ThrowOutOfBounds()
         {
             throw new TrapException("out of bounds memory access");
@@ -302,9 +444,15 @@ namespace WaaS.Runtime
             var context = Context;
             var code = compiled.Code;
             var values = this.values;
+            var frameBase = this.frameBase;
             var stackBase = this.stackBase;
             var sp = stackPointer;
             var pc = (int)programCounter;
+
+            // the calls in this frame count as frames of the context
+            var maxActivationCount = context.MaxStackFrames is { } maxStackFrames
+                ? (long)maxStackFrames - context.FrameCount
+                : long.MaxValue;
 
             while (true)
             {
@@ -312,14 +460,13 @@ namespace WaaS.Runtime
                 if (--context.fuel < 0) context.OnFuelExhausted();
 
                 ref var instr = ref code[pc];
+                IInvocableFunction callee;
                 switch (instr.Op)
                 {
                     case Op.Nop:
                         break;
                     case Op.Return:
-                        isEnd = true;
-                        stackPointer = sp;
-                        return StackFrameState.Completed;
+                        goto Return;
 
                     #region Control
 
@@ -364,24 +511,13 @@ namespace WaaS.Runtime
 
                         break;
                     case Op.ReturnIf:
-                        if (values[--sp].valueI32 != 0)
-                        {
-                            isEnd = true;
-                            stackPointer = sp;
-                            return StackFrameState.Completed;
-                        }
-
+                        if (values[--sp].valueI32 != 0) goto Return;
                         break;
                     case Op.BrTable:
                     {
                         var i = values[--sp].valueI32;
                         ref var target = ref compiled.BranchTargets[instr.A + (i < (uint)instr.B ? (int)i : instr.B)];
-                        if (target.Index < 0)
-                        {
-                            isEnd = true;
-                            stackPointer = sp;
-                            return StackFrameState.Completed;
-                        }
+                        if (target.Index < 0) goto Return;
 
                         if (target.IsLoop) context.CancellationToken.ThrowIfCancellationRequested();
                         sp = MoveBranchValues(values, sp, stackBase + target.Height, target.Arity);
@@ -389,14 +525,11 @@ namespace WaaS.Runtime
                         continue;
                     }
                     case Op.Call:
-                    {
-                        sp -= instr.B;
-                        stackPointer = sp;
-                        isFramePushed = true;
-                        context.PushFrame(functions[instr.A], new ReadOnlySpan<StackValueItem>(values, sp, instr.B));
-                        programCounter = (uint)(pc + 1);
-                        return StackFrameState.Ready;
-                    }
+                        callee = functions[instr.A];
+                        goto Call;
+                    case Op.CallIndirect:
+                        callee = GetIndirectCallee((uint)instr.A, values[--sp].valueI32);
+                        goto Call;
 
                     #endregion
 
@@ -415,14 +548,14 @@ namespace WaaS.Runtime
                     #region Variable
 
                     case Op.LocalGet:
-                        values[sp] = values[instr.A];
+                        values[sp] = values[frameBase + instr.A];
                         sp++;
                         break;
                     case Op.LocalSet:
-                        values[instr.A] = values[--sp];
+                        values[frameBase + instr.A] = values[--sp];
                         break;
                     case Op.LocalTee:
-                        values[instr.A] = values[sp - 1];
+                        values[frameBase + instr.A] = values[sp - 1];
                         break;
                     case Op.GlobalGet:
                         values[sp] = globals[instr.A].stackValue;
@@ -975,7 +1108,58 @@ namespace WaaS.Runtime
                 }
 
                 pc++;
+                continue;
+
+                Call:
+                {
+                    if (activationCount >= maxActivationCount) ThrowStackOverflow();
+
+                    var numParameters = instr.B;
+                    if (callee is InstanceFunction wasmCallee)
+                    {
+                        // the cancellation is observed on calls as well as loops, to abort a deep recursion
+                        context.CancellationToken.ThrowIfCancellationRequested();
+                        EnterFunction(wasmCallee, pc + 1, sp - numParameters);
+                        code = compiled.Code;
+                        values = this.values;
+                        frameBase = this.frameBase;
+                        stackBase = this.stackBase;
+                        sp = stackBase;
+                        pc = 0;
+                        continue;
+                    }
+
+                    // functions of the host run in their own frames
+                    sp -= numParameters;
+                    stackPointer = sp;
+                    isFramePushed = true;
+                    context.PushFrame(callee, new ReadOnlySpan<StackValueItem>(values, sp, numParameters));
+                    programCounter = (uint)(pc + 1);
+                    return StackFrameState.Ready;
+                }
+
+                Return:
+                if (activationCount == 0)
+                {
+                    isEnd = true;
+                    stackPointer = sp;
+                    return StackFrameState.Completed;
+                }
+
+                sp = ReturnToCaller(sp, out pc);
+                code = compiled.Code;
+                frameBase = this.frameBase;
+                stackBase = this.stackBase;
             }
+        }
+
+        private struct Activation
+        {
+            public InstanceFunction Function;
+            public CompiledFunction Compiled;
+            public int ReturnIndex;
+            public int FrameBase;
+            public int StackBase;
         }
     }
 }

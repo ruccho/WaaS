@@ -70,6 +70,10 @@ namespace WaaS.Runtime
 
         public StackFrame LastFrame { get; private set; }
 
+        internal int FrameCount => frames.Count;
+
+        internal uint? MaxStackFrames => maxStackFrames;
+
         private StackFrame? Current
         {
             get
