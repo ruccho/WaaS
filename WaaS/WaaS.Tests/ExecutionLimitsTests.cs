@@ -172,6 +172,42 @@ public class ExecutionLimitsTests
     }
 
     [Test]
+    public void CallsInFrameAreLimitedByMaxStackFrames()
+    {
+        var instance = Utils.GetInstance("""
+                                         (module
+                                           (func $depth (export "depth") (param $n i32) (result i32)
+                                             (if (result i32) (i32.eqz (local.get $n))
+                                               (then (i32.const 0))
+                                               (else (i32.add (call $depth (i32.sub (local.get $n) (i32.const 1)))
+                                                 (i32.const 1))))))
+                                         """, new Imports());
+        var depth = GetFunction(instance, "depth");
+
+        uint Run(ExecutionContext context, uint n)
+        {
+            Span<StackValueItem> args = stackalloc StackValueItem[1];
+            args[0] = new StackValueItem(n);
+            context.Invoke(depth, args);
+            Span<StackValueItem> results = stackalloc StackValueItem[1];
+            context.TakeResults(results);
+            return results[0].ExpectValueI32();
+        }
+
+        // n + 1 frames are needed
+        using (var context = new ExecutionContext(100)) Assert.That(Run(context, 99), Is.EqualTo(99));
+
+        using (var context = new ExecutionContext(100))
+        {
+            var ex = Assert.Catch(() => Run(context, 100));
+            Assert.That(ex!.ToString(), Does.Contain("Stack overflow"));
+        }
+
+        // deep recursion grows the stack of the frame
+        using (var context = new ExecutionContext()) Assert.That(Run(context, 100_000), Is.EqualTo(100_000));
+    }
+
+    [Test]
     public async ValueTask FuelPerResumeLimitsInstructionsBetweenSuspensions()
     {
         var imports = CreateAsyncImports(static (_, _, _) => default);
