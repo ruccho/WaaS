@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEditor;
@@ -69,14 +70,31 @@ namespace WaaS.Unity.Editor.MoonBit
 
     /// <summary>
     ///     Builds MoonBit scripts with the MoonBit toolchain (<c>moon</c>) and componentizes them. Each script is built in
-    ///     its own workspace under <c>Library/com.ruccho.waas/moonbit</c>.
+    ///     its own workspace under <c>Library/com.ruccho.waas/moonbit</c>. On Windows, the build output of the workspace is
+    ///     in a short directory under the temporary directory (see <see cref="GetTargetDirectory" />).
     /// </summary>
     internal static class MoonBitScriptBuilder
     {
         internal const string ModuleName = "waas/script";
         private const string WorldName = "script";
 
+        /// <summary>
+        ///     The length of the paths from which the MoonBit compiler can fail to write files on Windows.
+        /// </summary>
+        private const int MaxPath = 260;
+
+        /// <summary>
+        ///     The file in a target directory that records the path of its workspace.
+        /// </summary>
+        private const string WorkspaceRecordFileName = "waas-workspace.txt";
+
         private static readonly UTF8Encoding Utf8NoBom = new(false);
+
+        private static readonly Regex SysErrorRegex = new(@"Sys_error\(""(?<path>(?:[^""\\]|\\.)*?): No such file");
+
+#if UNITY_EDITOR_WIN
+        private static bool targetDirectoriesCleaned;
+#endif
 
         /// <summary>
         ///     The workspace of a script, which is kept short for the limit of the path length on Windows.
@@ -87,11 +105,78 @@ namespace WaaS.Unity.Editor.MoonBit
                 $"Library/com.ruccho.waas/moonbit/{Hash128.Compute(assetPath).ToString().Substring(0, 12)}");
         }
 
+        /// <summary>
+        ///     The directory of the build output of a workspace (<c>--target-dir</c> of moon).
+        /// </summary>
+        /// <remarks>
+        ///     On Windows, the MoonBit compiler can fail to write an output file whose path is 260 characters or longer
+        ///     (<c>Sys_error</c> with "No such file or directory"), even if long paths are enabled in the system. The output paths are the target directory followed by the
+        ///     names of the packages, which are long for the packages of the dependencies, so a project at a moderately
+        ///     deep path exceeds the limit. The target directory is therefore a directory with a short name under the
+        ///     temporary directory, named by the hash of the path of the workspace. The directories of the workspaces that
+        ///     no longer exist are deleted.
+        /// </remarks>
+        public static string GetTargetDirectory(string workspace)
+        {
+#if UNITY_EDITOR_WIN
+            var root = Path.Combine(Path.GetTempPath(), "waas-moonbit");
+            if (!targetDirectoriesCleaned)
+            {
+                targetDirectoriesCleaned = true;
+                DeleteStaleTargetDirectories(root);
+            }
+
+            // the output of the earlier versions, which is in the workspace
+            var legacyDirectory = Path.Combine(workspace, "_build");
+            if (Directory.Exists(legacyDirectory))
+                try
+                {
+                    Directory.Delete(legacyDirectory, true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // the directory is not used anymore, and is deleted later
+                }
+
+            var directory = Path.Combine(root, Hash128.Compute(workspace).ToString().Substring(0, 12));
+            WriteIfChanged(Path.Combine(directory, WorkspaceRecordFileName), workspace);
+            return directory;
+#else
+            return Path.Combine(workspace, "_build");
+#endif
+        }
+
+#if UNITY_EDITOR_WIN
+        /// <summary>
+        ///     Deletes the target directories whose workspaces no longer exist, such as those of a deleted project or a
+        ///     deleted Library folder.
+        /// </summary>
+        private static void DeleteStaleTargetDirectories(string root)
+        {
+            if (!Directory.Exists(root)) return;
+            foreach (var directory in Directory.GetDirectories(root))
+                try
+                {
+                    var record = Path.Combine(directory, WorkspaceRecordFileName);
+                    var stale = File.Exists(record)
+                        ? !Directory.Exists(File.ReadAllText(record).Trim())
+                        // a directory without the record is being created, or was left by an interrupted build
+                        : Directory.GetLastWriteTimeUtc(directory) < DateTime.UtcNow.AddDays(-1);
+                    if (stale) Directory.Delete(directory, true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // the directory is in use, and is deleted later
+                }
+        }
+#endif
+
         public static void Build(AssetImportContext ctx, MoonBitImporterSettings settings, MoonBitScriptInput input)
         {
             var assetPath = input.AssetPath;
 
             var workspace = GetWorkspace(assetPath);
+            var targetDirectory = GetTargetDirectory(workspace);
             var module = Path.Combine(workspace, "module");
             var entryDirectory = Path.Combine(module, "main");
 
@@ -117,7 +202,9 @@ namespace WaaS.Unity.Editor.MoonBit
                 // the generators read the public interface of the script, which moon info writes into the package
                 var interfacePath = Path.Combine(input.ScriptDirectory, "pkg.generated.mbti");
                 var existed = File.Exists(interfacePath);
-                if (!RunMoon(ctx, assetPath, workspace, $"info \"{input.ScriptDirectory}\"", input.MapPaths)) return;
+                if (!RunMoon(ctx, assetPath, workspace,
+                        $"info \"{input.ScriptDirectory}\" --target-dir \"{targetDirectory}\"", input.MapPaths))
+                    return;
                 var scriptInterface = File.Exists(interfacePath) ? File.ReadAllText(interfacePath) : "";
                 if (!existed && File.Exists(interfacePath)) File.Delete(interfacePath);
 
@@ -137,12 +224,12 @@ namespace WaaS.Unity.Editor.MoonBit
             foreach (var (fileName, source) in context.scriptSources)
                 File.WriteAllText(Path.Combine(input.ScriptDirectory, fileName), source, Utf8NoBom);
 
-            if (!RunMoon(ctx, assetPath, workspace, $"build \"{entryDirectory}\" --target wasm --release",
+            if (!RunMoon(ctx, assetPath, workspace,
+                    $"build \"{entryDirectory}\" --target wasm --release --target-dir \"{targetDirectory}\"",
                     input.MapPaths))
                 return;
 
-            var outPath = Path.Combine(workspace, "_build", "wasm", "release", "build", ModuleName, "main",
-                "main.wasm");
+            var outPath = Path.Combine(targetDirectory, "wasm", "release", "build", ModuleName, "main", "main.wasm");
             if (!File.Exists(outPath))
             {
                 ctx.LogImportError($"Error importing {assetPath}: the built module is not found at {outPath}");
@@ -454,8 +541,52 @@ namespace WaaS.Unity.Editor.MoonBit
             if (process.ExitCode == 0) return true;
 
             ctx.LogImportError(
-                $"Error importing {assetPath}: \n{mapPaths(standardError.ToString())}\n\nstdout:\n{mapPaths(standardOutput.ToString())}");
+                $"Error importing {assetPath}: \n{mapPaths(standardError.ToString())}\n\nstdout:\n{mapPaths(standardOutput.ToString())}{GetLongPathHint($"{standardError}\n{standardOutput}")}");
             return false;
+        }
+
+        /// <summary>
+        ///     A hint for an error of the compiler that failed to access a file at a long path.
+        /// </summary>
+        private static string GetLongPathHint(string output)
+        {
+            foreach (Match match in SysErrorRegex.Matches(output))
+            {
+                var path = UnescapeOCamlString(match.Groups["path"].Value);
+                if (path.Length < MaxPath) continue;
+                return
+                    $"\n\nThe MoonBit compiler failed to access a file whose path is {path.Length} characters long. On Windows, it can fail with the paths of {MaxPath} characters or longer. Move the project or the dependencies to a shorter path.";
+            }
+
+            return "";
+        }
+
+        /// <summary>
+        ///     Unescapes a string literal printed by OCaml, whose bytes other than ASCII are escaped as <c>\ddd</c>.
+        /// </summary>
+        private static string UnescapeOCamlString(string text)
+        {
+            var bytes = new List<byte>();
+            for (var i = 0; i < text.Length; i++)
+                if (text[i] == '\\' && i + 1 < text.Length)
+                {
+                    if (i + 3 < text.Length && char.IsDigit(text[i + 1]) && char.IsDigit(text[i + 2]) &&
+                        char.IsDigit(text[i + 3]))
+                    {
+                        bytes.Add((byte)int.Parse(text.Substring(i + 1, 3)));
+                        i += 3;
+                    }
+                    else
+                    {
+                        bytes.AddRange(Encoding.UTF8.GetBytes(text[++i].ToString()));
+                    }
+                }
+                else
+                {
+                    bytes.AddRange(Encoding.UTF8.GetBytes(text[i].ToString()));
+                }
+
+            return Encoding.UTF8.GetString(bytes.ToArray());
         }
 
         /// <summary>
