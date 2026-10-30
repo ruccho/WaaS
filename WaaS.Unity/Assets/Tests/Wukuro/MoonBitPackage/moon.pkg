@@ -1,4 +1,6 @@
 import {
   "ruccho/wukuro" @wukuro,
   "ruccho/wukuro/dialog" @dialog,
+  "ruccho/wukuro-tests/bindings/wukuro_tests_records_types" @records,
+  "ruccho/wukuro-tests/bindings/wukuro_tests_records_functions" @record_functions,
 }

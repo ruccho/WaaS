@@ -1,4 +1,5 @@
 members = [
+  "WukuroTestRecords",
   "../Wukuro/moonbit/wukuro",
   ".",
 ]

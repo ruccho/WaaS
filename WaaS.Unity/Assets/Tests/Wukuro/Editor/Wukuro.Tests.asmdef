@@ -7,9 +7,11 @@
         "UniTask",
         "WaaS",
         "WaaS.Unity",
+        "WaaS.Unity.Editor",
         "Wukuro",
         "Wukuro.Definitions",
-        "Wukuro.Dialog"
+        "Wukuro.Dialog",
+        "Wukuro.Editor"
     ],
     "includePlatforms": [
         "Editor"

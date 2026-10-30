@@ -49,6 +49,7 @@ fn night(cx: &Context) {
 | `&wukuro::types::Action` | `borrow<action>` | UnityEvent |
 | `&wukuro::types::Object` | `borrow<object>` | 任意の `UnityEngine.Object` |
 | `&wukuro::ObjectOf<T>` | `borrow<object>` | 型 `T` のオブジェクト（[オブジェクトの型](./object-types.mdx)） |
+| C# で定義したレコードや列挙型 | `record`, `enum` | C# の型のフィールド（[構造化された引数](./structured-arguments.mdx)） |
 
 引数の値は、引数名を kebab-case にした名前（`camera_target` であれば `camera-target`）で、インスペクタで設定した値や C# から渡した値と対応付けられます。
 
