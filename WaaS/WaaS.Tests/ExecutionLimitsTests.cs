@@ -201,6 +201,8 @@ public class ExecutionLimitsTests
         {
             var ex = Assert.Catch(() => Run(context, 100));
             Assert.That(ex!.ToString(), Does.Contain("Stack overflow"));
+            // the exhaustion of the call stack is a trap
+            Assert.That(ex, Is.InstanceOf<TrapException>().Or.InnerException.InstanceOf<TrapException>());
         }
 
         // deep recursion grows the stack of the frame

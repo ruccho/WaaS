@@ -14,12 +14,20 @@ namespace WaaS.Runtime
         // the maximum length of a byte array (Array.MaxLength in .NET 6 and later)
         private const int MaxArrayLength = 0x7FFFFFC7;
 
+        /// <summary>
+        ///     The maximum number of pages that WaaS can allocate, which is limited by the length of arrays.
+        /// </summary>
+        public const int MaxNumPages = MaxArrayLength >> PageSizeRank;
+
         private readonly object locker = new();
         private byte[] buffer;
 
         public Memory(Limits pageLimits)
         {
-            var minPages = checked((int)pageLimits.Min);
+            if (pageLimits.Min > MaxNumPages)
+                throw new NotSupportedException(
+                    $"A memory of {pageLimits.Min} pages is larger than {MaxNumPages} pages, which WaaS can allocate.");
+            var minPages = (int)pageLimits.Min;
             Length = minPages << PageSizeRank;
             NumPages = minPages;
             PageLimits = pageLimits;
@@ -72,13 +80,14 @@ namespace WaaS.Runtime
         /// <param name="maxNumPages">An additional limit on the number of pages imposed by the host.</param>
         public bool TryGrow(int numPagesToGrow, uint? maxNumPages)
         {
-            var afterNumPages = NumPages + numPagesToGrow;
-            if (afterNumPages > 1 << 16) return false;
+            if (numPagesToGrow < 0) throw new ArgumentOutOfRangeException(nameof(numPagesToGrow));
+            var afterNumPages = (long)NumPages + numPagesToGrow;
+            if (afterNumPages > MaxNumPages) return false;
             if (PageLimits.Max.HasValue && afterNumPages > PageLimits.Max) return false;
             if (maxNumPages.HasValue && afterNumPages > maxNumPages) return false;
 
             var prevLength = Length;
-            NumPages = afterNumPages;
+            NumPages = (int)afterNumPages;
             Length = NumPages << PageSizeRank;
 
             if (Length <= buffer.Length)
