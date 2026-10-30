@@ -23,22 +23,22 @@ namespace WaaS.ComponentModel.Binding
             {
                 case 1:
                 {
-                    pusher.Push(Unsafe.As<TEnum, byte>(ref value));
+                    pusher.PushFlags(Unsafe.As<TEnum, byte>(ref value));
                     break;
                 }
                 case 2:
                 {
-                    pusher.Push(Unsafe.As<TEnum, ushort>(ref value));
+                    pusher.PushFlags(Unsafe.As<TEnum, ushort>(ref value));
                     break;
                 }
                 case 4:
                 {
-                    pusher.Push(Unsafe.As<TEnum, uint>(ref value));
+                    pusher.PushFlags(Unsafe.As<TEnum, uint>(ref value));
                     break;
                 }
                 case 8:
                 {
-                    pusher.Push(Unsafe.As<TEnum, ulong>(ref value));
+                    pusher.PushFlags(checked((uint)Unsafe.As<TEnum, ulong>(ref value)));
                     break;
                 }
             }
