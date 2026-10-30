@@ -3,8 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using UnityEditor;
+using WaaS.ComponentModel.Binding;
 using WaaS.Unity.Editor;
 using WaaS.Unity.Editor.MoonBit;
 
@@ -19,6 +22,8 @@ namespace Wukuro.Editor
     ///     <c>run</c>. The parameters can be <c>Context</c>, primitive types, <c>String</c>, <c>Action</c>, <c>Object</c>
     ///     and <c>ObjectOf[T]</c> of the package <c>ruccho/wukuro</c>. The type of an object of <c>ObjectOf[T]</c> is
     ///     declared by the attribute <c>#wukuro.object_type("&lt;C# type name&gt;")</c> of the marker type <c>T</c>.
+    ///     Records and enums defined in C# (<see cref="WukuroArgumentTypes" />) can also be parameters: their C# types
+    ///     are found from the packages of their MoonBit bindings (<c>ns_pkg_iface</c>) and their names.
     /// </remarks>
     [Serializable]
     [ManagedReferenceTypeDisplayName("Wukuro Entry Points")]
@@ -97,12 +102,15 @@ extern ""wasm"" fn wukuro_string_pointer(message : String) -> Int =
                 var witParameters = new List<string>();
                 var flatParameters = new List<string>();
                 var arguments = new List<string>();
+                // types used from other interfaces: interface -> names
+                var uses = new SortedDictionary<string, SortedSet<string>>(StringComparer.Ordinal);
                 for (var i = 0; i < parameterTypes.Length; i++)
                 {
                     var parameterName = ToKebabCase(parameterNames[i]);
                     var type = ResolveType(parameterTypes[i], aliases);
                     var parameter = MapParameter(type, flatParameters, out var witType, out var objectType,
-                        context.SourceDirectories)
+                                        context.SourceDirectories) ??
+                                    MapArgumentType(type, flatParameters, out witType, uses, context)
                         ?? throw new InvalidOperationException(
                             $"The type {parameterTypes[i]} of the parameter {parameterNames[i]} of the entry point {name} cannot be a parameter of an entry point.");
                     witParameters.Add($"{parameterName}: {witType}");
@@ -123,7 +131,9 @@ extern ""wasm"" fn wukuro_string_pointer(message : String) -> Int =
                 context.AddWorldExport($"{package}/entry");
                 context.AddWitPackage($"{WukuroEntryPoints.PackageNamespace}-{entryName}",
                     $"package {package};\n\ninterface entry {{\n" +
-                    "    use wukuro:core/types.{context, action, object};\n\n" +
+                    "    use wukuro:core/types.{context, action, object};\n" +
+                    string.Concat(uses.Select(u => $"    use {u.Key}.{{{string.Join(", ", u.Value)}}};\n")) +
+                    "\n" +
                     $"    run: func({string.Join(", ", witParameters)});\n}}\n");
             }
 
@@ -229,6 +239,101 @@ extern ""wasm"" fn wukuro_string_pointer(message : String) -> Int =
             }
 
             return null;
+        }
+
+        /// <summary>
+        ///     Returns the expression that lifts the flat values to a record or an enum defined in C#
+        ///     (<see cref="WukuroArgumentTypes" />), or null if the type is not one of them. The type is in the MoonBit
+        ///     bindings of its interface, whose package is named as <c>ns_pkg_iface</c>.
+        /// </summary>
+        private static string? MapArgumentType(ResolvedType type, List<string> flatParameters, out string witType,
+            IDictionary<string, SortedSet<string>> uses, MoonBitGenerationContext context)
+        {
+            witType = "";
+            if (type.Package == null || type.Argument != null) return null;
+
+            var packageName = type.Package.Substring(type.Package.LastIndexOf('/') + 1);
+            var componentInterface = TypeCache.GetTypesWithAttribute<ComponentInterfaceAttribute>()
+                .FirstOrDefault(t => t.IsInterface && t.GetCustomAttribute<ComponentInterfaceAttribute>() is { } a &&
+                                     MoonBitBindingsExporter.ToPackageName(a.Name) == packageName);
+            var csharpType = componentInterface?.GetNestedTypes().FirstOrDefault(t =>
+                WukuroArgumentTypes.IsArgumentType(t) &&
+                WukuroArgumentTypes.GetWitName(t) == WukuroArgumentTypes.ToComponentName(type.Name));
+            if (csharpType == null) return null;
+
+            var alias = packageName;
+            context.AddImport(type.Package, alias);
+            var interfaceName = WukuroArgumentTypes.GetInterfaceName(csharpType);
+            witType = WukuroArgumentTypes.GetWitName(csharpType);
+            if (!uses.TryGetValue(interfaceName, out var names)) uses[interfaceName] = names = new SortedSet<string>();
+            names.Add(witType);
+
+            string Flat(string flatType)
+            {
+                var name = $"p{flatParameters.Count}";
+                flatParameters.Add($"{name} : {flatType}");
+                return name;
+            }
+
+            string Lift(Type current)
+            {
+                if (WukuroArgumentTypeExporter.IsObject(current)) return $"@wukuro_types.Object({Flat("Int")})";
+
+                if (WukuroArgumentTypes.IsArgumentType(current))
+                {
+                    if (WukuroArgumentTypes.GetInterfaceName(current) != interfaceName)
+                        throw new NotSupportedException(
+                            $"{current.FullName} is used by {csharpType.FullName} but declared in another interface.");
+                    var name = WukuroArgumentTypeExporter.ToUpperCamelCase(WukuroArgumentTypes.GetWitName(current));
+                    if (current.IsEnum)
+                    {
+                        if (current.IsDefined(typeof(FlagsAttribute), false))
+                            throw new NotSupportedException(
+                                $"The flags {current.FullName} cannot be a parameter of an entry point of MoonBit.");
+                        return $"@{alias}.{name}::from({Flat("Int")})";
+                    }
+
+                    var fields = WukuroArgumentTypes.GetFields(current).Select(f =>
+                        $"{WukuroArgumentTypes.ToComponentName(f.Name).Replace('-', '_')}: " +
+                        Lift(WukuroArgumentTypes.GetFieldType(f)));
+                    return $"@{alias}.{name}::{{ {string.Join(", ", fields)} }}";
+                }
+
+                switch (WukuroArgumentTypeExporter.GetPrimitiveWitType(current))
+                {
+                    case "bool":
+                        return $"{Flat("Int")} != 0";
+                    case "u8":
+                        return $"{Flat("Int")}.to_byte()";
+                    case "s16":
+                        return $"Int16::from_int({Flat("Int")})";
+                    case "u16":
+                        return $"{Flat("Int")}.to_uint16()";
+                    case "s32":
+                        return Flat("Int");
+                    case "u32":
+                        return $"{Flat("Int")}.reinterpret_as_uint()";
+                    case "s64":
+                        return Flat("Int64");
+                    case "u64":
+                        return $"{Flat("Int64")}.reinterpret_as_uint64()";
+                    case "f32":
+                        return Flat("Float");
+                    case "f64":
+                        return Flat("Double");
+                    case "char":
+                        return $"Int::unsafe_to_char({Flat("Int")})";
+                    case "string":
+                        var pointer = Flat("Int");
+                        var length = Flat("Int");
+                        return $"waas_ptr2str({pointer}, {length})";
+                }
+
+                throw new NotSupportedException(
+                    $"The type {current.Name} in {csharpType.FullName} cannot be a parameter of an entry point of MoonBit.");
+            }
+
+            return Lift(csharpType);
         }
 
         /// <summary>

@@ -93,16 +93,20 @@ namespace WaaS.Runtime
 
         private static WasmStackTrace Capture(Stack<StackFrame> frames)
         {
-            var result = new WasmStackTraceFrame[frames.Count];
-            var i = 0;
+            var result = new List<WasmStackTraceFrame>(frames.Count);
+            var isInnermost = true;
             // Stack<T> enumerates from the top
             foreach (var frame in frames)
             {
-                result[i] = WasmStackTraceFrame.Capture(frame.Core, i == 0);
-                i++;
+                if (frame.Core is WasmStackFrame { Function: not null } wasmFrame)
+                    // a frame of WebAssembly contains the functions called in it
+                    wasmFrame.CaptureStackTrace(result, isInnermost);
+                else
+                    result.Add(WasmStackTraceFrame.CaptureHost(frame.Core));
+                isInnermost = false;
             }
 
-            return new WasmStackTrace(result);
+            return new WasmStackTrace(result.ToArray());
         }
 
         public override string ToString()
@@ -175,39 +179,37 @@ namespace WaaS.Runtime
         /// </summary>
         public uint? Offset { get; private set; }
 
-        internal static WasmStackTraceFrame Capture(IStackFrameCore core, bool isInnermost)
+        internal static WasmStackTraceFrame CaptureWasm(InstanceFunction function, Instruction instruction)
         {
-            if (core is WasmStackFrame { Function: { } function } wasmFrame)
+            var module = function.instance.Module;
+            var functionIndex = checked((uint)(module.ImportedFunctionCount + function.function.FunctionIndex));
+
+            string moduleName = null;
+            string functionName = null;
+            try
             {
-                var module = function.instance.Module;
-                var functionIndex = checked((uint)(module.ImportedFunctionCount + function.function.FunctionIndex));
-
-                string moduleName = null;
-                string functionName = null;
-                try
-                {
-                    var names = module.Names;
-                    moduleName = names.ModuleName;
-                    names.TryGetFunctionName(functionIndex, out functionName);
-                }
-                catch (Exception)
-                {
-                    // the names are not essential
-                }
-
-                var instruction = wasmFrame.GetCurrentInstruction(isInnermost);
-
-                return new WasmStackTraceFrame
-                {
-                    ModuleSourceDescription = module.SourceDescription,
-                    ModuleName = moduleName,
-                    FunctionIndex = functionIndex,
-                    FunctionName = functionName,
-                    InstructionIndex = instruction?.Index,
-                    Offset = instruction?.Offset
-                };
+                var names = module.Names;
+                moduleName = names.ModuleName;
+                names.TryGetFunctionName(functionIndex, out functionName);
+            }
+            catch (Exception)
+            {
+                // the names are not essential
             }
 
+            return new WasmStackTraceFrame
+            {
+                ModuleSourceDescription = module.SourceDescription,
+                ModuleName = moduleName,
+                FunctionIndex = functionIndex,
+                FunctionName = functionName,
+                InstructionIndex = instruction?.Index,
+                Offset = instruction?.Offset
+            };
+        }
+
+        internal static WasmStackTraceFrame CaptureHost(IStackFrameCore core)
+        {
             string description;
             try
             {

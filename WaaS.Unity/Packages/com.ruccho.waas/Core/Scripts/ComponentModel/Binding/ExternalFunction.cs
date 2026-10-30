@@ -1,7 +1,6 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using STask;
 using WaaS.ComponentModel.Runtime;
 using WaaS.Runtime;
@@ -21,21 +20,36 @@ namespace WaaS.ComponentModel.Binding
             return new FunctionBinder(Binder.Get(context, this));
         }
 
+        /// <summary>
+        ///     Invokes the host implementation.
+        ///     It is called when the frame of the function is first moved, after all the arguments are pushed, so that
+        ///     <paramref name="arguments" /> can be pulled, and <paramref name="frameMove" /> and
+        ///     <paramref name="resultPusher" /> can be awaited without suspension.
+        /// </summary>
         protected abstract STaskVoid InvokeAsync(ExecutionContext context, Pullable arguments,
             STaskVoid frameMove, STask<ValuePusher> resultPusher);
 
-        private class Binder : IFunctionBinderCore, IStackFrameCore, ISTaskSource<ValuePusher>
+        private class Binder : IFunctionBinderCore, IStackFrameCore
         {
             private static readonly Stack<Binder> Pool = new();
-            private bool abandoned;
-            private object? context;
-            private Action<object>? continuation;
 
-            private bool frameMoveCompleted;
-            private STaskCompletionSource<byte> frameMoveSource;
-            private ValuePusher? resultPusher;
-            private int resultPusherRequestedState;
-            private Waker? waker;
+            private readonly Action onInvocationCompleted;
+            private bool abandoned;
+            private PushPullAdapter arguments;
+            private ExecutionContext? context;
+            private ExternalFunction? function;
+            private STaskVoid invocation;
+            private InvocationState state;
+            private PushPullAdapter results;
+            private bool suspended;
+            private Waker waker;
+
+            private Binder()
+            {
+                onInvocationCompleted = OnInvocationCompleted;
+                arguments = PushPullAdapter.CreateOwned();
+                results = PushPullAdapter.CreateOwned();
+            }
 
             public ushort Version { get; private set; }
 
@@ -45,18 +59,23 @@ namespace WaaS.ComponentModel.Binding
             {
                 if (Version != version) return;
 
-                if (!resultPusher.HasValue)
+                if (state == InvocationState.Pending)
                 {
-                    // The host function has not received the result pusher (e.g. the execution is canceled while
-                    // suspended). It may still await it, so this binder is never reused and awaiting it afterwards
-                    // throws OperationCanceledException.
+                    // The host function is still running (e.g. the execution is canceled while suspended).
+                    // It may still use the arguments and the results, so this binder is never reused.
                     abandoned = true;
                     Version++;
                     return;
                 }
 
+                // the adapters are kept for reuse
+                if (!arguments.Recycle()) arguments = PushPullAdapter.CreateOwned();
+                if (!results.Recycle()) results = PushPullAdapter.CreateOwned();
+                context = null;
+                function = null;
+                invocation = default;
+
                 if (++Version == ushort.MaxValue) return;
-                ArgumentPusher.Dispose();
                 Pool.Push(this);
             }
 
@@ -67,59 +86,59 @@ namespace WaaS.ComponentModel.Binding
 
             public void TakeResults(ValuePusher resultValuePusher)
             {
-                resultPusher = resultValuePusher;
-                continuation?.Invoke(context!);
+                results.TransferBufferedValues(resultValuePusher);
             }
 
             public static Binder Get(ExecutionContext context, ExternalFunction function)
             {
                 if (!Pool.TryPop(out var pooled)) pooled = new Binder();
-                var pusher = PushPullAdapter.Get();
-                pooled.ArgumentPusher = new ValuePusher(pusher);
-
-                pooled.frameMoveSource = STaskCompletionSource<byte>.Create();
-                pooled.frameMoveCompleted = false;
-                pooled.continuation = null;
-                pooled.context = null;
-                pooled.resultPusher = default;
+                pooled.context = context;
+                pooled.function = function;
+                pooled.ArgumentPusher = new ValuePusher(pooled.arguments);
+                pooled.invocation = default;
+                pooled.state = InvocationState.NotStarted;
                 pooled.waker = default;
-                pooled.resultPusherRequestedState = 0;
+                pooled.suspended = false;
                 pooled.abandoned = false;
-
-                ForgetInvocation(function.InvokeAsync(
-                    context,
-                    new Pullable(pusher),
-                    new STaskVoid(pooled.frameMoveSource.TaskSource),
-                    new STask<ValuePusher>(new STaskSource<ValuePusher>(pooled, pooled.Version))));
-
                 return pooled;
             }
 
-            private static void ForgetInvocation(STaskVoid task)
+            private void OnInvocationCompleted()
             {
-                var awaiter = task.GetAwaiter();
-                if (awaiter.IsCompleted)
-                    ObserveInvocation(awaiter);
-                else
-                    awaiter.OnCompleted(InstantContinuation<STaskAwaiter>.Get(awaiter,
-                        static (in STaskAwaiter awaiter) => ObserveInvocation(awaiter)));
+                if (abandoned)
+                {
+                    ObserveAbandonedInvocation(invocation);
+                    return;
+                }
+
+                state = InvocationState.Completed;
+                // it may be called synchronously while the continuation is registered
+                if (suspended) waker.Wake();
             }
 
-            private static void ObserveInvocation(in STaskAwaiter awaiter)
+            private static void ObserveAbandonedInvocation(STaskVoid invocation)
             {
                 try
                 {
-                    awaiter.GetResult();
+                    invocation.GetAwaiter().GetResult();
                 }
-                catch (OperationCanceledException)
+                catch
                 {
-                    // expected when the host function is abandoned (e.g. the execution is canceled while suspended)
+                    // the invocation is abandoned and no one observes the result
                 }
             }
 
             private void ThrowIfOutdated(ushort version)
             {
                 if (version != Version) throw new InvalidOperationException();
+            }
+
+            private enum InvocationState : byte
+            {
+                NotStarted,
+                Pending,
+                Completed,
+                Finished
             }
 
             #region IStackFrame implementation
@@ -132,19 +151,45 @@ namespace WaaS.ComponentModel.Binding
             StackFrameState IStackFrameCore.MoveNext(ushort version, Waker waker)
             {
                 ThrowIfOutdated(version);
-                if (!frameMoveCompleted)
+                switch (state)
                 {
-                    // first
-                    frameMoveCompleted = true;
-                    frameMoveSource.SetResult(0);
+                    case InvocationState.NotStarted:
+                    {
+                        var invocation = function!.InvokeAsync(context!, new Pullable(arguments), default,
+                            new STask<ValuePusher>(new ValuePusher(results)));
+                        var awaiter = invocation.GetAwaiter();
+                        if (awaiter.IsCompleted)
+                        {
+                            // completed synchronously
+                            state = InvocationState.Finished;
+                            awaiter.GetResult();
+                            return StackFrameState.Completed;
+                        }
 
-                    this.waker = waker;
+                        this.invocation = invocation;
+                        state = InvocationState.Pending;
+                        awaiter.OnCompleted(onInvocationCompleted);
+                        if (state != InvocationState.Pending) return StackFrameState.Ready;
 
-                    if (Interlocked.CompareExchange(ref resultPusherRequestedState, 2, 0) == 0)
+                        this.waker = waker;
+                        suspended = true;
                         return StackFrameState.Pending;
+                    }
+                    case InvocationState.Pending:
+                        this.waker = waker;
+                        suspended = true;
+                        return StackFrameState.Pending;
+                    case InvocationState.Completed:
+                    {
+                        state = InvocationState.Finished;
+                        var invocation = this.invocation;
+                        this.invocation = default;
+                        invocation.GetAwaiter().GetResult();
+                        return StackFrameState.Completed;
+                    }
+                    default:
+                        return StackFrameState.Completed;
                 }
-
-                return StackFrameState.Completed;
             }
 
             void IStackFrameCore.TakeResults(ushort version, Span<StackValueItem> dest)
@@ -160,53 +205,6 @@ namespace WaaS.ComponentModel.Binding
             {
                 throw new InvalidOperationException();
             }
-
-            #endregion
-
-            #region ISTaskSource<ValuePusher> implementation
-
-            public void OnCompleted(ushort version, Action<object> continuation, object context)
-            {
-                // on await
-                if (abandoned)
-                {
-                    continuation(context);
-                    return;
-                }
-
-                ThrowIfOutdated(version);
-
-                if (Interlocked.CompareExchange(ref this.continuation, continuation, null) != null)
-                    throw new InvalidOperationException();
-                this.context = context;
-
-                switch (Interlocked.CompareExchange(ref resultPusherRequestedState, 1, 0))
-                {
-                    case 0:
-                    {
-                        // 0 -> 1
-                        // this is earlier than pending check
-                        break;
-                    }
-                    case 2:
-                    {
-                        // pending is returned already
-                        waker?.Wake();
-                        break;
-                    }
-                    default:
-                        throw new InvalidOperationException();
-                }
-            }
-
-            public ValuePusher GetResult(ushort version)
-            {
-                if (abandoned) throw new OperationCanceledException();
-                ThrowIfOutdated(version);
-                return resultPusher!.Value;
-            }
-
-            public bool IsCompleted => resultPusher.HasValue || abandoned;
 
             #endregion
         }

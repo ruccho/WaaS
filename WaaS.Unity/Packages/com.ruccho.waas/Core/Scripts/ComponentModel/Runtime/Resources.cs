@@ -134,8 +134,8 @@ namespace WaaS.ComponentModel.Runtime
             }
         }
 
-        private Ownership Ownership { get; }
-        private int Version { get; }
+        internal Ownership Ownership { get; }
+        internal int Version { get; }
 
         public IResourceType Type
         {
@@ -151,10 +151,14 @@ namespace WaaS.ComponentModel.Runtime
             return moveOut ? Ownership.MoveOut(Version) : Ownership.GetValue(Version);
         }
 
-        internal Owned(Ownership core) : this()
+        internal Owned(Ownership core) : this(core, core.Version)
+        {
+        }
+
+        internal Owned(Ownership core, int version) : this()
         {
             Ownership = core;
-            Version = core.Version;
+            Version = version;
         }
 
         public void Dispose()
@@ -214,6 +218,8 @@ namespace WaaS.ComponentModel.Runtime
         }
 
         private readonly Owned owned;
+
+        internal Owned Owned => owned;
 
         public IResourceType Type => owned.Type;
 

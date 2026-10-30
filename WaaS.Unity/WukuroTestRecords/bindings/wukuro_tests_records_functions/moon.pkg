@@ -1,0 +1,6 @@
+import {
+  "ruccho/wukuro-tests/bindings/wukuro_tests_records_types" @types0,
+  "ruccho/wukuro/bindings/wukuro_core_types" @types,
+}
+
+warnings = "-44"

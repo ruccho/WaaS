@@ -12,48 +12,56 @@ namespace STask
             this.source = source;
         }
 
-        public bool IsCompleted => source.IsCompleted;
+        public bool IsCompleted => source.core == null || source.IsCompleted;
 
         public void GetResult()
         {
-            source.GetResult();
+            if (source.core != null) source.GetResult();
         }
 
         public void OnCompleted(Action continuation)
         {
-            source.OnCompleted(static ctx => ((Action)ctx).Invoke(), continuation);
+            if (source.core == null)
+                continuation();
+            else
+                source.OnCompleted(static ctx => ((Action)ctx).Invoke(), continuation);
         }
 
         public void UnsafeOnCompleted(Action continuation)
         {
-            source.OnCompleted(static ctx => ((Action)ctx).Invoke(), continuation);
+            OnCompleted(continuation);
         }
     }
 
     public readonly struct STaskAwaiter<TResult> : ICriticalNotifyCompletion
     {
         internal readonly STaskSource<TResult> source;
+        private readonly TResult result;
 
-        internal STaskAwaiter(STaskSource<TResult> source)
+        internal STaskAwaiter(STaskSource<TResult> source, TResult result)
         {
             this.source = source;
+            this.result = result;
         }
 
-        public bool IsCompleted => source.IsCompleted;
+        public bool IsCompleted => source.core == null || source.IsCompleted;
 
         public TResult GetResult()
         {
-            return source.GetResult();
+            return source.core == null ? result : source.GetResult();
         }
 
         public void OnCompleted(Action continuation)
         {
-            source.OnCompleted(static ctx => ((Action)ctx).Invoke(), continuation);
+            if (source.core == null)
+                continuation();
+            else
+                source.OnCompleted(static ctx => ((Action)ctx).Invoke(), continuation);
         }
 
         public void UnsafeOnCompleted(Action continuation)
         {
-            source.OnCompleted(static ctx => ((Action)ctx).Invoke(), continuation);
+            OnCompleted(continuation);
         }
     }
 }

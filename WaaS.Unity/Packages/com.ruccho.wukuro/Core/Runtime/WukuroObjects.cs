@@ -22,7 +22,11 @@ namespace Wukuro
         /// </summary>
         public static T Get<T>(Borrowed<ITypes.IObjectResourceImpl> handle) where T : class
         {
-            var value = ObjectImpl.Instance.Unwrap(handle.handle);
+            return Convert<T>(ObjectImpl.Instance.Unwrap(handle.handle));
+        }
+
+        internal static T Convert<T>(object value) where T : class
+        {
             switch (value)
             {
                 case T typed:
