@@ -36,6 +36,10 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - C# tuples of more than 7 elements: the elements after the 7th were formatted as a nested tuple instead of the elements of the same tuple.
 - Lowering a variant whose case is typed with a nullable type argument, such as `Option<int?>` holding `null` (`option<option<s32>>`), threw `InvalidOperationException`.
 
+### Fixed
+
+- Rust Importer removes the crate of a script when the script is deleted or **Crate Root** is unchecked. A crate left for a deleted script broke `cargo check` of the Cargo workspace at the root of the project, which IDEs such as rust-analyzer run, and a crate left for a script that is no longer a crate root made IDEs analyze the script as another crate.
+
 ## [0.3.0]
 
 ### Added

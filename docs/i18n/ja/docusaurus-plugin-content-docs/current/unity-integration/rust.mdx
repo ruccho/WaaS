@@ -63,7 +63,7 @@ Rust Importer はソースファイルの変更を検知して自動的に再コ
 
 ## IDE 機能の利用
 
-Rust に対応する IDE で **Unity プロジェクトのルート**をワークスペースとして開くと、IDE による補完等の機能を利用しながら Rust ソースファイルを編集できます。  
+VS Code と [rust-analyzer](https://rust-analyzer.github.io/) のような Cargo プロジェクトに対応する IDE で **Unity プロジェクトのルート**をワークスペースとして開くと、補完、定義への移動、診断などの IDE の機能を利用しながら Rust ソースファイルを編集できます。[Wukuro](../wukuro/index.mdx) のクレート、`wit_bindgen::generate!` が生成するバインディング、**Dependencies** のクレートなど、スクリプトの依存はビルド時と同様に解決されます。
 
 これは、Rust Importer が Unity プロジェクトのルートに `Cargo.toml` を作成することによって実現しています：
 
@@ -74,7 +74,25 @@ resolver = "2" # Used by WaaS
 
 ```
 
-内部的には `Library/com.ruccho.waas/rust/crates/*` に **Create Root** として指定された各 `*.rs` をルートとするクレート群が自動生成されます。これらクレートの `Cargo.toml` は Rust Importer が自動的に上書きするので、手動での編集はできません。
+内部的には `Library/com.ruccho.waas/rust/crates/*` に **Create Root** として指定された各 `*.rs` をルートとするクレート群が自動生成されます。各クレートのルートは `Assets` または `Packages` 内のソースファイルそのものであるため、IDE はソースファイルを直接解析します。これらクレートの `Cargo.toml` は Rust Importer が自動的に上書きするので、手動での編集はできません。ソースファイルを削除するか **Create Root** を無効にすると、そのソースファイルのクレートは削除されます。
+
+:::info
+クレートはソースファイルのインポート時に生成されます。プロジェクトのクローン後や `Library` の削除後などは、IDE で開く前に Unity でプロジェクトを開いてください。クレートが生成されるまでは IDE がワークスペースを読み込めず、また新しいソースファイルは解析されません。
+:::
+
+### WebAssembly 向けの解析
+
+rust-analyzer は既定ではホストのプラットフォーム向けにコードを解析しますが、Rust Importer は `wasm32-unknown-unknown` 向けにビルドします。`#[cfg(target_arch = "wasm32")]` の付いたコードなど、ホスト向けでは無効になるコードを解析するには、ワークスペースの設定（VS Code では `.vscode/settings.json`）で IDE のターゲットを指定してください：
+
+```json title=".vscode/settings.json"
+{
+  "rust-analyzer.cargo.target": "wasm32-unknown-unknown"
+}
+```
+
+### IDE のビルドディレクトリ
+
+rust-analyzer はワークスペースに対して `cargo check` を実行するため、プロジェクトのルートに `target` ディレクトリが作成されます。`.gitignore` に `/target/` を追加するか、`rust-analyzer.cargo.targetDir` で rust-analyzer のビルドディレクトリを変更してください（例: `"Library/rust-analyzer"`）。Rust Importer は `Library/com.ruccho.waas/rust/target` を使用するため、これらの設定の影響を受けません。
 
 ## Rust Importer の無効化
 
