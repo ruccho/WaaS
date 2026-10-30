@@ -9,7 +9,7 @@ namespace WaaS.Runtime
     /// </summary>
     public class Global : IExternal
     {
-        protected StackValueItem stackValue;
+        protected internal StackValueItem stackValue;
 
         internal Global(StackValueItem value)
         {

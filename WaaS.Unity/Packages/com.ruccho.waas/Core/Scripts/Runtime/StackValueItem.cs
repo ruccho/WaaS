@@ -12,7 +12,7 @@ namespace WaaS.Runtime
     [StructLayout(LayoutKind.Explicit, Size = 24)]
     public struct StackValueItem : IEquatable<StackValueItem>
     {
-        [FieldOffset(0)] internal readonly ValueType valueType;
+        [FieldOffset(0)] internal ValueType valueType;
 
         [FieldOffset(8)] internal Label label;
 
@@ -44,13 +44,6 @@ namespace WaaS.Runtime
         public readonly bool IsType(ValueType type)
         {
             return valueType == type;
-        }
-
-        internal StackValueItem(Label label)
-        {
-            this = default;
-            valueType = (ValueType)0xFF;
-            this.label = label;
         }
 
         internal StackValueItem(ValueType type)

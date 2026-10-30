@@ -1,0 +1,9 @@
+package waas:interpreter-bench;
+
+// workloads to measure the performance of the interpreter. they do not call the host.
+world interpreter-bench {
+    // formats, splits and hashes strings
+    export run-strings: func(n: u32) -> u64;
+    // builds, sorts and searches lists
+    export run-lists: func(n: u32) -> u64;
+}

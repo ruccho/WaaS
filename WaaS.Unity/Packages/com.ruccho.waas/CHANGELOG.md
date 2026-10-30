@@ -22,6 +22,8 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - Instantiating a component validates the labels of records, variants, enums and flags in the imports (ignoring the case and `-`/`_`), and the names and sorts of the imports and exports of imported components.
 - `LinkException` on instantiation reports the path of the mismatched import with the expected and provided types.
 - Calls of host functions from components are about twice as fast. `ExternalFunction.InvokeAsync` is called after all the arguments are pushed, and completes without suspension when the host function completes synchronously.
+- The interpreter runs the function bodies translated at validation with a single dispatch loop and superinstructions, which is several times faster. The fuel is consumed at the start of each basic block. The control instructions (blocks and branches) cannot be executed with `Instruction.Execute` alone, and labels are no longer pushed to the stack.
+- Calls between WebAssembly functions are executed within the `WasmStackFrame` of the caller without pushing frames to `ExecutionContext`. `WasmStackFrame.Function` is the innermost function being executed, and `WasmStackTrace` still lists each function.
 
 ### Fixed
 

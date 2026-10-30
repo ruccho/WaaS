@@ -61,9 +61,12 @@ namespace WaaS.Runtime
             }
 
             Memories = memories;
+            MemoryArray = memories;
         }
 
         public ReadOnlyMemory<Memory> Memories { get; }
+
+        internal Memory[] MemoryArray { get; }
 
         public void Initialize(DataSection dataSection, GlobalInstance globalInstance)
         {
