@@ -19,6 +19,8 @@ internal static class Commands
         "--exceptions-enabled", "false", "--gc-enabled", "false", "--tail-call-enabled", "false",
         "--memory64-enabled", "false", "--extended-const-enabled", "false", "--custom-page-sizes-enabled", "false",
         "--wide-arithmetic-enabled", "false", "--max-memories", "1", "--max-imports", "0",
+        // the memories are limited to 64 MiB so that the runs fit in the memory of CI runners
+        "--max-memory32-bytes", "67108864",
         "--ensure-termination", "--export-everything", "true"
     ];
 
@@ -170,8 +172,7 @@ internal static class Commands
                 // the modules terminate by themselves, and the fuel bounds the time
                 using var context = new ExecutionContext { Fuel = 10_000_000 };
                 context.Invoke(function, parameters);
-                Span<StackValueItem> results = stackalloc StackValueItem[context.ResultLength];
-                context.TakeResults(results);
+                context.TakeResults(new StackValueItem[context.ResultLength]);
             }
             catch (Exception exception) when (IsExpected(exception))
             {
