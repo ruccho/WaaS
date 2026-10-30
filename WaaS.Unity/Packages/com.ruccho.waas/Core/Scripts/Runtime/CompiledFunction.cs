@@ -93,6 +93,38 @@ namespace WaaS.Runtime
         I64ExtendI32S,
         I64ExtendI32U,
 
+        F32Eq,
+        F32Ne,
+        F32Lt,
+        F32Gt,
+        F32Le,
+        F32Ge,
+        F64Eq,
+        F64Ne,
+        F64Lt,
+        F64Gt,
+        F64Le,
+        F64Ge,
+        F32Add,
+        F32Sub,
+        F32Mul,
+        F32Div,
+        F64Add,
+        F64Sub,
+        F64Mul,
+        F64Div,
+        F32ConvertI32S,
+        F32ConvertI32U,
+        F32ConvertI64S,
+        F32ConvertI64U,
+        F64ConvertI32S,
+        F64ConvertI32U,
+        F64ConvertI64S,
+        F64ConvertI64U,
+        F32DemoteF64,
+        F64PromoteF32,
+        Reinterpret,
+
         // memory. A: offset, B: value type (loads of 32 and 64 bits)
         Load32,
         Load64,
@@ -484,6 +516,37 @@ namespace WaaS.Runtime
                 WrapI64I32 => Op.I32WrapI64,
                 ExtendS => Op.I64ExtendI32S,
                 ExtendU => Op.I64ExtendI32U,
+                EqF32 => Op.F32Eq,
+                NeF32 => Op.F32Ne,
+                LtF32 => Op.F32Lt,
+                GtF32 => Op.F32Gt,
+                LeF32S => Op.F32Le,
+                GeF32S => Op.F32Ge,
+                EqF64 => Op.F64Eq,
+                NeF64 => Op.F64Ne,
+                LtF64 => Op.F64Lt,
+                GtF64 => Op.F64Gt,
+                LeF64S => Op.F64Le,
+                GeF64S => Op.F64Ge,
+                AddF32 => Op.F32Add,
+                SubF32 => Op.F32Sub,
+                MulF32 => Op.F32Mul,
+                DivF32 => Op.F32Div,
+                AddF64 => Op.F64Add,
+                SubF64 => Op.F64Sub,
+                MulF64 => Op.F64Mul,
+                DivF64 => Op.F64Div,
+                ConvertI32F32S => Op.F32ConvertI32S,
+                ConvertI32F32U => Op.F32ConvertI32U,
+                ConvertI64F32S => Op.F32ConvertI64S,
+                ConvertI64F32U => Op.F32ConvertI64U,
+                ConvertI32F64S => Op.F64ConvertI32S,
+                ConvertI32F64U => Op.F64ConvertI32U,
+                ConvertI64F64S => Op.F64ConvertI64S,
+                ConvertI64F64U => Op.F64ConvertI64U,
+                DemoteF64F32 => Op.F32DemoteF64,
+                PromoteF32F64 => Op.F64PromoteF32,
+                ReinterpretF32I32 or ReinterpretF64I64 or ReinterpretI32F32 or ReinterpretI64F64 => Op.Reinterpret,
                 LoadI32 or LoadF32 => Op.Load32,
                 LoadI64 or LoadF64 => Op.Load64,
                 LoadI8AsI32 => Op.I32Load8S,
@@ -504,6 +567,15 @@ namespace WaaS.Runtime
             };
 
             if (instr is IMemoryArgumentInstruction memoryInstr) compiled.A = unchecked((int)memoryInstr.Offset);
+
+            if (compiled.Op == Op.Reinterpret)
+                compiled.A = (int)(instr switch
+                {
+                    ReinterpretF32I32 => ValueType.I32,
+                    ReinterpretF64I64 => ValueType.I64,
+                    ReinterpretI32F32 => ValueType.F32,
+                    _ => ValueType.F64
+                });
 
             compiled.B = instr switch
             {

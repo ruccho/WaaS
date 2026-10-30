@@ -930,6 +930,234 @@ namespace WaaS.Runtime
                         break;
                     }
 
+
+                    case Op.F32Eq:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueI64 = lhs.valueF32 == values[sp - 1].valueF32 ? 1UL : 0UL;
+                        lhs.valueType = ValueType.I32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F32Ne:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueI64 = lhs.valueF32 != values[sp - 1].valueF32 ? 1UL : 0UL;
+                        lhs.valueType = ValueType.I32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F32Lt:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueI64 = lhs.valueF32 < values[sp - 1].valueF32 ? 1UL : 0UL;
+                        lhs.valueType = ValueType.I32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F32Gt:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueI64 = lhs.valueF32 > values[sp - 1].valueF32 ? 1UL : 0UL;
+                        lhs.valueType = ValueType.I32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F32Le:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueI64 = lhs.valueF32 <= values[sp - 1].valueF32 ? 1UL : 0UL;
+                        lhs.valueType = ValueType.I32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F32Ge:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueI64 = lhs.valueF32 >= values[sp - 1].valueF32 ? 1UL : 0UL;
+                        lhs.valueType = ValueType.I32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F64Eq:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueI64 = lhs.valueF64 == values[sp - 1].valueF64 ? 1UL : 0UL;
+                        lhs.valueType = ValueType.I32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F64Ne:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueI64 = lhs.valueF64 != values[sp - 1].valueF64 ? 1UL : 0UL;
+                        lhs.valueType = ValueType.I32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F64Lt:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueI64 = lhs.valueF64 < values[sp - 1].valueF64 ? 1UL : 0UL;
+                        lhs.valueType = ValueType.I32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F64Gt:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueI64 = lhs.valueF64 > values[sp - 1].valueF64 ? 1UL : 0UL;
+                        lhs.valueType = ValueType.I32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F64Le:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueI64 = lhs.valueF64 <= values[sp - 1].valueF64 ? 1UL : 0UL;
+                        lhs.valueType = ValueType.I32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F64Ge:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueI64 = lhs.valueF64 >= values[sp - 1].valueF64 ? 1UL : 0UL;
+                        lhs.valueType = ValueType.I32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F32Add:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueF32 = lhs.valueF32 + values[sp - 1].valueF32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F32Sub:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueF32 = lhs.valueF32 - values[sp - 1].valueF32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F32Mul:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueF32 = lhs.valueF32 * values[sp - 1].valueF32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F32Div:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueF32 = lhs.valueF32 / values[sp - 1].valueF32;
+                        sp--;
+                        break;
+                    }
+                    case Op.F64Add:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueF64 = lhs.valueF64 + values[sp - 1].valueF64;
+                        sp--;
+                        break;
+                    }
+                    case Op.F64Sub:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueF64 = lhs.valueF64 - values[sp - 1].valueF64;
+                        sp--;
+                        break;
+                    }
+                    case Op.F64Mul:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueF64 = lhs.valueF64 * values[sp - 1].valueF64;
+                        sp--;
+                        break;
+                    }
+                    case Op.F64Div:
+                    {
+                        ref var lhs = ref values[sp - 2];
+                        lhs.valueF64 = lhs.valueF64 / values[sp - 1].valueF64;
+                        sp--;
+                        break;
+                    }
+                    case Op.F32ConvertI32S:
+                    {
+                        ref var slot = ref values[sp - 1];
+                        slot.valueF32 = (int)slot.valueI32;
+                        slot.valueType = ValueType.F32;
+                        break;
+                    }
+                    case Op.F32ConvertI32U:
+                    {
+                        ref var slot = ref values[sp - 1];
+                        slot.valueF32 = slot.valueI32;
+                        slot.valueType = ValueType.F32;
+                        break;
+                    }
+                    case Op.F32ConvertI64S:
+                    {
+                        ref var slot = ref values[sp - 1];
+                        slot.valueF32 = (long)slot.valueI64;
+                        slot.valueType = ValueType.F32;
+                        break;
+                    }
+                    case Op.F32ConvertI64U:
+                    {
+                        ref var slot = ref values[sp - 1];
+                        slot.valueF32 = slot.valueI64;
+                        slot.valueType = ValueType.F32;
+                        break;
+                    }
+                    case Op.F64ConvertI32S:
+                    {
+                        ref var slot = ref values[sp - 1];
+                        slot.valueF64 = (int)slot.valueI32;
+                        slot.valueType = ValueType.F64;
+                        break;
+                    }
+                    case Op.F64ConvertI32U:
+                    {
+                        ref var slot = ref values[sp - 1];
+                        slot.valueF64 = slot.valueI32;
+                        slot.valueType = ValueType.F64;
+                        break;
+                    }
+                    case Op.F64ConvertI64S:
+                    {
+                        ref var slot = ref values[sp - 1];
+                        slot.valueF64 = (long)slot.valueI64;
+                        slot.valueType = ValueType.F64;
+                        break;
+                    }
+                    case Op.F64ConvertI64U:
+                    {
+                        ref var slot = ref values[sp - 1];
+                        slot.valueF64 = slot.valueI64;
+                        slot.valueType = ValueType.F64;
+                        break;
+                    }
+                    case Op.F32DemoteF64:
+                    {
+                        ref var slot = ref values[sp - 1];
+                        slot.valueF32 = (float)slot.valueF64;
+                        slot.valueType = ValueType.F32;
+                        break;
+                    }
+                    case Op.F64PromoteF32:
+                    {
+                        ref var slot = ref values[sp - 1];
+                        slot.valueF64 = (double)slot.valueF32;
+                        slot.valueType = ValueType.F64;
+                        break;
+                    }
+                    case Op.Reinterpret:
+                        // the bits are kept as they are
+                        values[sp - 1].valueType = (ValueType)instr.A;
+                        break;
+
                     #endregion
 
                     #region Memory
