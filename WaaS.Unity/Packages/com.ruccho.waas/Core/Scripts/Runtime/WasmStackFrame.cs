@@ -413,9 +413,18 @@ namespace WaaS.Runtime
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void ThrowOutOfBounds()
+        private void ThrowOutOfBounds(int pc)
         {
+            programCounter = (uint)pc;
             throw new TrapException("out of bounds memory access");
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ThrowIfCancellationRequested(ExecutionContext context, int pc)
+        {
+            if (!context.CancellationToken.IsCancellationRequested) return;
+            programCounter = (uint)pc;
+            context.CancellationToken.ThrowIfCancellationRequested();
         }
 
         // moves the values a branch carries to the target height and returns the new stack pointer
@@ -437,7 +446,8 @@ namespace WaaS.Runtime
 
         /// <summary>
         ///     The interpreter loop. Runs until the function ends or a frame is pushed.
-        ///     <see cref="programCounter" /> is updated before each instruction so that it points to the failed one.
+        ///     <see cref="programCounter" /> is updated before an instruction which may throw so that it points to the
+        ///     failed one.
         /// </summary>
         private StackFrameState Run()
         {
@@ -461,8 +471,11 @@ namespace WaaS.Runtime
 
             while (true)
             {
-                programCounter = (uint)pc;
-                if (--context.fuel < 0) context.OnFuelExhausted();
+                if (--context.fuel < 0)
+                {
+                    programCounter = (uint)pc;
+                    context.OnFuelExhausted();
+                }
 
                 ref var instr = ref Unsafe.Add(ref c0, pc);
                 IInvocableFunction callee;
@@ -488,7 +501,7 @@ namespace WaaS.Runtime
                         continue;
                     case Op.BrLoop:
                         // every loop iteration takes a branch, so this is enough to abort a running loop
-                        context.CancellationToken.ThrowIfCancellationRequested();
+                        ThrowIfCancellationRequested(context, pc);
                         sp = MoveBranchValues(values, sp, stackBase + instr.B, instr.C);
                         pc = instr.A;
                         continue;
@@ -499,7 +512,7 @@ namespace WaaS.Runtime
                     case Op.BrIfLoop:
                         if (Unsafe.Add(ref v0, --sp).valueI32 != 0)
                         {
-                            context.CancellationToken.ThrowIfCancellationRequested();
+                            ThrowIfCancellationRequested(context, pc);
                             sp = MoveBranchValues(values, sp, stackBase + instr.B, instr.C);
                             pc = instr.A;
                             continue;
@@ -524,7 +537,7 @@ namespace WaaS.Runtime
                         ref var target = ref compiled.BranchTargets[instr.A + (i < (uint)instr.B ? (int)i : instr.B)];
                         if (target.Index < 0) goto Return;
 
-                        if (target.IsLoop) context.CancellationToken.ThrowIfCancellationRequested();
+                        if (target.IsLoop) ThrowIfCancellationRequested(context, pc);
                         sp = MoveBranchValues(values, sp, stackBase + target.Height, target.Arity);
                         pc = target.Index;
                         continue;
@@ -533,6 +546,7 @@ namespace WaaS.Runtime
                         callee = functions[instr.A];
                         goto Call;
                     case Op.CallIndirect:
+                        programCounter = (uint)pc;
                         callee = GetIndirectCallee((uint)instr.A, Unsafe.Add(ref v0, --sp).valueI32);
                         goto Call;
 
@@ -1172,7 +1186,7 @@ namespace WaaS.Runtime
                         ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 4 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 4 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         slot.valueI64 = Unsafe.ReadUnaligned<uint>(ref memory.Buffer[(int)address]);
                         slot.valueType = (ValueType)instr.B;
                         break;
@@ -1182,7 +1196,7 @@ namespace WaaS.Runtime
                         ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 8 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 8 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         slot.valueI64 = Unsafe.ReadUnaligned<ulong>(ref memory.Buffer[(int)address]);
                         slot.valueType = (ValueType)instr.B;
                         break;
@@ -1192,7 +1206,7 @@ namespace WaaS.Runtime
                         ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         slot.valueI64 = (uint)(sbyte)memory.Buffer[(int)address];
                         break;
                     }
@@ -1201,7 +1215,7 @@ namespace WaaS.Runtime
                         ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         slot.valueI64 = memory.Buffer[(int)address];
                         break;
                     }
@@ -1210,7 +1224,7 @@ namespace WaaS.Runtime
                         ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         slot.valueI64 = (uint)Unsafe.ReadUnaligned<short>(ref memory.Buffer[(int)address]);
                         break;
                     }
@@ -1219,7 +1233,7 @@ namespace WaaS.Runtime
                         ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         slot.valueI64 = Unsafe.ReadUnaligned<ushort>(ref memory.Buffer[(int)address]);
                         break;
                     }
@@ -1228,7 +1242,7 @@ namespace WaaS.Runtime
                         ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         slot.valueI64 = (ulong)(sbyte)memory.Buffer[(int)address];
                         slot.valueType = ValueType.I64;
                         break;
@@ -1238,7 +1252,7 @@ namespace WaaS.Runtime
                         ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         slot.valueI64 = memory.Buffer[(int)address];
                         slot.valueType = ValueType.I64;
                         break;
@@ -1248,7 +1262,7 @@ namespace WaaS.Runtime
                         ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         slot.valueI64 = (ulong)Unsafe.ReadUnaligned<short>(ref memory.Buffer[(int)address]);
                         slot.valueType = ValueType.I64;
                         break;
@@ -1258,7 +1272,7 @@ namespace WaaS.Runtime
                         ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         slot.valueI64 = Unsafe.ReadUnaligned<ushort>(ref memory.Buffer[(int)address]);
                         slot.valueType = ValueType.I64;
                         break;
@@ -1268,7 +1282,7 @@ namespace WaaS.Runtime
                         ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 4 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 4 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         slot.valueI64 = (ulong)Unsafe.ReadUnaligned<int>(ref memory.Buffer[(int)address]);
                         slot.valueType = ValueType.I64;
                         break;
@@ -1278,7 +1292,7 @@ namespace WaaS.Runtime
                         ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 4 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 4 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         slot.valueI64 = Unsafe.ReadUnaligned<uint>(ref memory.Buffer[(int)address]);
                         slot.valueType = ValueType.I64;
                         break;
@@ -1287,7 +1301,7 @@ namespace WaaS.Runtime
                     {
                         var address = (ulong)Unsafe.Add(ref v0, sp - 2).valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         memory.Buffer[(int)address] = (byte)Unsafe.Add(ref v0, sp - 1).valueI32;
                         sp -= 2;
                         break;
@@ -1296,7 +1310,7 @@ namespace WaaS.Runtime
                     {
                         var address = (ulong)Unsafe.Add(ref v0, sp - 2).valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         Unsafe.WriteUnaligned(ref memory.Buffer[(int)address], (ushort)Unsafe.Add(ref v0, sp - 1).valueI32);
                         sp -= 2;
                         break;
@@ -1305,7 +1319,7 @@ namespace WaaS.Runtime
                     {
                         var address = (ulong)Unsafe.Add(ref v0, sp - 2).valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 4 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 4 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         Unsafe.WriteUnaligned(ref memory.Buffer[(int)address], Unsafe.Add(ref v0, sp - 1).valueI32);
                         sp -= 2;
                         break;
@@ -1314,7 +1328,7 @@ namespace WaaS.Runtime
                     {
                         var address = (ulong)Unsafe.Add(ref v0, sp - 2).valueI32 + (uint)instr.A;
                         var memory = this.memory;
-                        if (address + 8 > (ulong)memory.Length) ThrowOutOfBounds();
+                        if (address + 8 > (ulong)memory.Length) ThrowOutOfBounds(pc);
                         Unsafe.WriteUnaligned(ref memory.Buffer[(int)address], Unsafe.Add(ref v0, sp - 1).valueI64);
                         sp -= 2;
                         break;
@@ -1325,6 +1339,7 @@ namespace WaaS.Runtime
                     default:
                     {
                         // instructions without a dedicated operation
+                        programCounter = (uint)pc;
                         stackPointer = sp;
                         Function.function.Body.Instructions.Span[pc].Execute(this);
                         sp = stackPointer;
@@ -1345,13 +1360,14 @@ namespace WaaS.Runtime
 
                 Call:
                 {
+                    programCounter = (uint)pc;
                     if (activationCount >= maxActivationCount) ThrowStackOverflow();
 
                     var numParameters = instr.B;
                     if (callee is InstanceFunction wasmCallee)
                     {
                         // the cancellation is observed on calls as well as loops, to abort a deep recursion
-                        context.CancellationToken.ThrowIfCancellationRequested();
+                        ThrowIfCancellationRequested(context, pc);
                         EnterFunction(wasmCallee, pc + 1, sp - numParameters);
                         code = compiled.Code;
                         c0 = ref code[0];
