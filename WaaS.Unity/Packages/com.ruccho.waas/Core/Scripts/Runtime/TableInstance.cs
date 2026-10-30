@@ -8,6 +8,8 @@ namespace WaaS.Runtime
     /// </summary>
     public class TableInstance
     {
+        private readonly object[][] elementSegments;
+
         public TableInstance(GlobalInstance globals, FunctionInstance functions,
             ImportSection importSection, TableSection tableSection, ElementSection elementSection,
             IImports importObject)
@@ -17,8 +19,6 @@ namespace WaaS.Runtime
             foreach (var import in imports)
                 if (import.Descriptor.TableType != null)
                     numTables++;
-
-            if (numTables > 1) throw new InvalidModuleException("multiple tables");
 
             var tables = new Table[numTables];
 
@@ -30,19 +30,14 @@ namespace WaaS.Runtime
                 {
                     var t = tableType.Value;
 
-                    if (!importObject.TryGetImportable(import.ModuleName, import.Name,
-                            out Table<IInvocableFunction> externalTable))
+                    if (!importObject.TryGetImportable(import.ModuleName, import.Name, out Table externalTable))
                         throw new InvalidOperationException();
 
-                    if (!externalTable.Limits.IsImportable(t.Limits))
-                        throw new
-                            InvalidModuleException("incompatible import type");
+                    if ((ValueType)t.ElementType != externalTable.ElementType ||
+                        !externalTable.CurrentLimits.IsImportable(t.Limits))
+                        throw new InvalidModuleException("incompatible import type");
 
-                    tables[cursor++] = t.ElementType switch
-                    {
-                        ElementType.FuncRef => externalTable,
-                        _ => throw new ArgumentOutOfRangeException()
-                    };
+                    tables[cursor++] = externalTable;
                 }
             }
 
@@ -51,21 +46,20 @@ namespace WaaS.Runtime
                 tables[cursor++] = tableType.ElementType switch
                 {
                     ElementType.FuncRef => new Table<IInvocableFunction>(tableType.Limits),
+                    ElementType.ExternRef => new Table<object>(tableType.Limits),
                     _ => throw new ArgumentOutOfRangeException()
                 };
 
+            // the references in the segments are evaluated at instantiation
             var elements = elementSection != null ? elementSection.Elements.Span : Span<Element>.Empty;
-
-            // check all elements bounds before assignment
-            foreach (var elementInitializer in elements)
+            elementSegments = new object[elements.Length][];
+            for (var i = 0; i < elements.Length; i++)
             {
-                var offset = elementInitializer.Offset.Evaluate(globals).ExpectValueI32();
-                var tableIndex = elementInitializer.TableIndex;
-                var table = tables[tableIndex];
-                if (table is not Table<IInvocableFunction> funcTable) throw new InvalidModuleException();
-
-                if (funcTable.Limits.Min < offset + elementInitializer.FunctionIndices.Length)
-                    throw new InvalidModuleException();
+                var items = elements[i].Items.Span;
+                var segment = new object[items.Length];
+                for (var j = 0; j < items.Length; j++)
+                    segment[j] = items[j].Evaluate(globals.Globals.Span, functions.Functions.Span).ExpectReference();
+                elementSegments[i] = segment;
             }
 
             Tables = tables;
@@ -76,27 +70,39 @@ namespace WaaS.Runtime
 
         internal Table[] TableArray { get; }
 
+        /// <summary>
+        ///     Initializes the tables with the active segments, and drops the active and declarative segments.
+        /// </summary>
+        /// <exception cref="TrapException">A segment is out of the bounds of the table.</exception>
         public void Initialize(FunctionInstance functionInstance, GlobalInstance globals, ElementSection elementSection)
         {
-            var tables = Tables.Span;
             var elements = elementSection != null ? elementSection.Elements.Span : Span<Element>.Empty;
 
-            foreach (var elementInitializer in elements)
+            for (var i = 0; i < elements.Length; i++)
             {
-                var offset = elementInitializer.Offset.Evaluate(globals).ExpectValueI32();
-                var tableIndex = elementInitializer.TableIndex;
-                var table = tables[checked((int)tableIndex)];
-                if (table is not Table<IInvocableFunction> funcTable) throw new InvalidModuleException();
-
-                var initialization = elementInitializer.FunctionIndices.Span;
-
-                for (var i = 0; i < initialization.Length; i++)
+                var element = elements[i];
+                if (element.Mode == ElementMode.Active)
                 {
-                    var element = initialization[i].Evaluate(globals).ExpectValueI32();
-                    var function = functionInstance.Functions.Span[checked((int)element)];
-                    funcTable.Elements[checked((int)(offset + i))] = function;
+                    var offset = element.Offset.Evaluate(globals).ExpectValueI32();
+                    Init(element.TableIndex, (uint)i, offset, 0, (uint)elementSegments[i].Length);
                 }
+
+                if (element.Mode != ElementMode.Passive) DropElementSegment((uint)i);
             }
+        }
+
+        internal void Init(uint tableIndex, uint elementIndex, uint destOffset, uint srcOffset, uint count)
+        {
+            var table = TableArray[tableIndex];
+            var segment = elementSegments[elementIndex];
+            if ((ulong)srcOffset + count > (ulong)segment.Length) throw new TrapException("out of bounds table access");
+            table.ThrowIfOutOfBounds(destOffset, count);
+            for (var i = 0u; i < count; i++) table.SetObject(destOffset + i, segment[srcOffset + i]);
+        }
+
+        internal void DropElementSegment(uint elementIndex)
+        {
+            elementSegments[elementIndex] = Array.Empty<object>();
         }
     }
 }

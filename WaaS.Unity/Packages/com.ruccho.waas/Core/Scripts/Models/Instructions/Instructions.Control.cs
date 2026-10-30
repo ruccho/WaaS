@@ -26,7 +26,8 @@ namespace WaaS.Models
             var t = reader.ReadUnaligned<byte>();
             if (t == 0x40) return;
 
-            if (t is >= (byte)ValueType.V128 and <= (byte)ValueType.I32)
+            if (t is >= (byte)ValueType.V128 and <= (byte)ValueType.I32 or (byte)ValueType.FuncRef or
+                (byte)ValueType.ExternRef)
             {
                 Type = (ValueType)t;
                 return;
@@ -135,16 +136,17 @@ namespace WaaS.Models
     public abstract partial class BlockInstruction : Instruction
     {
         // indexed by (type - V128)
-        private static readonly ValueType[][] SingleValueTypes =
-        {
-            new[] { ValueType.V128 },
-            new[] { ValueType.F64 },
-            new[] { ValueType.F32 },
-            new[] { ValueType.I64 },
-            new[] { ValueType.I32 }
-        };
+        // indexed by the value type minus ExternRef (0x6F)
+        private static readonly ValueType[][] SingleValueTypes = CreateSingleValueTypes();
 
         [Operand(0)] public BlockType BlockType { get; }
+
+        private static ValueType[][] CreateSingleValueTypes()
+        {
+            var types = new ValueType[(byte)ValueType.I32 - (byte)ValueType.ExternRef + 1][];
+            for (var i = 0; i < types.Length; i++) types[i] = new[] { (ValueType)(i + (byte)ValueType.ExternRef) };
+            return types;
+        }
 
         public End End { get; private set; }
 
@@ -179,7 +181,7 @@ namespace WaaS.Models
             {
                 ParameterTypes = ReadOnlyMemory<ValueType>.Empty;
                 ResultTypes = BlockType.Type is { } type
-                    ? SingleValueTypes[(byte)type - (byte)ValueType.V128]
+                    ? SingleValueTypes[(byte)type - (byte)ValueType.ExternRef]
                     : ReadOnlyMemory<ValueType>.Empty;
             }
         }
@@ -470,12 +472,14 @@ namespace WaaS.Models
         public override void Execute(WasmStackFrame current)
         {
             var functionIndex = current.Pop().ExpectValueI32();
-            if (current.Instance.TableInstance.Tables.Span[0] is not Table<IInvocableFunction> table)
+            if (current.Instance.TableInstance.Tables.Span[checked((int)TableIndex)] is not Table<IInvocableFunction>
+                table)
                 throw new InvalidOperationException();
 
             var functionType = current.Instance.Module.TypeSection.FuncTypes.Span[checked((int)FunctionTypeIndex)];
 
-            var function = table.Elements[checked((int)functionIndex)];
+            if (functionIndex >= table.Size) throw new TrapException("undefined element");
+            var function = table.Elements[(int)functionIndex];
             if (function == null)
                 throw new TrapException($"[{nameof(CallIndirect)}] Function is null. index: {functionIndex}");
 
@@ -500,8 +504,10 @@ namespace WaaS.Models
         public override void Validate(in ValidationContext context)
         {
             base.Validate(context);
-            if (TableIndex != 0)
-                throw new InvalidModuleException("Non-zero table index for call_indirect is not supported.");
+            if (FunctionTypeIndex >= (context.Module.TypeSection?.FuncTypes.Length ?? 0))
+                throw new InvalidModuleException($"unknown type {FunctionTypeIndex}");
+            if (context.GetTableType(TableIndex).ElementType != ElementType.FuncRef)
+                throw new InvalidModuleException("type mismatch");
         }
 
         public override (uint popCount, uint pushCount) PreValidateStackState(in ValidationContext context)
@@ -515,7 +521,7 @@ namespace WaaS.Models
 
         public override void ValidateStackState(in ValidationContext context, ref ValidationBlockStackState stackState)
         {
-            context.GetTableType(0);
+            context.GetTableType(TableIndex);
             stackState.Pop(ValueType.I32);
             var type = context.Module.TypeSection.FuncTypes.Span[(int)FunctionTypeIndex];
             var paramTypes = type.ParameterTypes.Span;

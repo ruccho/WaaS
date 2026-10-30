@@ -66,9 +66,9 @@ public class AssertReturnCommand(uint line, Action action, Const[] expected) : C
     {
         var returns = Action.Invoke(runner);
 
-        if (Expected.Any(e => e is ConstV128))
+        if (Expected.Any(e => e is ConstV128 or ConstReference))
         {
-            // v128 lanes are compared exactly, with the NaN patterns taken into account
+            // v128 lanes are compared exactly, with the NaN patterns taken into account, and references by the objects
             if (returns.Length != Expected.Length || !Expected.Zip(returns).All(pair => pair.First.Matches(pair.Second)))
                 throw new InvalidOperationException(
                     $"Assertion failed. expected: [{string.Join(", ", Expected.Select(e => e.ToString()))}], actual: [{string.Join(", ", returns.Select(r => r.ToString()))}] ");
@@ -478,20 +478,56 @@ public class ConstV128 : Const
     }
 }
 
-public class ConstFuncRef : ConstUnsupported
+/// <summary>
+///     A reference value. The value is "null" for the null reference, a number for a host reference
+///     (<c>ref.extern N</c>), or empty for any non-null reference in the expected results.
+/// </summary>
+public abstract class ConstReference : Const
 {
+    private static readonly Dictionary<string, HostReference> HostReferences = new();
+
+    [JsonPropertyName("value")] public override string Value { get; set; } = "";
+
+    protected abstract ValueType Type { get; }
+
+    public override StackValueItem GetValue()
+    {
+        if (Value == "null") return StackValueItem.FromReference(Type, null);
+        if (Value == "") throw new InvalidOperationException("a non-null reference without a value cannot be created");
+        if (Type != ValueType.ExternRef) throw new NotSupportedException();
+
+        HostReference reference;
+        lock (HostReferences)
+        {
+            if (!HostReferences.TryGetValue(Value, out reference!)) HostReferences[Value] = reference = new HostReference(Value);
+        }
+
+        return StackValueItem.FromReference(Type, reference);
+    }
+
+    public override bool Matches(StackValueItem actual)
+    {
+        if (!actual.IsType(Type)) return false;
+        if (Value == "") return !actual.IsNullReference;
+        return actual.Equals(GetValue());
+    }
+
     public override string ToString()
     {
-        return "funcref";
+        return $"{Type} {(Value == "" ? "(non-null)" : Value)}";
     }
+
+    private sealed record HostReference(string Value);
 }
 
-public class ConstExternRef : ConstUnsupported
+public class ConstFuncRef : ConstReference
 {
-    public override string ToString()
-    {
-        return "externref";
-    }
+    protected override ValueType Type => ValueType.FuncRef;
+}
+
+public class ConstExternRef : ConstReference
+{
+    protected override ValueType Type => ValueType.ExternRef;
 }
 
 public class ConstI32 : Const

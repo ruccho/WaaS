@@ -3,14 +3,16 @@ title: Wasm 仕様
 sidebar_position: 6
 ---
 
-- WaaS は [WebAssembly Core Specification 1.0](https://www.w3.org/TR/wasm-core-1/) を満たす WebAssembly インタプリタです。
-- 一部の挙動は仕様と異なる場合があります:
-  - 整数から浮動小数点数への変換時にビット表現が間違っていることがあります。
-- コア仕様 1.0 に含まれていない提案された機能が追加されています:
+- WaaS は [WebAssembly Core Specification 2.0](https://www.w3.org/TR/wasm-core-2/) を満たす WebAssembly インタプリタです。2.0 には、1.0 の後に追加された以下の機能が含まれます:
   - [Bulk Memory](https://github.com/WebAssembly/spec/blob/main/proposals/bulk-memory-operations/Overview.md)
   - [Fixed-width SIMD](https://github.com/WebAssembly/spec/blob/main/proposals/simd/SIMD.md)
     - Relaxed SIMD には対応していません。
   - Mutable imported globals
   - [Multi-value](https://github.com/WebAssembly/spec/blob/main/proposals/multi-value/Overview.md)
   - [Non-trapping float-to-int conversions](https://github.com/WebAssembly/spec/blob/main/proposals/nontrapping-float-to-int-conversion/Overview.md)
+  - [Reference types](https://github.com/WebAssembly/spec/blob/main/proposals/reference-types/Overview.md)（複数のテーブルを含む）
   - [Sign-extending operations](https://github.com/WebAssembly/spec/blob/main/proposals/sign-extension-ops/Overview.md)
+- 一部の挙動は仕様と異なる場合があります:
+  - 整数から浮動小数点数への変換時にビット表現が間違っていることがあります。
+- 参照の値（`funcref` と `externref`）は `StackValueItem.FromReference` で作成し、`StackValueItem.ExpectReference` で読み取ります。`externref` には任意のオブジェクトを渡せます。
+  - 参照の値はオブジェクトを弱参照で保持します。テーブルとグローバルはオブジェクトを強参照で保持しますが、参照が関数の引数、戻り値、ローカル変数にのみ保持されている間は、ホストがオブジェクトを保持し続ける必要があります。

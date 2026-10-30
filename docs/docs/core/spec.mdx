@@ -3,14 +3,16 @@ title: Wasm Specifications
 sidebar_position: 6
 ---
 
-- WaaS is a WebAssembly interpreter that satisfies [WebAssembly Core Specification 1.0](https://www.w3.org/TR/wasm-core-1/).
-- Some behaviors differ slightly from the spec:
-  - Bit representations may wrong at conversions from integers to floating-point numbers.
-- Some proposed features not included in core spec 1.0 are added:
+- WaaS is a WebAssembly interpreter that satisfies [WebAssembly Core Specification 2.0](https://www.w3.org/TR/wasm-core-2/), which includes the following features added after 1.0:
   - [Bulk Memory](https://github.com/WebAssembly/spec/blob/main/proposals/bulk-memory-operations/Overview.md)
   - [Fixed-width SIMD](https://github.com/WebAssembly/spec/blob/main/proposals/simd/SIMD.md)
     - Relaxed SIMD is not supported.
   - Mutable imported globals
   - [Multi-value](https://github.com/WebAssembly/spec/blob/main/proposals/multi-value/Overview.md)
   - [Non-trapping float-to-int conversions](https://github.com/WebAssembly/spec/blob/main/proposals/nontrapping-float-to-int-conversion/Overview.md)
+  - [Reference types](https://github.com/WebAssembly/spec/blob/main/proposals/reference-types/Overview.md), including multiple tables
   - [Sign-extending operations](https://github.com/WebAssembly/spec/blob/main/proposals/sign-extension-ops/Overview.md)
+- Some behaviors differ slightly from the spec:
+  - Bit representations may wrong at conversions from integers to floating-point numbers.
+- Reference values (`funcref` and `externref`) are created with `StackValueItem.FromReference` and read with `StackValueItem.ExpectReference`. Any object can be passed as `externref`.
+  - A reference value holds the object weakly. Tables and globals hold the objects strongly, but the host must keep an object alive while a reference to it is only held in the arguments, the results or the locals of functions.

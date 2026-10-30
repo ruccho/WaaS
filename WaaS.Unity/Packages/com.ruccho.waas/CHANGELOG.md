@@ -13,6 +13,8 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - wit2waas: inline interfaces of worlds.
 - `[ComponentField]` can be applied to public fields, so that a type serialized by Unity can be a record.
 - Prebuilt wit2waas binaries for Windows, macOS and Linux, attached to each GitHub release.
+- WebAssembly features: reference types (`funcref`, `externref`, the reference and table instructions and multiple tables) and the rest of bulk memory (passive data and element segments, `memory.init`, `data.drop`, `table.init`, `elem.drop` and `table.copy`). WaaS satisfies WebAssembly Core Specification 2.0.
+- `StackValueItem.FromReference` and `StackValueItem.ExpectReference` to pass objects as reference values, and `Global.CreateReference` to create globals of reference types.
 
 ### Changed
 
@@ -26,6 +28,10 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - Calls of host functions from components are about twice as fast. `ExternalFunction.InvokeAsync` is called after all the arguments are pushed, and completes without suspension when the host function completes synchronously.
 - The interpreter runs the function bodies translated at validation with a single dispatch loop and superinstructions, which is several times faster. The fuel is consumed at the start of each basic block. The control instructions (blocks and branches) cannot be executed with `Instruction.Execute` alone, and labels are no longer pushed to the stack.
 - Calls between WebAssembly functions are executed within the `WasmStackFrame` of the caller without pushing frames to `ExecutionContext`. `WasmStackFrame.Function` is the innermost function being executed, and `WasmStackTrace` still lists each function.
+- `Table<T>` is limited to `Table<IInvocableFunction>` (`funcref`) and `Table<object>` (`externref`), and tables can grow. `Table.Size` is the current number of the elements.
+- The active data and element segments are copied in the order of the segments at instantiation, and the segments copied before an out-of-bounds segment remain in the memories and the tables (as defined in WebAssembly 2.0). Previously no segment was copied when a segment was out of bounds.
+- The sections of modules must appear in the order defined by the specification.
+- A mismatched import of a global throws `InvalidModuleException` instead of `ArgumentException`.
 - MoonBit Importer places the build output in a short directory under the temporary directory on Windows, so that the MoonBit compiler does not fail with the long paths of a project in a deep directory.
 
 ### Fixed
@@ -38,6 +44,9 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - Lowering a variant whose case is typed with a nullable type argument, such as `Option<int?>` holding `null` (`option<option<s32>>`), threw `InvalidOperationException`.
 - Rust Importer removes the crate of a script when the script is deleted or **Crate Root** is unchecked. A crate left for a deleted script broke `cargo check` of the Cargo workspace at the root of the project, which IDEs such as rust-analyzer run, and a crate left for a script that is no longer a crate root made IDEs analyze the script as another crate.
 - Stack overflow when reading and validating deeply nested blocks, which rustc emits for large `match` expressions. The blocks are read and validated without recursion.
+- Validation of `br_table` in unreachable code rejected labels of different types.
+- Importing a memory compared the limits declared by the imported memory instead of its current size.
+- `call_indirect` with an index out of the table threw `IndexOutOfRangeException` instead of trapping.
 
 ## [0.3.0]
 

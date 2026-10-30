@@ -22,14 +22,15 @@ namespace WaaS.Runtime
 
             var memorySection = module.MemorySection;
 
-            GlobalInstance = new GlobalInstance(importSection, globalSection, importObject);
+            Module = module;
+
+            // the functions are created first, which the initializers of the globals can reference
+            FunctionInstance = new FunctionInstance(this, importSection, importObject);
+
+            GlobalInstance = new GlobalInstance(importSection, globalSection, importObject, FunctionInstance);
 
             MemoryInstance =
                 new MemoryInstance(memorySection, importSection, importObject, dataSection, GlobalInstance);
-
-            Module = module;
-
-            FunctionInstance = new FunctionInstance(this, importSection, importObject);
 
             TableInstance = new TableInstance(GlobalInstance, FunctionInstance, importSection, tableSection,
                 elementSection, importObject);
@@ -38,8 +39,9 @@ namespace WaaS.Runtime
                 new ExportInstance(FunctionInstance, exportSection, TableInstance,
                     MemoryInstance, GlobalInstance);
 
-            MemoryInstance.Initialize(dataSection, GlobalInstance);
+            // the elements are initialized first, and the effects before a trap remain
             TableInstance.Initialize(FunctionInstance, GlobalInstance, elementSection);
+            MemoryInstance.Initialize(dataSection, GlobalInstance);
 
             // NOTE: should we support async start?
             if (startSection != null)

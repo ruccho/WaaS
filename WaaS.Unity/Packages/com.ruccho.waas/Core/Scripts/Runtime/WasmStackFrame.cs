@@ -291,14 +291,14 @@ namespace WaaS.Runtime
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private IInvocableFunction GetIndirectCallee(uint functionTypeIndex, uint functionIndex)
+        private IInvocableFunction GetIndirectCallee(uint functionTypeIndex, uint tableIndex, uint functionIndex)
         {
-            if (tables.Length == 0 || tables[0] is not Table<IInvocableFunction> table)
-                throw new InvalidOperationException();
+            if (tables[tableIndex] is not Table<IInvocableFunction> table) throw new InvalidOperationException();
 
             var functionType = currentInstance.Module.TypeSection.FuncTypes.Span[checked((int)functionTypeIndex)];
 
-            var function = table.Elements[checked((int)functionIndex)];
+            if (functionIndex >= table.Size) throw new TrapException("undefined element");
+            var function = table.Elements[(int)functionIndex];
             if (function == null)
                 throw new TrapException($"[{nameof(CallIndirect)}] Function is null. index: {functionIndex}");
 
@@ -702,7 +702,7 @@ namespace WaaS.Runtime
                         goto Call;
                     case Op.CallIndirect:
                         programCounter = (uint)pc;
-                        callee = GetIndirectCallee((uint)instr.A, Unsafe.Add(ref v0, --sp).valueI32);
+                        callee = GetIndirectCallee((uint)instr.A, (uint)instr.C, Unsafe.Add(ref v0, --sp).valueI32);
                         goto Call;
 
                     #endregion

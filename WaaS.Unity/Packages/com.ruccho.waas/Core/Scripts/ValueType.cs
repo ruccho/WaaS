@@ -8,7 +8,26 @@ namespace WaaS
         I64 = 0x7E,
         F32 = 0x7D,
         F64 = 0x7C,
-        V128 = 0x7B
+        V128 = 0x7B,
+        FuncRef = 0x70,
+        ExternRef = 0x6F
+    }
+
+    public static class ValueTypeExtensions
+    {
+        public static bool IsReference(this ValueType type)
+        {
+            return type is ValueType.FuncRef or ValueType.ExternRef;
+        }
+
+        /// <summary>
+        ///     Whether the byte is a value type defined by WebAssembly.
+        /// </summary>
+        public static bool IsDefined(this ValueType type)
+        {
+            return type is ValueType.I32 or ValueType.I64 or ValueType.F32 or ValueType.F64 or ValueType.V128 or
+                ValueType.FuncRef or ValueType.ExternRef;
+        }
     }
 
     internal static class ValueTypeRegistry

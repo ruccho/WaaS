@@ -46,9 +46,9 @@ public static class SpecTest
                 })
             },
             { "global_i32", new Global<uint>(666) },
-            { "global_i64", new Global<ulong>(0) },
-            { "global_f32", new Global<float>(0) },
-            { "global_f64", new Global<double>(0) },
+            { "global_i64", new Global<ulong>(666) },
+            { "global_f32", new Global<float>(666.6f) },
+            { "global_f64", new Global<double>(666.6) },
             { "table", new Table<IInvocableFunction>(new Limits(10, 20)) },
             { "memory", new Memory(new Limits(1, 2)) }
         };

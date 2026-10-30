@@ -8,6 +8,8 @@ namespace WaaS.Runtime
     /// </summary>
     public class MemoryInstance
     {
+        private readonly ReadOnlyMemory<byte>[] dataSegments;
+
         public MemoryInstance(MemorySection memorySection, ImportSection importSection, IImports imports,
             DataSection dataSection, GlobalInstance globalInstance)
         {
@@ -32,7 +34,9 @@ namespace WaaS.Runtime
                     if (!imports.TryGetImportable(import.ModuleName, import.Name, out Memory importedMemory))
                         throw new InvalidOperationException();
 
-                    if (!importedMemory.PageLimits.IsImportable(t.Value.Limits))
+                    // the current size is compared with the minimum
+                    if (!new Limits((uint)importedMemory.NumPages, importedMemory.PageLimits.Max)
+                            .IsImportable(t.Value.Limits))
                         throw new
                             InvalidModuleException("incompatible import type");
 
@@ -49,16 +53,9 @@ namespace WaaS.Runtime
                     memories[cursor++] = new Memory(memoryType.Limits);
                 }
 
-            // validation
             var data = dataSection != null ? dataSection.Data.Span : Span<Data>.Empty;
-            foreach (var d in data)
-            {
-                var offset = checked((int)d.Offset.Evaluate(globalInstance).ExpectValueI32());
-                var memoryIndex = d.MemoryIndex;
-                var memory = memories[memoryIndex];
-
-                if (memory.Length < offset + d.Payload.Length) throw new InvalidModuleException();
-            }
+            dataSegments = new ReadOnlyMemory<byte>[data.Length];
+            for (var i = 0; i < data.Length; i++) dataSegments[i] = data[i].Payload;
 
             Memories = memories;
             MemoryArray = memories;
@@ -68,18 +65,36 @@ namespace WaaS.Runtime
 
         internal Memory[] MemoryArray { get; }
 
+        /// <summary>
+        ///     Initializes the memories with the active segments, and drops the active segments.
+        /// </summary>
+        /// <exception cref="TrapException">A segment is out of the bounds of the memory.</exception>
         public void Initialize(DataSection dataSection, GlobalInstance globalInstance)
         {
-            var memories = Memories.Span;
             var data = dataSection != null ? dataSection.Data.Span : Span<Data>.Empty;
-            foreach (var d in data)
+            for (var i = 0; i < data.Length; i++)
             {
-                var offset = checked((int)d.Offset.Evaluate(globalInstance).ExpectValueI32());
-                var memoryIndex = d.MemoryIndex;
-                var memory = memories[checked((int)memoryIndex)];
-                var dest = memory.Span[offset..];
-                d.Payload.Span.CopyTo(dest);
+                var d = data[i];
+                if (d.IsPassive) continue;
+
+                var offset = d.Offset.Evaluate(globalInstance).ExpectValueI32();
+                Init(d.MemoryIndex, (uint)i, offset, 0, (uint)d.Payload.Length);
+                DropDataSegment((uint)i);
             }
+        }
+
+        internal void Init(uint memoryIndex, uint dataIndex, uint destOffset, uint srcOffset, uint count)
+        {
+            var memory = MemoryArray[memoryIndex].Span;
+            var segment = dataSegments[dataIndex].Span;
+            if ((ulong)srcOffset + count > (ulong)segment.Length || (ulong)destOffset + count > (ulong)memory.Length)
+                throw new TrapException("out of bounds memory access");
+            segment.Slice((int)srcOffset, (int)count).CopyTo(memory[(int)destOffset..]);
+        }
+
+        internal void DropDataSegment(uint dataIndex)
+        {
+            dataSegments[dataIndex] = ReadOnlyMemory<byte>.Empty;
         }
     }
 }
