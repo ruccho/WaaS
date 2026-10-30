@@ -446,10 +446,7 @@ namespace WaaS.Unity.Editor.MoonBit
         internal static void TrackFile(AssetImportContext ctx, string path)
         {
             // files outside the asset database are tracked as custom dependencies
-            if (ExternalFileDependency.ToAssetPath(path) is { } dependencyAssetPath)
-                ctx.DependsOnSourceAsset(dependencyAssetPath);
-            else
-                ctx.DependsOnCustomDependency(ExternalFileDependency.GetDependencyName(path));
+            ExternalFileDependency.Track(ctx, path);
         }
 
         internal static void WriteIfChanged(string path, string contents)

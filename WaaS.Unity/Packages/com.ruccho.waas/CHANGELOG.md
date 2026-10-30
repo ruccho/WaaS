@@ -13,6 +13,7 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - wit2waas: inline interfaces of worlds.
 - `[ComponentField]` can be applied to public fields, so that a type serialized by Unity can be a record.
 - Prebuilt wit2waas binaries for Windows, macOS and Linux, attached to each GitHub release.
+- Rust Importer and MoonBit Importer reimport the scripts when the files outside the asset database that they were built from change, such as the sources of the crates referenced by the path, by checking the timestamps and the sizes of the files while the editor is active if Auto Refresh is enabled, or with **Assets > Reimport Scripts with Changed Files for WaaS** (`ExternalFileDependency.Track`).
 - WebAssembly features: reference types (`funcref`, `externref`, the reference and table instructions and multiple tables) and the rest of bulk memory (passive data and element segments, `memory.init`, `data.drop`, `table.init`, `elem.drop` and `table.copy`). WaaS satisfies WebAssembly Core Specification 2.0.
 - `StackValueItem.FromReference` and `StackValueItem.ExpectReference` to pass objects as reference values, and `Global.CreateReference` to create globals of reference types.
 
@@ -43,6 +44,7 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - C# tuples of more than 7 elements: the elements after the 7th were formatted as a nested tuple instead of the elements of the same tuple.
 - Lowering a variant whose case is typed with a nullable type argument, such as `Option<int?>` holding `null` (`option<option<s32>>`), threw `InvalidOperationException`.
 - Rust Importer removes the crate of a script when the script is deleted or **Crate Root** is unchecked. A crate left for a deleted script broke `cargo check` of the Cargo workspace at the root of the project, which IDEs such as rust-analyzer run, and a crate left for a script that is no longer a crate root made IDEs analyze the script as another crate.
+- A Rust script that failed to compile was not reimported when the files it depends on changed, such as the WIT exported after the script was imported, because the dependencies were not recorded on the failure.
 - Stack overflow when reading and validating deeply nested blocks, which rustc emits for large `match` expressions. The blocks are read and validated without recursion.
 - Validation of `br_table` in unreachable code rejected labels of different types.
 - Importing a memory compared the limits declared by the imported memory instead of its current size.

@@ -25,7 +25,7 @@ MoonBit Importer を利用するには、[MoonBit のツールチェイン](http
 - **Generators**: エントリパッケージのコードの生成器です。[Wukuro](../wukuro/moonbit.mdx) などのフレームワークが提供します。
 
 :::warning
-MoonBit Importer は、ソースファイルや、WaaS が生成したローカルのモジュールのファイル（[バインディング](#generating-bindings)など）が変更されると、スクリプトを再コンパイルします。Unity の管理外にあるそれ以外のファイルの変更は検知されません。その場合は、スクリプトを右クリックして `Reimport` を選択してください。`Assets` > `Recompile MoonBit scripts for WaaS` を選択すると、プロジェクト内のすべての MoonBit のスクリプトを再コンパイルします。
+MoonBit Importer は、ソースファイルや、ローカルのモジュールのファイル（`.mbt`、`.wit`、`moon.pkg`、`moon.mod`。WaaS が生成した[バインディング](#generating-bindings)を含む）が変更されると、スクリプトを再コンパイルします。Unity の管理外にあるファイルは、環境設定（**Asset Pipeline**）の **Auto Refresh** が有効であれば、エディタがアクティブな間に、更新日時とサイズで変更を確認します。無効の場合は、`Assets` > `Reimport Scripts with Changed Files for WaaS` を選択すると確認します。それ以外のファイル（レジストリのモジュールなど）の変更は検知されません。その場合は、スクリプトを右クリックして `Reimport` を選択してください。`Assets` > `Recompile MoonBit scripts for WaaS` を選択すると、プロジェクト内のすべての MoonBit のスクリプトを再コンパイルします。
 :::
 
 ### プリセットの使用 {#using-presets}

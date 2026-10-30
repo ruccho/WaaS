@@ -16,7 +16,8 @@ namespace WaaS.Unity.Editor.MoonBit
     ///     The packages are in the project module (<c>moon.mod</c> at the root of the project, whose source directory is
     ///     <c>Assets</c>), so the scripts can be edited with an IDE that opens the project root.
     /// </summary>
-    [ScriptedImporter(1, "pkg", 100)]
+    // 2: the files outside the asset database are recorded for ExternalFileWatcher
+    [ScriptedImporter(2, "pkg", 100)]
     public class MoonBitPackageImporter : MoonBitScriptImporterBase
     {
         private const string ProjectModulePath = "moon.mod";
@@ -43,6 +44,7 @@ namespace WaaS.Unity.Editor.MoonBit
         public override void OnImportAsset(AssetImportContext ctx)
         {
             var assetPath = ctx.assetPath;
+            ExternalFileDependency.BeginImport(ctx);
             if (!IsScript || Path.GetFileName(assetPath) != "moon.pkg")
             {
                 ctx.SetMainObject(null);

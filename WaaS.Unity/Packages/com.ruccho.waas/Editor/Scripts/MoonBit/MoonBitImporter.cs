@@ -12,12 +12,14 @@ namespace WaaS.Unity.Editor.MoonBit
     ///     with the imports of the settings. A file of a script package (<see cref="MoonBitPackageImporter" />) is
     ///     imported with the package.
     /// </summary>
-    [ScriptedImporter(1, "mbt", 100)]
+    // 2: the files outside the asset database are recorded for ExternalFileWatcher
+    [ScriptedImporter(2, "mbt", 100)]
     public class MoonBitImporter : MoonBitScriptImporterBase
     {
         public override void OnImportAsset(AssetImportContext ctx)
         {
             var assetPath = ctx.assetPath;
+            ExternalFileDependency.BeginImport(ctx);
 
             if (!IsScript || MoonBitPackageImporter.IsInPackage(assetPath))
             {

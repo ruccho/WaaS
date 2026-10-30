@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using UnityEditor;
+using UnityEditor.AssetImporters;
 using UnityEngine;
 
 namespace WaaS.Unity.Editor
@@ -26,6 +27,32 @@ namespace WaaS.Unity.Editor
                 relative.StartsWith("Packages/", StringComparison.Ordinal))
                 return relative;
             return null;
+        }
+
+        /// <summary>
+        ///     Declares that the imported asset depends on the file. A file in the asset database is a source asset
+        ///     dependency, and a file outside it is a custom dependency, which is also checked by its timestamp and size
+        ///     so that the asset is reimported when the file changes without <see cref="Register" />.
+        ///     <see cref="BeginImport" /> must be called at the start of the import.
+        /// </summary>
+        public static void Track(AssetImportContext ctx, string path)
+        {
+            if (ToAssetPath(path) is { } dependencyAssetPath)
+            {
+                ctx.DependsOnSourceAsset(dependencyAssetPath);
+                return;
+            }
+
+            ctx.DependsOnCustomDependency(GetDependencyName(path));
+            ExternalFileWatcher.Record(ctx.assetPath, ToFullPath(path));
+        }
+
+        /// <summary>
+        ///     Forgets the files tracked by the previous import of the asset.
+        /// </summary>
+        public static void BeginImport(AssetImportContext ctx)
+        {
+            ExternalFileWatcher.BeginImport(ctx.assetPath);
         }
 
         public static string GetDependencyName(string path)

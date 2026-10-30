@@ -43,11 +43,10 @@ To use Rust Importer, you need the [Rust toolchain](https://www.rust-lang.org/to
 - **Rev** (optional): Specify the commit hash.
 
 :::warning
-Rust Importer automatically recompiles when it detects changes in the source file. However, changes are not detected in the following cases:
+Rust Importer automatically recompiles the source file when the files it was built from change: the source file itself and the files that cargo lists as the inputs of the build, such as the sources of the crates referenced by the path and the WIT files read by `wit_bindgen::generate!`. The files outside of Unity's management are checked by their timestamps and sizes while the editor is active, if **Auto Refresh** is enabled in the preferences (**Asset Pipeline**). Otherwise, select `Assets` > `Reimport Scripts with Changed Files for WaaS` to check them. After a compilation error, the files of the last successful build are checked. However, changes are not detected in the following cases:
 
-- When the dependent source file is outside of Unity's management
-- When dependent source file does not exist, and the corresponding source file is created or modified after a compilation error
-- When it depends on files other than `.rs`
+- When a file that was not an input of the last successful build is created or modified, such as a module added to a crate after a compilation error
+- When the crates from a registry or a Git repository are updated
 
 In these cases, right-click the target source file and select `Reimport` to recompile it.  
 Also, selecting `Assets` > `Recompile Rust scripts for WaaS` recompiles all Rust source files in the project.
