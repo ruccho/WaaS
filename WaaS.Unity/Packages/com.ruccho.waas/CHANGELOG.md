@@ -19,6 +19,13 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - The messages of `TrapException` and `WasmException` include the WebAssembly stack trace.
 - The formatters created by reflection are preserved from managed code stripping.
 - The native editor library generates MoonBit bindings, and binds `spectest.print_char` (`println` of MoonBit) to a no-op when componentizing.
+- Instantiating a component validates the labels of records, variants, enums and flags in the imports (ignoring the case and `-`/`_`), and the names and sorts of the imports and exports of imported components.
+- `LinkException` on instantiation reports the path of the mismatched import with the expected and provided types.
+
+### Fixed
+
+- Comparing component types and instance types no longer throws `NotImplementedException`.
+- A failure to resolve a type while validating an import is reported as a mismatch of the import instead of an empty `LinkException`.
 
 ## [0.3.0]
 

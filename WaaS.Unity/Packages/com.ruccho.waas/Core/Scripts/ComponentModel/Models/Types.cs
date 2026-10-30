@@ -293,7 +293,7 @@ namespace WaaS.ComponentModel.Models
             {
                 var field = Fields.Span[i];
                 var otherField = recordType.Fields.Span[i];
-                if (field.Label != otherField.Label) return false;
+                if (!TypeDescriptions.LabelEquals(field.Label, otherField.Label)) return false;
                 if (!field.Type.ValidateEquals(otherField.Type)) return false;
             }
 
@@ -477,6 +477,7 @@ namespace WaaS.ComponentModel.Models
             {
                 var @case = Cases.Span[i];
                 var otherCase = variantType.Cases.Span[i];
+                if (!TypeDescriptions.LabelEquals(@case.Label, otherCase.Label)) return false;
                 if (@case.Type == null && otherCase.Type == null) continue;
                 if (@case.Type == null || otherCase.Type == null) return false;
                 if (!@case.Type.ValidateEquals(otherCase.Type)) return false;
@@ -630,7 +631,7 @@ namespace WaaS.ComponentModel.Models
 
         public bool ValidateEquals(IType other)
         {
-            return other is IFlagsType flags && flags.Labels.Length == Labels.Length;
+            return other is IFlagsType flags && TypeDescriptions.LabelsEqual(Labels.Span, flags.Labels.Span);
         }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
@@ -679,7 +680,7 @@ namespace WaaS.ComponentModel.Models
 
         public bool ValidateEquals(IType other)
         {
-            return other is IEnumType @enum && @enum.Labels.Length == Labels.Length;
+            return other is IEnumType @enum && TypeDescriptions.LabelsEqual(Labels.Span, @enum.Labels.Span);
         }
 
         IType IUnresolved<IType>.ResolveFirstTime(IInstantiationContext context)
@@ -1169,7 +1170,7 @@ namespace WaaS.ComponentModel.Models
 
         public IType ResolveFirstTime(IInstantiationContext context)
         {
-            return new ResolvedComponentType();
+            return new ResolvedComponentType(this);
         }
 
         private class Formatter : IFormatter<ComponentType>
@@ -1195,13 +1196,36 @@ namespace WaaS.ComponentModel.Models
             }
         }
 
-        private class ResolvedComponentType : IComponentType
+        internal class ResolvedComponentType : IComponentType
         {
-            // TODO
+            public ResolvedComponentType(ComponentType source)
+            {
+                Source = source;
+            }
+
+            public ComponentType Source { get; }
+
+            /// <summary>
+            ///     Compares the names and the sorts of the imports and the exports.
+            ///     The types of the imports and the exports are not compared.
+            /// </summary>
             public bool ValidateEquals(IType other)
             {
-                throw new NotImplementedException();
+                if (ReferenceEquals(this, other)) return true;
+                if (other is not ResolvedComponentType otherComponent) return false;
+                return HaveSameSorts(Source.Imports, otherComponent.Source.Imports) &&
+                       HaveSameSorts(Source.Exports, otherComponent.Source.Exports);
             }
+        }
+
+        internal static bool HaveSameSorts(IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> lhs,
+            IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> rhs)
+        {
+            if (lhs.Count != rhs.Count) return false;
+            foreach (var (name, desc) in lhs)
+                if (!rhs.TryGetValue(name, out var otherDesc) || desc.GetType() != otherDesc.GetType())
+                    return false;
+            return true;
         }
     }
 
@@ -1219,9 +1243,14 @@ namespace WaaS.ComponentModel.Models
 
         public IReadOnlyDictionary<string, IExportableDescriptor<ISortedExportable>> Exports { get; }
 
+        /// <summary>
+        ///     Compares the names and the sorts of the exports.
+        ///     The types of the exports are not compared.
+        /// </summary>
         public bool ValidateEquals(IType other)
         {
-            throw new NotImplementedException();
+            if (ReferenceEquals(this, other)) return true;
+            return other is IInstanceType instanceType && ComponentType.HaveSameSorts(Exports, instanceType.Exports);
         }
 
         public IType ResolveFirstTime(IInstantiationContext context)
@@ -1400,7 +1429,23 @@ namespace WaaS.ComponentModel.Models
         {
             ISortedExportable? result = null;
             instance?.TryGetExport(name, out result);
-            return desc.ValidateArgument(context, result);
+            return desc.ValidateArgumentSafe(context, result);
+        }
+
+        /// <summary>
+        ///     Validates the argument, treating failures of the resolution of the expected type as a mismatch.
+        /// </summary>
+        public static bool ValidateArgumentSafe(this IExportableDescriptor<ISortedExportable> desc,
+            IInstantiationContext context, ISortedExportable? argument)
+        {
+            try
+            {
+                return desc.ValidateArgument(context, argument);
+            }
+            catch (LinkException)
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -1410,24 +1455,41 @@ namespace WaaS.ComponentModel.Models
         public static void DescribeMismatch(this IExportableDescriptor<ISortedExportable> desc,
             IInstantiationContext context, ISortedExportable? argument, string path, List<string> output)
         {
-            if (desc is ExportableDescriptorInstance instanceDescriptor)
+            var kind = TypeDescriptions.DescribeSort(desc);
+
+            if (argument == null && desc is not ExportableDescriptorInstance)
             {
-                instanceDescriptor.DescribeMismatch(context, argument, path, output);
+                output.Add($"{path}: {kind} is missing");
                 return;
             }
 
-            var kind = desc switch
+            if (argument != null && TypeDescriptions.DescribeSort(argument) != kind)
             {
-                ExportableDescriptorCoreModuleType => "core module",
-                ExportableDescriptorFunction => "function",
-                ExportableDescriptorType => "type",
-                ExportableDescriptorComponent => "component",
-                _ => desc.GetType().Name
-            };
+                output.Add($"{path}: expected {kind}, provided {TypeDescriptions.DescribeSort(argument)}");
+                return;
+            }
 
-            output.Add(argument == null
-                ? $"{path}: {kind} is missing"
-                : $"{path}: {kind} does not match (provided: {argument.GetType().Name})");
+            try
+            {
+                var message = desc switch
+                {
+                    ExportableDescriptorInstance instanceDescriptor => instanceDescriptor.DescribeMismatch(context,
+                        argument, path, output),
+                    ExportableDescriptorFunction functionDescriptor => functionDescriptor.DescribeMismatch(context,
+                        (IFunction)argument!),
+                    ExportableDescriptorType typeDescriptor => typeDescriptor.DescribeMismatch(context,
+                        (IType)argument!),
+                    ExportableDescriptorComponent componentDescriptor => componentDescriptor.DescribeMismatch(
+                        context, (IComponent)argument!),
+                    _ => $"{kind} does not match"
+                };
+
+                if (message != null) output.Add($"{path}: {message}");
+            }
+            catch (LinkException e)
+            {
+                output.Add($"{path}: failed to resolve the expected type: {e.Message}");
+            }
         }
     }
 
@@ -1497,6 +1559,15 @@ namespace WaaS.ComponentModel.Models
             var type = context.Resolve(Type);
             return type.ValidateEquals(typeTyped.Type);
         }
+
+        internal string DescribeMismatch(IInstantiationContext context, IFunction argument)
+        {
+            var type = context.Resolve(Type);
+            var mismatch = TypeDescriptions.FindMismatch(type, argument.Type) ?? "the type does not match";
+            return $"function type does not match: {mismatch}\n" +
+                   $"    expected: {TypeDescriptions.Describe(type)}\n" +
+                   $"    provided: {TypeDescriptions.Describe(argument.Type)}";
+        }
     }
 
     [GenerateFormatter]
@@ -1508,6 +1579,23 @@ namespace WaaS.ComponentModel.Models
         {
             return argument is IType type && Type.ValidateBound(context, type);
         }
+
+        internal string DescribeMismatch(IInstantiationContext context, IType argument)
+        {
+            switch (Type)
+            {
+                case TypeBoundEquals equals:
+                {
+                    var expected = context.Resolve(equals.Type);
+                    var mismatch = TypeDescriptions.FindMismatch(expected, argument) ?? "the type does not match";
+                    return $"type does not match: {mismatch}";
+                }
+                case TypeBoundSubResource:
+                    return $"expected a resource type, provided {TypeDescriptions.Describe(argument)}";
+                default:
+                    return "type does not match";
+            }
+        }
     }
 
     [GenerateFormatter]
@@ -1515,9 +1603,27 @@ namespace WaaS.ComponentModel.Models
     {
         public IUnresolved<IType> Type { get; }
 
+        /// <summary>
+        ///     Validates the names and the sorts of the imports and the exports of the component.
+        ///     The types of the imports and the exports are not validated.
+        /// </summary>
         public bool ValidateArgument(IInstantiationContext context, ISortedExportable? argument)
         {
-            return true;
+            if (argument is not IComponent component) return false;
+            return FindMismatch(context, component) == null;
+        }
+
+        private string? FindMismatch(IInstantiationContext context, IComponent argument)
+        {
+            if (context.Resolve(Type) is not ComponentType.ResolvedComponentType type)
+                return "the expected type is not a component type";
+            return TypeDescriptions.FindComponentMismatch(type.Source.Imports, type.Source.Exports,
+                argument.Source.Imports, argument.Source.Exports);
+        }
+
+        internal string DescribeMismatch(IInstantiationContext context, IComponent argument)
+        {
+            return $"component does not match: {FindMismatch(context, argument) ?? "unknown reason"}";
         }
     }
 
@@ -1544,27 +1650,16 @@ namespace WaaS.ComponentModel.Models
             return true;
         }
 
-        internal void DescribeMismatch(IInstantiationContext context, ISortedExportable? argument, string path,
+        internal string? DescribeMismatch(IInstantiationContext context, ISortedExportable? argument, string path,
             List<string> output)
         {
             var type = context.Resolve(Type);
-            if (type is not IInstanceType instanceType)
-            {
-                output.Add($"{path}: the expected type is not an instance type");
-                return;
-            }
+            if (type is not IInstanceType instanceType) return "the expected type is not an instance type";
 
-            if (argument is null)
-            {
-                output.Add($"{path}: instance is missing");
-                return;
-            }
+            if (argument is null) return "instance is missing";
 
             if (argument is not IInstance instance)
-            {
-                output.Add($"{path}: instance does not match (provided: {argument.GetType().Name})");
-                return;
-            }
+                return $"expected instance, provided {TypeDescriptions.DescribeSort(argument)}";
 
             context = new InstantiationContext(null, context, null, instance);
             foreach (var (key, desc) in instanceType.Exports)
@@ -1573,6 +1668,8 @@ namespace WaaS.ComponentModel.Models
                 instance.TryGetExport(key, out ISortedExportable? exported);
                 desc.DescribeMismatch(context, exported, $"{path}/{key}", output);
             }
+
+            return null;
         }
     }
 
