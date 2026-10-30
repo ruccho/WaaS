@@ -595,11 +595,11 @@ internal static class GuestBuilder
             if (Built.TryGetValue(key, out var cached)) return cached;
 
             var crateDir = Path.Combine(GetSourceDirectory(), "Guests", name);
-            var targetDir = Path.Combine(Path.GetTempPath(), "WaaS.Tests", "guest-target");
+            var targetDir = Path.Combine(Utils.TempDirectory, "guest-target");
 
             if (witOverrides != null)
             {
-                var copiedDir = Path.Combine(Path.GetTempPath(), "WaaS.Tests", "guest-overrides", name);
+                var copiedDir = Path.Combine(Utils.TempDirectory, "guest-overrides", name);
                 if (Directory.Exists(copiedDir)) Directory.Delete(copiedDir, true);
                 CopyDirectory(crateDir, copiedDir);
                 foreach (var (fileName, source) in witOverrides)
