@@ -9,7 +9,7 @@ Scripts running in the Unity editor can be debugged from VS Code with breakpoint
 
 1. In Unity, enable **Assets > Enable Debugger for WaaS**. The editor listens on the port 4711 of the local host (`WaaSDebugger.Port`).
 2. For Rust scripts, enable **Assets > Build Rust Scripts with Debug Information for WaaS**. The scripts are rebuilt with the line tables of DWARF, which map the instructions to the source lines. This is a preference of each user, and disabled by default.
-3. In VS Code, install the extension in `vscode-waas` of the repository, and add the following configuration to `launch.json`.
+3. In VS Code, install the extension `waas-debug-<version>.vsix` attached to the [release](https://github.com/ruccho/WaaS/releases) with **Extensions: Install from VSIX...** of the command palette, and add the following configuration to `launch.json`.
 
 ```json
 {
