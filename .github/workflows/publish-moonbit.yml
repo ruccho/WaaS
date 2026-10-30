@@ -1,0 +1,41 @@
+name: Publish MoonBit Module
+
+# Publishes the MoonBit module ruccho/wukuro to mooncakes.io.
+# The moon CLI reads the credentials from ~/.moon/credentials.json, which `moon login` creates.
+# Register the contents of the file as the secret MOONCAKES_CREDENTIALS.
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Wukuro/moonbit/wukuro
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check versions
+        if: github.event_name == 'release'
+        run: python scripts/version.py check "${{ github.event.release.tag_name }}"
+        working-directory: .
+      - name: Install the MoonBit toolchain
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Write the credentials
+        env:
+          MOONCAKES_CREDENTIALS: ${{ secrets.MOONCAKES_CREDENTIALS }}
+        run: |
+          if [ -z "$MOONCAKES_CREDENTIALS" ]; then echo "The secret MOONCAKES_CREDENTIALS is not set." >&2; exit 1; fi
+          mkdir -p "$HOME/.moon"
+          printf '%s' "$MOONCAKES_CREDENTIALS" > "$HOME/.moon/credentials.json"
+      - name: Check
+        run: moon check --target wasm
+      - name: Publish
+        run: moon publish
+      - name: Remove the credentials
+        if: always()
+        run: rm -f "$HOME/.moon/credentials.json"
