@@ -287,6 +287,21 @@ public class ComponentAbiExtendedTests
     // host -> guest
 
     [Test]
+    public async Task ExportsRoundTripIntegers()
+    {
+        var max = ((byte)255, (sbyte)-128, (ushort)65535, (short)-32768, uint.MaxValue, int.MinValue, ulong.MaxValue,
+            long.MinValue, true);
+        Assert.That(await CallExport(e => e.Integers(max.Item1, max.Item2, max.Item3, max.Item4, max.Item5,
+            max.Item6, max.Item7, max.Item8, max.Item9)), Is.EqualTo(max));
+        Assert.That(await LastCall(), Is.EqualTo(
+            "(255, -128, 65535, -32768, 4294967295, -2147483648, 18446744073709551615, -9223372036854775808, true)"));
+
+        var minusOne = ((byte)0, (sbyte)-1, (ushort)0, (short)-1, 0u, -1, 0ul, -1L, false);
+        Assert.That(await CallExport(e => e.Integers(0, -1, 0, -1, 0, -1, 0, -1, false)), Is.EqualTo(minusOne));
+        Assert.That(await LastCall(), Is.EqualTo("(0, -1, 0, -1, 0, -1, 0, -1, false)"));
+    }
+
+    [Test]
     public async Task ExportsRoundTripSmallIntegers()
     {
         Assert.That(await CallExport(e => e.SmallIntegers(-1, -1, 255, 65535)),
@@ -477,6 +492,14 @@ public class ComponentAbiExtendedTests
         var result = await CallExport(e => e.ManyParams(-1, long.MinValue, 1.5f, -2.25, 255, -128, 65535, -32768,
             "日本", 9, 10, 11, 12, 13, 14, 15, 16, 0.5));
         Assert.That(result, Is.EqualTo("-1,-9223372036854775808,1.5,-2.25,255,-128,65535,-32768,日本,9,10,11,12,13,14,15,16,0.5"));
+    }
+
+    [Test]
+    public async Task ExportsRoundTripLongTuple()
+    {
+        var value = (1, 2, 3, 4, 5, 6, 7, (byte)0xFF, long.MinValue, "tail");
+        Assert.That(await CallExport(e => e.LongTuple(value)), Is.EqualTo(value));
+        Assert.That(await LastCall(), Is.EqualTo("(1, 2, 3, 4, 5, 6, 7, 255, -9223372036854775808, \"tail\")"));
     }
 
     [Test]
