@@ -277,6 +277,26 @@ public class ComponentAbiExtendedTests
     // guest -> host
 
     [Test]
+    public async Task ImportsRoundTripValues()
+    {
+        var mismatches = await Call(e => e.TestValues());
+        Assert.That(mismatches.ToArray(), Is.Empty, string.Join("\n", mismatches.ToArray()));
+
+        // the values received by the host
+        Assert.That(valuesHost.ReceivedIntegers, Does.Contain(((byte)255, (sbyte)-128, (ushort)65535,
+            (short)-32768, uint.MaxValue, int.MinValue, ulong.MaxValue, long.MinValue, true)));
+        Assert.That(valuesHost.ReceivedSmallIntegers,
+            Is.EqualTo(new[] { ((sbyte)-1, (short)-1, (byte)255, (ushort)65535), (sbyte.MinValue, short.MinValue, (byte)0x80, (ushort)0x8000) }));
+        Assert.That(valuesHost.ReceivedTexts, Does.Contain("こんにちは"));
+        Assert.That(valuesHost.ReceivedTexts, Does.Contain("😀👍🏽"));
+        Assert.That(valuesHost.ReceivedTexts, Does.Contain("a\0b"));
+        Assert.That(valuesHost.ReceivedChars, Is.EqualTo(new uint[] { 'a', 0xE9, 0, 0xD7FF, 0xE000, 0x1F600, 0x10FFFF }));
+        Assert.That(valuesHost.ReceivedShorts, Is.EqualTo(new short[] { -1, short.MinValue, short.MaxValue, 0, 1 }));
+        Assert.That(valuesHost.ReceivedManyParams,
+            Is.EqualTo("-1,-9223372036854775808,1.5,-2.25,255,-128,65535,-32768,日本,9,10,11,12,13,14,15,16,0.5"));
+    }
+
+    [Test]
     public async Task ImportsRoundTripResources()
     {
         Assert.That(await Call(e => e.TestResources()),
@@ -484,6 +504,33 @@ public class ComponentAbiExtendedTests
                 Is.EqualTo(value));
             Assert.That(await LastCall(), Is.EqualTo($"({(byte)value.Item1}, {(ushort)value.Item2}, {(uint)value.Item3})"));
         }
+    }
+
+    [Test]
+    public async Task ExportsRoundTripOptionsAndResults()
+    {
+        var options = await CallExport(e => e.Options(255, new Option<string>("x"), new Option<int?>(-1)));
+        Assert.That(options, Is.EqualTo(((byte?)255, new Option<string>("x"), new Option<int?>(-1))));
+        Assert.That(await LastCall(), Is.EqualTo("(Some(255), Some(\"x\"), Some(Some(-1)))"));
+
+        options = await CallExport(e => e.Options(null, Option<string>.NoneValue, new Option<int?>(null)));
+        Assert.That(options, Is.EqualTo(((byte?)null, Option<string>.NoneValue, new Option<int?>(null))));
+        Assert.That(await LastCall(), Is.EqualTo("(None, None, Some(None))"));
+
+        options = await CallExport(e => e.Options(0, new Option<string>(""), Option<int?>.NoneValue));
+        Assert.That(options, Is.EqualTo(((byte?)0, new Option<string>(""), Option<int?>.NoneValue)));
+        Assert.That(await LastCall(), Is.EqualTo("(Some(0), Some(\"\"), None)"));
+
+        var ok = (Result<sbyte, ulong>.CreateOk(-1), Result<None, string>.CreateOk(default),
+            Result<string, None>.CreateOk("ok"), Result<None, None>.CreateOk(default));
+        Assert.That(await CallExport(e => e.Results(ok.Item1, ok.Item2, ok.Item3, ok.Item4)), Is.EqualTo(ok));
+        Assert.That(await LastCall(), Is.EqualTo("(Ok(-1), Ok(()), Ok(\"ok\"), Ok(()))"));
+
+        var error = (Result<sbyte, ulong>.CreateError(ulong.MaxValue), Result<None, string>.CreateError("error"),
+            Result<string, None>.CreateError(default), Result<None, None>.CreateError(default));
+        Assert.That(await CallExport(e => e.Results(error.Item1, error.Item2, error.Item3, error.Item4)),
+            Is.EqualTo(error));
+        Assert.That(await LastCall(), Is.EqualTo("(Err(18446744073709551615), Err(\"error\"), Err(()), Err(()))"));
     }
 
     [Test]

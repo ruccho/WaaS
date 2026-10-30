@@ -29,6 +29,7 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - The layout of variants whose payloads are aligned to 1 byte or have no payload (such as `option<u8>` and enums) in the memory: the payload was aligned to 2 bytes.
 - Lowering flags from C# `[Flags]` enums (passing flags to components) threw `InvalidOperationException`.
 - C# tuples of more than 7 elements: the elements after the 7th were formatted as a nested tuple instead of the elements of the same tuple.
+- Lowering a variant whose case is typed with a nullable type argument, such as `Option<int?>` holding `null` (`option<option<s32>>`), threw `InvalidOperationException`.
 
 ## [0.3.0]
 
