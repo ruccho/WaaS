@@ -19,6 +19,7 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - The messages of `TrapException` and `WasmException` include the WebAssembly stack trace.
 - The formatters created by reflection are preserved from managed code stripping.
 - The native editor library generates MoonBit bindings, and binds `spectest.print_char` (`println` of MoonBit) to a no-op when componentizing.
+- MoonBit Importer places the build output in a short directory under the temporary directory on Windows, so that the MoonBit compiler does not fail with the long paths of a project in a deep directory.
 
 ## [0.3.0]
 
