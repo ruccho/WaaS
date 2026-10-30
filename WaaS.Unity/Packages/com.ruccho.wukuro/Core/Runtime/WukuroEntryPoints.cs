@@ -25,6 +25,17 @@ namespace Wukuro
             @"\buse\s+(?<interface>[^\s{]+?)\.\{(?<names>[^}]*)\}",
             RegexOptions.Singleline | RegexOptions.CultureInvariant);
 
+        /// <summary>
+        ///     Creates the arguments of an entry point with the default values: zero, false, an empty string, an action
+        ///     doing nothing, a null object, and the default values of records and enums. The parameters of the types
+        ///     not supported by the inspector are not set. This is useful to run the scripts in tests.
+        /// </summary>
+        public static IArguments CreateDefaultArguments(EntryPointInfo entry)
+        {
+            return new Arguments(entry.Parameters.Where(p => p.IsArgument).Select(ArgumentContainerBase.Create)
+                .Where(c => c != null).ToArray());
+        }
+
         public static string GetExportName(string entry)
         {
             return $"{PackageNamespace}:{entry}/{InterfaceName}";

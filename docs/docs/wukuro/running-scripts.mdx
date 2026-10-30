@@ -124,3 +124,34 @@ The implementations of the interfaces imported by scripts are registered with `W
 - Game-specific interfaces are registered by the game ([Extending](./extending.mdx#3-registering-the-imports)).
 
 Register them once before running scripts.
+
+## Testing scripts
+
+Scripts can be run in EditMode tests with stub implementations of the imported interfaces, for example to check that every entry point runs to the end after the definitions of the host functions change.
+
+- `WukuroEntryPoints.CreateDefaultArguments` creates the arguments of an entry point with the default values: zero, `false`, an empty string, an action doing nothing, a null object, and the default values of records and enums.
+- Setting `WukuroClock.Current` to `WukuroClock.Immediate` completes the waits of the scripts (`delay`, `delay-frame` and `schedule`) on the next frame regardless of their durations. Set it back to `null` after the tests.
+
+```csharp
+[UnityTest]
+public IEnumerator RunsToTheEnd()
+{
+    return UniTask.ToCoroutine(async () =>
+    {
+        WukuroClock.Current = WukuroClock.Immediate;
+        try
+        {
+            var entry = WukuroEntryPoints.Parse(script.Wit).Single(e => e.Name == "villager");
+            var runner = new WukuroRunner();
+            // a stub of the module used by the script, implemented in the tests
+            runner.AddModule(new StubDialogModule());
+            await runner.RunAsync(await script.LoadComponentAsync(), entry.Name,
+                WukuroEntryPoints.CreateDefaultArguments(entry), new MemoryVariables());
+        }
+        finally
+        {
+            WukuroClock.Current = null;
+        }
+    });
+}
+```
