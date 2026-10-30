@@ -28,6 +28,9 @@ namespace WaaS.Runtime
         private Global[] globals;
         private bool isEnd;
         private bool isFramePushed;
+
+        // whether the frame pushed by this frame is being moved, whose exceptions are not of this frame
+        private bool isMovingPushedFrame;
         private Memory memory;
         private uint programCounter;
 
@@ -109,11 +112,16 @@ namespace WaaS.Runtime
             // the interpreter loop is kept out of the exception handler for better code generation
             try
             {
-                return Run();
+                return Run(waker);
             }
-            catch (Exception ex) when (ex is not WasmException and not OperationCanceledException)
+            catch (Exception ex) when (ex is not WasmException and not OperationCanceledException &&
+                                       !isMovingPushedFrame)
             {
                 throw new WasmException(Function, GetCurrentInstruction(true), innerException: ex);
+            }
+            finally
+            {
+                isMovingPushedFrame = false;
             }
         }
 
@@ -354,7 +362,45 @@ namespace WaaS.Runtime
         public void PushFrame(IInvocableFunction function, Span<StackValueItem> parameters)
         {
             isFramePushed = true;
-            Context.PushFrame(function, parameters);
+            Context.PushFrameFromFrame(function, parameters);
+        }
+
+        /// <summary>
+        ///     Moves the frame pushed by this frame, and passes its results to this frame if it completes.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private StackFrameState MovePushedFrame(StackFrame frame, in Waker waker)
+        {
+            StackFrameState state;
+            isMovingPushedFrame = true;
+            if (frame.Core is WasmStackFrame)
+            {
+                // nested frames of WebAssembly are left to the execution context not to grow the native stack
+                if (!Context.TryEnterInlineFrame())
+                {
+                    isMovingPushedFrame = false;
+                    return StackFrameState.Ready;
+                }
+
+                try
+                {
+                    state = frame.MoveNext(waker);
+                }
+                finally
+                {
+                    Context.ExitInlineFrame();
+                }
+            }
+            else
+            {
+                state = frame.MoveNext(waker);
+            }
+
+            if (state != StackFrameState.Completed) return state;
+
+            Context.CompleteFrame(frame, this);
+            isMovingPushedFrame = false;
+            return StackFrameState.Completed;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -444,7 +490,7 @@ namespace WaaS.Runtime
         ///     <see cref="programCounter" /> is updated before an instruction which may throw so that it points to the
         ///     failed one.
         /// </summary>
-        private StackFrameState Run()
+        private StackFrameState Run(in Waker waker)
         {
             // the locals are kept few for the register allocation
             var context = Context;
@@ -1429,13 +1475,23 @@ namespace WaaS.Runtime
                         continue;
                     }
 
-                    // functions of the host run in their own frames
+                    // functions of the host run in their own frames, which are moved here without going back to the
+                    // execution context. this frame continues if the callee completes synchronously.
                     sp -= numParameters;
                     stackPointer = sp;
                     isFramePushed = true;
-                    context.PushFrame(callee, new ReadOnlySpan<StackValueItem>(values, sp, numParameters));
+                    var frame = context.PushFrameFromFrame(callee,
+                        new ReadOnlySpan<StackValueItem>(values, sp, numParameters));
                     programCounter = (uint)(pc + 1);
-                    return StackFrameState.Ready;
+
+                    var state = MovePushedFrame(frame, waker);
+                    if (state != StackFrameState.Completed) return state;
+
+                    // the results are pushed by the completed frame
+                    isFramePushed = false;
+                    sp = stackPointer;
+                    pc++;
+                    continue;
                 }
 
                 Return:
