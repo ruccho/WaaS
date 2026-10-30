@@ -595,7 +595,9 @@ internal static class GuestBuilder
             if (Built.TryGetValue(key, out var cached)) return cached;
 
             var crateDir = Path.Combine(GetSourceDirectory(), "Guests", name);
-            var targetDir = Path.Combine(Path.GetTempPath(), "WaaS.Tests", "guest-target");
+            var targetDir = Environment.GetEnvironmentVariable("WAAS_TESTS_GUEST_TARGET_DIR") is { Length: > 0 } dir
+                ? dir
+                : Path.Combine(Path.GetTempPath(), "WaaS.Tests", "guest-target");
 
             if (witOverrides != null)
             {
