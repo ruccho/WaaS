@@ -449,6 +449,11 @@ namespace WaaS.Runtime
             var sp = stackPointer;
             var pc = (int)programCounter;
 
+            // the bounds are not checked on the hot path. the validation ensures that the indices of the locals and
+            // the operand stack are within the buffer, and the program counter stays in the code.
+            ref var v0 = ref values[0];
+            ref var c0 = ref code[0];
+
             // the calls in this frame count as frames of the context
             var maxActivationCount = context.MaxStackFrames is { } maxStackFrames
                 ? (long)maxStackFrames - context.FrameCount
@@ -459,7 +464,7 @@ namespace WaaS.Runtime
                 programCounter = (uint)pc;
                 if (--context.fuel < 0) context.OnFuelExhausted();
 
-                ref var instr = ref code[pc];
+                ref var instr = ref Unsafe.Add(ref c0, pc);
                 IInvocableFunction callee;
                 switch (instr.Op)
                 {
@@ -471,7 +476,7 @@ namespace WaaS.Runtime
                     #region Control
 
                     case Op.If:
-                        if (values[--sp].valueI32 == 0)
+                        if (Unsafe.Add(ref v0, --sp).valueI32 == 0)
                         {
                             pc = instr.A;
                             continue;
@@ -492,7 +497,7 @@ namespace WaaS.Runtime
                         pc = instr.A;
                         continue;
                     case Op.BrIfLoop:
-                        if (values[--sp].valueI32 != 0)
+                        if (Unsafe.Add(ref v0, --sp).valueI32 != 0)
                         {
                             context.CancellationToken.ThrowIfCancellationRequested();
                             sp = MoveBranchValues(values, sp, stackBase + instr.B, instr.C);
@@ -502,7 +507,7 @@ namespace WaaS.Runtime
 
                         break;
                     case Op.BrIf:
-                        if (values[--sp].valueI32 != 0)
+                        if (Unsafe.Add(ref v0, --sp).valueI32 != 0)
                         {
                             sp = MoveBranchValues(values, sp, stackBase + instr.B, instr.C);
                             pc = instr.A;
@@ -511,11 +516,11 @@ namespace WaaS.Runtime
 
                         break;
                     case Op.ReturnIf:
-                        if (values[--sp].valueI32 != 0) goto Return;
+                        if (Unsafe.Add(ref v0, --sp).valueI32 != 0) goto Return;
                         break;
                     case Op.BrTable:
                     {
-                        var i = values[--sp].valueI32;
+                        var i = Unsafe.Add(ref v0, --sp).valueI32;
                         ref var target = ref compiled.BranchTargets[instr.A + (i < (uint)instr.B ? (int)i : instr.B)];
                         if (target.Index < 0) goto Return;
 
@@ -528,7 +533,7 @@ namespace WaaS.Runtime
                         callee = functions[instr.A];
                         goto Call;
                     case Op.CallIndirect:
-                        callee = GetIndirectCallee((uint)instr.A, values[--sp].valueI32);
+                        callee = GetIndirectCallee((uint)instr.A, Unsafe.Add(ref v0, --sp).valueI32);
                         goto Call;
 
                     #endregion
@@ -539,7 +544,7 @@ namespace WaaS.Runtime
                         sp--;
                         break;
                     case Op.Select:
-                        if (values[sp - 1].valueI32 == 0) values[sp - 3] = values[sp - 2];
+                        if (Unsafe.Add(ref v0, sp - 1).valueI32 == 0) Unsafe.Add(ref v0, sp - 3) = Unsafe.Add(ref v0, sp - 2);
                         sp -= 2;
                         break;
 
@@ -548,21 +553,21 @@ namespace WaaS.Runtime
                     #region Variable
 
                     case Op.LocalGet:
-                        values[sp] = values[frameBase + instr.A];
+                        Unsafe.Add(ref v0, sp) = Unsafe.Add(ref v0, frameBase + instr.A);
                         sp++;
                         break;
                     case Op.LocalSet:
-                        values[frameBase + instr.A] = values[--sp];
+                        Unsafe.Add(ref v0, frameBase + instr.A) = Unsafe.Add(ref v0, --sp);
                         break;
                     case Op.LocalTee:
-                        values[frameBase + instr.A] = values[sp - 1];
+                        Unsafe.Add(ref v0, frameBase + instr.A) = Unsafe.Add(ref v0, sp - 1);
                         break;
                     case Op.GlobalGet:
-                        values[sp] = globals[instr.A].stackValue;
+                        Unsafe.Add(ref v0, sp) = globals[instr.A].stackValue;
                         sp++;
                         break;
                     case Op.GlobalSet:
-                        globals[instr.A].stackValue = values[--sp];
+                        globals[instr.A].stackValue = Unsafe.Add(ref v0, --sp);
                         break;
 
                     #endregion
@@ -571,7 +576,7 @@ namespace WaaS.Runtime
 
                     case Op.Const:
                     {
-                        ref var slot = ref values[sp++];
+                        ref var slot = ref Unsafe.Add(ref v0, sp++);
                         slot.valueType = (ValueType)instr.A;
                         slot.valueI64 = instr.Value;
                         break;
@@ -579,164 +584,164 @@ namespace WaaS.Runtime
 
                     case Op.I32Eqz:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueI64 = slot.valueI32 == 0 ? 1UL : 0UL;
                         break;
                     }
                     case Op.I32Eq:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 == values[sp - 1].valueI32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 == Unsafe.Add(ref v0, sp - 1).valueI32 ? 1UL : 0UL;
                         sp--;
                         break;
                     }
                     case Op.I32Ne:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 != values[sp - 1].valueI32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 != Unsafe.Add(ref v0, sp - 1).valueI32 ? 1UL : 0UL;
                         sp--;
                         break;
                     }
                     case Op.I32LtS:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = (int)lhs.valueI32 < (int)values[sp - 1].valueI32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = (int)lhs.valueI32 < (int)Unsafe.Add(ref v0, sp - 1).valueI32 ? 1UL : 0UL;
                         sp--;
                         break;
                     }
                     case Op.I32LtU:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 < values[sp - 1].valueI32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 < Unsafe.Add(ref v0, sp - 1).valueI32 ? 1UL : 0UL;
                         sp--;
                         break;
                     }
                     case Op.I32GtS:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = (int)lhs.valueI32 > (int)values[sp - 1].valueI32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = (int)lhs.valueI32 > (int)Unsafe.Add(ref v0, sp - 1).valueI32 ? 1UL : 0UL;
                         sp--;
                         break;
                     }
                     case Op.I32GtU:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 > values[sp - 1].valueI32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 > Unsafe.Add(ref v0, sp - 1).valueI32 ? 1UL : 0UL;
                         sp--;
                         break;
                     }
                     case Op.I32LeS:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = (int)lhs.valueI32 <= (int)values[sp - 1].valueI32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = (int)lhs.valueI32 <= (int)Unsafe.Add(ref v0, sp - 1).valueI32 ? 1UL : 0UL;
                         sp--;
                         break;
                     }
                     case Op.I32LeU:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 <= values[sp - 1].valueI32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 <= Unsafe.Add(ref v0, sp - 1).valueI32 ? 1UL : 0UL;
                         sp--;
                         break;
                     }
                     case Op.I32GeS:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = (int)lhs.valueI32 >= (int)values[sp - 1].valueI32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = (int)lhs.valueI32 >= (int)Unsafe.Add(ref v0, sp - 1).valueI32 ? 1UL : 0UL;
                         sp--;
                         break;
                     }
                     case Op.I32GeU:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 >= values[sp - 1].valueI32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 >= Unsafe.Add(ref v0, sp - 1).valueI32 ? 1UL : 0UL;
                         sp--;
                         break;
                     }
 
                     case Op.I64Eqz:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueI64 = slot.valueI64 == 0 ? 1UL : 0UL;
                         slot.valueType = ValueType.I32;
                         break;
                     }
                     case Op.I64Eq:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI64 == values[sp - 1].valueI64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI64 == Unsafe.Add(ref v0, sp - 1).valueI64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.I64Ne:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI64 != values[sp - 1].valueI64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI64 != Unsafe.Add(ref v0, sp - 1).valueI64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.I64LtS:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = (long)lhs.valueI64 < (long)values[sp - 1].valueI64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = (long)lhs.valueI64 < (long)Unsafe.Add(ref v0, sp - 1).valueI64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.I64LtU:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI64 < values[sp - 1].valueI64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI64 < Unsafe.Add(ref v0, sp - 1).valueI64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.I64GtS:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = (long)lhs.valueI64 > (long)values[sp - 1].valueI64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = (long)lhs.valueI64 > (long)Unsafe.Add(ref v0, sp - 1).valueI64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.I64GtU:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI64 > values[sp - 1].valueI64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI64 > Unsafe.Add(ref v0, sp - 1).valueI64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.I64LeS:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = (long)lhs.valueI64 <= (long)values[sp - 1].valueI64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = (long)lhs.valueI64 <= (long)Unsafe.Add(ref v0, sp - 1).valueI64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.I64LeU:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI64 <= values[sp - 1].valueI64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI64 <= Unsafe.Add(ref v0, sp - 1).valueI64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.I64GeS:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = (long)lhs.valueI64 >= (long)values[sp - 1].valueI64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = (long)lhs.valueI64 >= (long)Unsafe.Add(ref v0, sp - 1).valueI64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.I64GeU:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI64 >= values[sp - 1].valueI64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI64 >= Unsafe.Add(ref v0, sp - 1).valueI64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
@@ -744,82 +749,82 @@ namespace WaaS.Runtime
 
                     case Op.I32Add:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 + values[sp - 1].valueI32;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 + Unsafe.Add(ref v0, sp - 1).valueI32;
                         sp--;
                         break;
                     }
                     case Op.I32Sub:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 - values[sp - 1].valueI32;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 - Unsafe.Add(ref v0, sp - 1).valueI32;
                         sp--;
                         break;
                     }
                     case Op.I32Mul:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 * values[sp - 1].valueI32;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 * Unsafe.Add(ref v0, sp - 1).valueI32;
                         sp--;
                         break;
                     }
                     case Op.I32And:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 & values[sp - 1].valueI32;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 & Unsafe.Add(ref v0, sp - 1).valueI32;
                         sp--;
                         break;
                     }
                     case Op.I32Or:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 | values[sp - 1].valueI32;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 | Unsafe.Add(ref v0, sp - 1).valueI32;
                         sp--;
                         break;
                     }
                     case Op.I32Xor:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 ^ values[sp - 1].valueI32;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 ^ Unsafe.Add(ref v0, sp - 1).valueI32;
                         sp--;
                         break;
                     }
                     case Op.I32Shl:
                     {
                         // the shift count is masked to 5 bits as specified
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 << (int)values[sp - 1].valueI32;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 << (int)Unsafe.Add(ref v0, sp - 1).valueI32;
                         sp--;
                         break;
                     }
                     case Op.I32ShrS:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = (uint)((int)lhs.valueI32 >> (int)values[sp - 1].valueI32);
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = (uint)((int)lhs.valueI32 >> (int)Unsafe.Add(ref v0, sp - 1).valueI32);
                         sp--;
                         break;
                     }
                     case Op.I32ShrU:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueI32 >> (int)values[sp - 1].valueI32;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueI32 >> (int)Unsafe.Add(ref v0, sp - 1).valueI32;
                         sp--;
                         break;
                     }
                     case Op.I32Rotl:
                     {
-                        ref var lhs = ref values[sp - 2];
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
                         var value = lhs.valueI32;
-                        var k = (int)values[sp - 1].valueI32;
+                        var k = (int)Unsafe.Add(ref v0, sp - 1).valueI32;
                         lhs.valueI64 = (value << k) | (value >> (32 - k));
                         sp--;
                         break;
                     }
                     case Op.I32Rotr:
                     {
-                        ref var lhs = ref values[sp - 2];
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
                         var value = lhs.valueI32;
-                        var k = (int)values[sp - 1].valueI32;
+                        var k = (int)Unsafe.Add(ref v0, sp - 1).valueI32;
                         lhs.valueI64 = (value >> k) | (value << (32 - k));
                         sp--;
                         break;
@@ -827,82 +832,82 @@ namespace WaaS.Runtime
 
                     case Op.I64Add:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 += values[sp - 1].valueI64;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 += Unsafe.Add(ref v0, sp - 1).valueI64;
                         sp--;
                         break;
                     }
                     case Op.I64Sub:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 -= values[sp - 1].valueI64;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 -= Unsafe.Add(ref v0, sp - 1).valueI64;
                         sp--;
                         break;
                     }
                     case Op.I64Mul:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 *= values[sp - 1].valueI64;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 *= Unsafe.Add(ref v0, sp - 1).valueI64;
                         sp--;
                         break;
                     }
                     case Op.I64And:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 &= values[sp - 1].valueI64;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 &= Unsafe.Add(ref v0, sp - 1).valueI64;
                         sp--;
                         break;
                     }
                     case Op.I64Or:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 |= values[sp - 1].valueI64;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 |= Unsafe.Add(ref v0, sp - 1).valueI64;
                         sp--;
                         break;
                     }
                     case Op.I64Xor:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 ^= values[sp - 1].valueI64;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 ^= Unsafe.Add(ref v0, sp - 1).valueI64;
                         sp--;
                         break;
                     }
                     case Op.I64Shl:
                     {
                         // the shift count is masked to 6 bits as specified
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 <<= (int)values[sp - 1].valueI64;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 <<= (int)Unsafe.Add(ref v0, sp - 1).valueI64;
                         sp--;
                         break;
                     }
                     case Op.I64ShrS:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = (ulong)((long)lhs.valueI64 >> (int)values[sp - 1].valueI64);
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = (ulong)((long)lhs.valueI64 >> (int)Unsafe.Add(ref v0, sp - 1).valueI64);
                         sp--;
                         break;
                     }
                     case Op.I64ShrU:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 >>= (int)values[sp - 1].valueI64;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 >>= (int)Unsafe.Add(ref v0, sp - 1).valueI64;
                         sp--;
                         break;
                     }
                     case Op.I64Rotl:
                     {
-                        ref var lhs = ref values[sp - 2];
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
                         var value = lhs.valueI64;
-                        var k = (int)values[sp - 1].valueI64;
+                        var k = (int)Unsafe.Add(ref v0, sp - 1).valueI64;
                         lhs.valueI64 = (value << k) | (value >> (64 - k));
                         sp--;
                         break;
                     }
                     case Op.I64Rotr:
                     {
-                        ref var lhs = ref values[sp - 2];
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
                         var value = lhs.valueI64;
-                        var k = (int)values[sp - 1].valueI64;
+                        var k = (int)Unsafe.Add(ref v0, sp - 1).valueI64;
                         lhs.valueI64 = (value >> k) | (value << (64 - k));
                         sp--;
                         break;
@@ -910,21 +915,21 @@ namespace WaaS.Runtime
 
                     case Op.I32WrapI64:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueI64 = slot.valueI32;
                         slot.valueType = ValueType.I32;
                         break;
                     }
                     case Op.I64ExtendI32S:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueI64 = (ulong)(int)slot.valueI32;
                         slot.valueType = ValueType.I64;
                         break;
                     }
                     case Op.I64ExtendI32U:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueI64 = slot.valueI32;
                         slot.valueType = ValueType.I64;
                         break;
@@ -933,229 +938,229 @@ namespace WaaS.Runtime
 
                     case Op.F32Eq:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueF32 == values[sp - 1].valueF32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueF32 == Unsafe.Add(ref v0, sp - 1).valueF32 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.F32Ne:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueF32 != values[sp - 1].valueF32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueF32 != Unsafe.Add(ref v0, sp - 1).valueF32 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.F32Lt:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueF32 < values[sp - 1].valueF32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueF32 < Unsafe.Add(ref v0, sp - 1).valueF32 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.F32Gt:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueF32 > values[sp - 1].valueF32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueF32 > Unsafe.Add(ref v0, sp - 1).valueF32 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.F32Le:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueF32 <= values[sp - 1].valueF32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueF32 <= Unsafe.Add(ref v0, sp - 1).valueF32 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.F32Ge:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueF32 >= values[sp - 1].valueF32 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueF32 >= Unsafe.Add(ref v0, sp - 1).valueF32 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.F64Eq:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueF64 == values[sp - 1].valueF64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueF64 == Unsafe.Add(ref v0, sp - 1).valueF64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.F64Ne:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueF64 != values[sp - 1].valueF64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueF64 != Unsafe.Add(ref v0, sp - 1).valueF64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.F64Lt:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueF64 < values[sp - 1].valueF64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueF64 < Unsafe.Add(ref v0, sp - 1).valueF64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.F64Gt:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueF64 > values[sp - 1].valueF64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueF64 > Unsafe.Add(ref v0, sp - 1).valueF64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.F64Le:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueF64 <= values[sp - 1].valueF64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueF64 <= Unsafe.Add(ref v0, sp - 1).valueF64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.F64Ge:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueI64 = lhs.valueF64 >= values[sp - 1].valueF64 ? 1UL : 0UL;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueI64 = lhs.valueF64 >= Unsafe.Add(ref v0, sp - 1).valueF64 ? 1UL : 0UL;
                         lhs.valueType = ValueType.I32;
                         sp--;
                         break;
                     }
                     case Op.F32Add:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueF32 = lhs.valueF32 + values[sp - 1].valueF32;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueF32 = lhs.valueF32 + Unsafe.Add(ref v0, sp - 1).valueF32;
                         sp--;
                         break;
                     }
                     case Op.F32Sub:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueF32 = lhs.valueF32 - values[sp - 1].valueF32;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueF32 = lhs.valueF32 - Unsafe.Add(ref v0, sp - 1).valueF32;
                         sp--;
                         break;
                     }
                     case Op.F32Mul:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueF32 = lhs.valueF32 * values[sp - 1].valueF32;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueF32 = lhs.valueF32 * Unsafe.Add(ref v0, sp - 1).valueF32;
                         sp--;
                         break;
                     }
                     case Op.F32Div:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueF32 = lhs.valueF32 / values[sp - 1].valueF32;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueF32 = lhs.valueF32 / Unsafe.Add(ref v0, sp - 1).valueF32;
                         sp--;
                         break;
                     }
                     case Op.F64Add:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueF64 = lhs.valueF64 + values[sp - 1].valueF64;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueF64 = lhs.valueF64 + Unsafe.Add(ref v0, sp - 1).valueF64;
                         sp--;
                         break;
                     }
                     case Op.F64Sub:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueF64 = lhs.valueF64 - values[sp - 1].valueF64;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueF64 = lhs.valueF64 - Unsafe.Add(ref v0, sp - 1).valueF64;
                         sp--;
                         break;
                     }
                     case Op.F64Mul:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueF64 = lhs.valueF64 * values[sp - 1].valueF64;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueF64 = lhs.valueF64 * Unsafe.Add(ref v0, sp - 1).valueF64;
                         sp--;
                         break;
                     }
                     case Op.F64Div:
                     {
-                        ref var lhs = ref values[sp - 2];
-                        lhs.valueF64 = lhs.valueF64 / values[sp - 1].valueF64;
+                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
+                        lhs.valueF64 = lhs.valueF64 / Unsafe.Add(ref v0, sp - 1).valueF64;
                         sp--;
                         break;
                     }
                     case Op.F32ConvertI32S:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueF32 = (int)slot.valueI32;
                         slot.valueType = ValueType.F32;
                         break;
                     }
                     case Op.F32ConvertI32U:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueF32 = slot.valueI32;
                         slot.valueType = ValueType.F32;
                         break;
                     }
                     case Op.F32ConvertI64S:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueF32 = (long)slot.valueI64;
                         slot.valueType = ValueType.F32;
                         break;
                     }
                     case Op.F32ConvertI64U:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueF32 = slot.valueI64;
                         slot.valueType = ValueType.F32;
                         break;
                     }
                     case Op.F64ConvertI32S:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueF64 = (int)slot.valueI32;
                         slot.valueType = ValueType.F64;
                         break;
                     }
                     case Op.F64ConvertI32U:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueF64 = slot.valueI32;
                         slot.valueType = ValueType.F64;
                         break;
                     }
                     case Op.F64ConvertI64S:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueF64 = (long)slot.valueI64;
                         slot.valueType = ValueType.F64;
                         break;
                     }
                     case Op.F64ConvertI64U:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueF64 = slot.valueI64;
                         slot.valueType = ValueType.F64;
                         break;
                     }
                     case Op.F32DemoteF64:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueF32 = (float)slot.valueF64;
                         slot.valueType = ValueType.F32;
                         break;
                     }
                     case Op.F64PromoteF32:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         slot.valueF64 = (double)slot.valueF32;
                         slot.valueType = ValueType.F64;
                         break;
                     }
                     case Op.Reinterpret:
                         // the bits are kept as they are
-                        values[sp - 1].valueType = (ValueType)instr.A;
+                        Unsafe.Add(ref v0, sp - 1).valueType = (ValueType)instr.A;
                         break;
 
                     #endregion
@@ -1164,7 +1169,7 @@ namespace WaaS.Runtime
 
                     case Op.Load32:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 4 > (ulong)memory.Length) ThrowOutOfBounds();
@@ -1174,7 +1179,7 @@ namespace WaaS.Runtime
                     }
                     case Op.Load64:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 8 > (ulong)memory.Length) ThrowOutOfBounds();
@@ -1184,7 +1189,7 @@ namespace WaaS.Runtime
                     }
                     case Op.I32Load8S:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds();
@@ -1193,7 +1198,7 @@ namespace WaaS.Runtime
                     }
                     case Op.I32Load8U:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds();
@@ -1202,7 +1207,7 @@ namespace WaaS.Runtime
                     }
                     case Op.I32Load16S:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds();
@@ -1211,7 +1216,7 @@ namespace WaaS.Runtime
                     }
                     case Op.I32Load16U:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds();
@@ -1220,7 +1225,7 @@ namespace WaaS.Runtime
                     }
                     case Op.I64Load8S:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds();
@@ -1230,7 +1235,7 @@ namespace WaaS.Runtime
                     }
                     case Op.I64Load8U:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds();
@@ -1240,7 +1245,7 @@ namespace WaaS.Runtime
                     }
                     case Op.I64Load16S:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds();
@@ -1250,7 +1255,7 @@ namespace WaaS.Runtime
                     }
                     case Op.I64Load16U:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds();
@@ -1260,7 +1265,7 @@ namespace WaaS.Runtime
                     }
                     case Op.I64Load32S:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 4 > (ulong)memory.Length) ThrowOutOfBounds();
@@ -1270,7 +1275,7 @@ namespace WaaS.Runtime
                     }
                     case Op.I64Load32U:
                     {
-                        ref var slot = ref values[sp - 1];
+                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
                         var address = (ulong)slot.valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 4 > (ulong)memory.Length) ThrowOutOfBounds();
@@ -1280,37 +1285,37 @@ namespace WaaS.Runtime
                     }
                     case Op.Store8:
                     {
-                        var address = (ulong)values[sp - 2].valueI32 + (uint)instr.A;
+                        var address = (ulong)Unsafe.Add(ref v0, sp - 2).valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 1 > (ulong)memory.Length) ThrowOutOfBounds();
-                        memory.Buffer[(int)address] = (byte)values[sp - 1].valueI32;
+                        memory.Buffer[(int)address] = (byte)Unsafe.Add(ref v0, sp - 1).valueI32;
                         sp -= 2;
                         break;
                     }
                     case Op.Store16:
                     {
-                        var address = (ulong)values[sp - 2].valueI32 + (uint)instr.A;
+                        var address = (ulong)Unsafe.Add(ref v0, sp - 2).valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 2 > (ulong)memory.Length) ThrowOutOfBounds();
-                        Unsafe.WriteUnaligned(ref memory.Buffer[(int)address], (ushort)values[sp - 1].valueI32);
+                        Unsafe.WriteUnaligned(ref memory.Buffer[(int)address], (ushort)Unsafe.Add(ref v0, sp - 1).valueI32);
                         sp -= 2;
                         break;
                     }
                     case Op.Store32:
                     {
-                        var address = (ulong)values[sp - 2].valueI32 + (uint)instr.A;
+                        var address = (ulong)Unsafe.Add(ref v0, sp - 2).valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 4 > (ulong)memory.Length) ThrowOutOfBounds();
-                        Unsafe.WriteUnaligned(ref memory.Buffer[(int)address], values[sp - 1].valueI32);
+                        Unsafe.WriteUnaligned(ref memory.Buffer[(int)address], Unsafe.Add(ref v0, sp - 1).valueI32);
                         sp -= 2;
                         break;
                     }
                     case Op.Store64:
                     {
-                        var address = (ulong)values[sp - 2].valueI32 + (uint)instr.A;
+                        var address = (ulong)Unsafe.Add(ref v0, sp - 2).valueI32 + (uint)instr.A;
                         var memory = this.memory;
                         if (address + 8 > (ulong)memory.Length) ThrowOutOfBounds();
-                        Unsafe.WriteUnaligned(ref memory.Buffer[(int)address], values[sp - 1].valueI64);
+                        Unsafe.WriteUnaligned(ref memory.Buffer[(int)address], Unsafe.Add(ref v0, sp - 1).valueI64);
                         sp -= 2;
                         break;
                     }
@@ -1349,7 +1354,9 @@ namespace WaaS.Runtime
                         context.CancellationToken.ThrowIfCancellationRequested();
                         EnterFunction(wasmCallee, pc + 1, sp - numParameters);
                         code = compiled.Code;
+                        c0 = ref code[0];
                         values = this.values;
+                        v0 = ref values[0];
                         frameBase = this.frameBase;
                         stackBase = this.stackBase;
                         sp = stackBase;
@@ -1376,6 +1383,7 @@ namespace WaaS.Runtime
 
                 sp = ReturnToCaller(sp, out pc);
                 code = compiled.Code;
+                c0 = ref code[0];
                 frameBase = this.frameBase;
                 stackBase = this.stackBase;
             }
