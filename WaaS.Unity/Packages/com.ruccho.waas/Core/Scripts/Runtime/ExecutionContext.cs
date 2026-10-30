@@ -432,7 +432,8 @@ namespace WaaS.Runtime
 
         private StackFrame PushFrameWhileMoving(IInvocableFunction function, ReadOnlySpan<StackValueItem> inputValues)
         {
-            if (frames.Count >= maxStackFrames) throw new InvalidOperationException("Stack overflow.");
+            // the exhaustion of the call stack is a trap, as the exhaustion of the stack of the host would be
+            if (frames.Count >= maxStackFrames) throw new TrapException("Stack overflow.");
 
             var frame = function.CreateFrame(this, inputValues);
             frames.Push(frame);
