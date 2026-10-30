@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using WaaS.Models;
@@ -9,7 +9,7 @@ namespace WaaS.Runtime
     ///     Operations executed by the interpreter loop of <see cref="WasmStackFrame" />.
     ///     Instructions without a dedicated operation are executed with <see cref="Instruction.Execute" />.
     /// </summary>
-    internal enum Op : ushort
+    internal enum Op : byte
     {
         Fallback,
         Nop,
@@ -161,8 +161,12 @@ namespace WaaS.Runtime
     {
         [FieldOffset(0)] public Op Op;
 
-        // the number of the instructions executed at once, which is also the fuel consumed
-        [FieldOffset(2)] public ushort Length;
+        // the number of the instructions executed at once
+        [FieldOffset(1)] public byte Length;
+
+        // the fuel consumed when the instruction is executed. the fuel of a basic block is consumed at once by its
+        // first instruction, and the other instructions of the block have zero.
+        [FieldOffset(2)] public ushort Cost;
 
         [FieldOffset(4)] public int A;
         [FieldOffset(8)] public int B;
@@ -209,8 +213,8 @@ namespace WaaS.Runtime
         public CompiledInstruction[] Code { get; }
 
         /// <summary>
-        ///     The instructions without superinstructions, each of which executes only the instruction at the index.
-        ///     Used when the remaining fuel is not enough to execute a superinstruction.
+        ///     The instructions without superinstructions, each of which executes only the instruction at the index and
+        ///     consumes the fuel by itself. Used when the remaining fuel is not enough to execute a basic block.
         /// </summary>
         public CompiledInstruction[] BaseCode { get; }
         public BranchTarget[] BranchTargets { get; }
@@ -417,14 +421,19 @@ namespace WaaS.Runtime
                     }
 
                     compiled.Length = 1;
+                    compiled.Cost = 1;
                     if (maxHeight < height) maxHeight = height;
                 }
 
                 // the stack depth from the validation also counts the labels and is not smaller
                 var maxStackDepth = Math.Max(maxHeight, (int)(function.MaxStackDepth ?? 0));
 
-                return new CompiledFunction(Fuse(code), code, branchTargets.ToArray(), initialLocals,
-                    parameterTypes.Length, function.Type.ResultTypes.Length, maxStackDepth);
+                var branchTargetArray = branchTargets.ToArray();
+                var fused = Fuse(code);
+                AssignBlockCosts(fused, FindBlockStarts(code, branchTargetArray));
+
+                return new CompiledFunction(fused, code, branchTargetArray, initialLocals, parameterTypes.Length,
+                    function.Type.ResultTypes.Length, maxStackDepth);
             }
         }
 
@@ -433,6 +442,86 @@ namespace WaaS.Runtime
         {
             return op == Op.Nop || (op >= Op.Drop && op <= Op.Reinterpret) ||
                    (op >= Op.LocalGet2 && op <= Op.LocalSetGet);
+        }
+
+        // whether the operation may continue at an instruction other than the next one. the operations executed with
+        // Instruction.Execute may push a frame and continue at the next instruction after the frame completes.
+        private static bool IsBlockEnd(Op op)
+        {
+            return op == Op.Fallback || (op >= Op.Return && op <= Op.CallIndirect) || op == Op.BrIfZero ||
+                   op == Op.BrIfZeroLoop;
+        }
+
+        /// <summary>
+        ///     Finds the instructions where the execution may start other than by falling through: the start of the
+        ///     function, the targets of branches and the instructions following the ones which may continue elsewhere.
+        /// </summary>
+        private static bool[] FindBlockStarts(CompiledInstruction[] baseCode, BranchTarget[] branchTargets)
+        {
+            var starts = new bool[baseCode.Length + 1];
+            starts[0] = true;
+            for (var i = 0; i < baseCode.Length; i++)
+            {
+                ref var instr = ref baseCode[i];
+                switch (instr.Op)
+                {
+                    case Op.If or Op.Jump or Op.Br or Op.BrLoop or Op.BrIf or Op.BrIfLoop:
+                        starts[instr.A] = true;
+                        break;
+                }
+
+                if (IsBlockEnd(instr.Op)) starts[i + 1] = true;
+            }
+
+            foreach (var target in branchTargets)
+                if (target.Index >= 0)
+                    starts[target.Index] = true;
+
+            return starts;
+        }
+
+        /// <summary>
+        ///     Makes the first instruction of each basic block consume the fuel of the whole block. A block continues
+        ///     while the instructions fall through to the next one which is not the start of another block. The
+        ///     instructions in the block may still throw, in which case the fuel of the rest of the block is consumed
+        ///     as well.
+        /// </summary>
+        private static void AssignBlockCosts(CompiledInstruction[] code, bool[] starts)
+        {
+            // a block with more instructions than the cost can represent is split, which may change the other blocks
+            bool changed;
+            do
+            {
+                changed = false;
+                for (var i = 0; i < code.Length; i++) code[i].Cost = 0;
+
+                for (var i = 0; i < code.Length; i++)
+                {
+                    if (!starts[i]) continue;
+
+                    var cost = 0;
+                    var p = i;
+                    while (true)
+                    {
+                        cost += code[p].Length;
+                        if (IsBlockEnd(code[p].Op)) break;
+
+                        var next = p + code[p].Length;
+                        if (next >= code.Length || starts[next]) break;
+
+                        if (cost + code[next].Length > ushort.MaxValue)
+                        {
+                            starts[next] = true;
+                            changed = true;
+                            break;
+                        }
+
+                        p = next;
+                    }
+
+                    code[i].Cost = (ushort)cost;
+                }
+            } while (changed);
         }
 
         private static bool IsI32Const(in CompiledInstruction instr)
@@ -479,7 +568,7 @@ namespace WaaS.Runtime
 
                 // the following blocks, loops and ends do nothing
                 var next = i + fused.Length;
-                while (next < baseCode.Length && baseCode[next].Op == Op.Nop && fused.Length < ushort.MaxValue)
+                while (next < baseCode.Length && baseCode[next].Op == Op.Nop && fused.Length < byte.MaxValue)
                 {
                     fused.Length++;
                     next++;

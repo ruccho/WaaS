@@ -506,14 +506,16 @@ namespace WaaS.Runtime
             while (true)
             {
                 ref var instr = ref Unsafe.Add(ref c0, pc);
-                var length = instr.Length;
-                if ((context.fuel -= length) < 0)
+
+                // the fuel is consumed only at the start of each basic block
+                int cost = instr.Cost;
+                if (cost != 0 && (context.fuel -= cost) < 0)
                 {
-                    if (length > 1)
+                    if (cost > 1)
                     {
-                        // the fuel is not enough for all the instructions of a superinstruction.
-                        // continue without superinstructions until the function changes.
-                        context.fuel += length;
+                        // the fuel is not enough for all the instructions of the block.
+                        // continue instruction by instruction until the function changes.
+                        context.fuel += cost;
                         c0 = ref compiled.BaseCode[0];
                         continue;
                     }
@@ -1450,7 +1452,7 @@ namespace WaaS.Runtime
                     }
                 }
 
-                pc += length;
+                pc += instr.Length;
                 continue;
 
                 Call:
