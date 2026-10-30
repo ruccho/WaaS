@@ -1,15 +1,19 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEngine;
 using WaaS.ComponentModel.Binding;
 using WaaS.Unity;
 using Wukuro.Dialog;
 using CoreTypes = Wukuro.Core.ITypes;
 using DialogTypes = Wukuro.Dialog.ITypes;
+using Object = UnityEngine.Object;
 
 namespace Wukuro.Tests
 {
@@ -41,6 +45,7 @@ namespace Wukuro.Tests
                 $"{ScriptPath} is not imported as a component: {AssetDatabase.GetMainAssetTypeAtPath(ScriptPath)}, " +
                 $"{string.Join(", ", AssetDatabase.LoadAllAssetsAtPath(ScriptPath).Select(a => a.GetType().Name))}");
             DialogImports.Register();
+            WukuroTestRecords.Register();
         }
 
         private WukuroEntryReference Entry(string name)
@@ -175,6 +180,110 @@ namespace Wukuro.Tests
                 "close"
             }));
             Assert.That(variables.Values["chosen"].TyS32, Is.EqualTo(1));
+        }
+
+        private static ITestRecordTypes.DoorSettings CreateSettings(Transform target)
+        {
+            return new ITestRecordTypes.DoorSettings
+            {
+                Count = 3,
+                Label = "gate",
+                Kind = ITestRecordTypes.DoorKind.Iron,
+                Locked = true,
+                Target = target,
+                Limits = new ITestRecordTypes.Limits { Min = 0.5f, Max = 2f }
+            };
+        }
+
+        private static void AssertReceived(Transform target)
+        {
+            Assert.That(WukuroTestRecords.Received, Is.Not.Null);
+            var (settings, kind) = WukuroTestRecords.Received.Value;
+            Assert.That(settings.Count, Is.EqualTo(3));
+            Assert.That(settings.Label, Is.EqualTo("gate"));
+            Assert.That(settings.Kind, Is.EqualTo(ITestRecordTypes.DoorKind.Iron));
+            Assert.That(settings.Locked, Is.True);
+            Assert.That(settings.Target.Value, Is.SameAs(target));
+            Assert.That(settings.Limits.Min, Is.EqualTo(0.5f));
+            Assert.That(settings.Limits.Max, Is.EqualTo(2f));
+            Assert.That(kind, Is.EqualTo(ITestRecordTypes.DoorKind.Wooden));
+        }
+
+        [Test]
+        public void RecordParametersAreReadFromWit()
+        {
+            var parameters = WukuroEntryPoints.Parse(script.Wit).Single(e => e.Name == "forward-settings").Parameters
+                .Where(p => p.IsArgument)
+                .ToArray();
+            Assert.That(parameters.Select(p => $"{p.Name}: {p.WitType} ({p.TypeInterface})"), Is.EqualTo(new[]
+            {
+                "settings: door-settings (wukuro-tests:records/types)",
+                "kind: door-kind (wukuro-tests:records/types)"
+            }));
+
+            // the inspector creates the containers of the C# types
+            var settings = ArgumentContainerBase.Create(parameters[0]);
+            Assert.That(settings, Is.InstanceOf<ArgumentContainer<ITestRecordTypes.DoorSettings>>());
+            Assert.That(settings.WitType, Is.EqualTo("door-settings"));
+            Assert.That(ArgumentContainerBase.Create(parameters[1]),
+                Is.InstanceOf<ArgumentContainer<ITestRecordTypes.DoorKind>>());
+        }
+
+        [Test]
+        public async Task RecordsArePassedToHostFunctions()
+        {
+            var target = new GameObject("target").transform;
+            try
+            {
+                WukuroTestRecords.Received = null;
+                var arguments = new WukuroRuntimeArguments()
+                    .AddValue("settings", CreateSettings(target))
+                    .AddValue("kind", ITestRecordTypes.DoorKind.Wooden);
+
+                await RunAsync(new WukuroRunner(), Entry("forward-settings"), new MemoryVariables(), arguments);
+
+                AssertReceived(target);
+            }
+            finally
+            {
+                Object.DestroyImmediate(target.gameObject);
+            }
+        }
+
+        [Test]
+        public async Task SerializedRecordsArePassedToHostFunctions()
+        {
+            var target = new GameObject("target").transform;
+            try
+            {
+                WukuroTestRecords.Received = null;
+                // the arguments as set in the inspector
+                var entry = Entry("forward-settings");
+                var arguments = typeof(WukuroEntryReference)
+                    .GetField("_arguments", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(entry);
+                arguments.GetType().GetField("_arguments", BindingFlags.NonPublic | BindingFlags.Instance)!
+                    .SetValue(arguments, new ArgumentContainerBase[]
+                    {
+                        new ArgumentContainer<ITestRecordTypes.DoorSettings>("settings", CreateSettings(target)),
+                        new ArgumentContainer<ITestRecordTypes.DoorKind>("kind", ITestRecordTypes.DoorKind.Wooden)
+                    });
+
+                await RunAsync(new WukuroRunner(), entry, new MemoryVariables());
+
+                AssertReceived(target);
+            }
+            finally
+            {
+                Object.DestroyImmediate(target.gameObject);
+            }
+        }
+
+        [Test]
+        public void RustMacrosOfRecordsAreUpToDate()
+        {
+            Assert.That(File.ReadAllText(WukuroTestRecords.RustPath).Replace("\r\n", "\n"),
+                Is.EqualTo(WukuroTestRecords.GenerateRust()),
+                "Run Wukuro.Tests.WukuroTestRecords.Export to regenerate the files.");
         }
 
         private class RecordingDialogModule : IDialogModule

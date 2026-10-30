@@ -13,11 +13,18 @@ ScriptedImporter:
     - name: ruccho/wukuro
       version: 
       localPath: ../Wukuro/moonbit/wukuro
+    - name: ruccho/wukuro-tests
+      version: 
+      localPath: WukuroTestRecords
     imports:
     - path: ruccho/wukuro
       alias: wukuro
     - path: ruccho/wukuro/dialog
       alias: dialog
+    - path: ruccho/wukuro-tests/bindings/wukuro_tests_records_types
+      alias: records
+    - path: ruccho/wukuro-tests/bindings/wukuro_tests_records_functions
+      alias: record_functions
     componentize: 1
     witDirectories: []
     generators:

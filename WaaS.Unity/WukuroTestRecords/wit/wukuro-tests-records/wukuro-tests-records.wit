@@ -1,0 +1,30 @@
+package wukuro-tests:records;
+
+interface functions {
+    use types.{door-kind, door-settings};
+
+    receive-settings: func(settings: door-settings, kind: door-kind);
+}
+
+interface types {
+    use wukuro:core/types.{object};
+
+    record door-settings {
+        count: s32,
+        label: string,
+        kind: door-kind,
+        locked: bool,
+        target: object,
+        limits: limits,
+    }
+
+    record limits {
+        min: f32,
+        max: f32,
+    }
+
+    enum door-kind {
+        wooden,
+        iron,
+    }
+}
