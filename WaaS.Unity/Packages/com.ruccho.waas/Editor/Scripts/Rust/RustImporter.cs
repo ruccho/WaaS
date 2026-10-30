@@ -14,7 +14,8 @@ using UnityEngine;
 
 namespace WaaS.Unity.Editor.Rust
 {
-    [ScriptedImporter(4, "rs", 100)]
+    // 5: the files outside the asset database are recorded for ExternalFileWatcher
+    [ScriptedImporter(5, "rs", 100)]
     public class RustImporter : ScriptedImporter
     {
         private const string CratesPath = "Library/com.ruccho.waas/rust/crates";
@@ -27,6 +28,7 @@ namespace WaaS.Unity.Editor.Rust
         {
             var assetPath = ctx.assetPath;
             var hash = Hash128.Compute(assetPath);
+            ExternalFileDependency.BeginImport(ctx);
             var cratePath = GetCratePath(assetPath);
 
             if (!crateRoot)
@@ -215,17 +217,49 @@ namespace WaaS.Unity.Editor.Rust
                 EditorUtility.ClearProgressBar();
             }
 
-            if (process.ExitCode != 0)
-            {
-                ctx.LogImportError($"Error importing {assetPath}: \n{standardError}\n\nstdout:\n{standardOutput}");
-                return;
-            }
-
             // TODO: get artifact path from stdout
 
             var outPath = $"Library/com.ruccho.waas/rust/target/wasm32-unknown-unknown/release/waas_{hash}.wasm";
             var depInfoPath = $"Library/com.ruccho.waas/rust/target/wasm32-unknown-unknown/release/waas_{hash}.d";
 
+            if (process.ExitCode != 0)
+            {
+                // the files of the last successful build are tracked, so that the script is reimported when they change,
+                // for example when the WIT used by the script is exported after the script is imported
+                if (File.Exists(depInfoPath)) TrackDependencies(ctx, depInfoPath, outPath, assetPath);
+                ctx.LogImportError($"Error importing {assetPath}: \n{standardError}\n\nstdout:\n{standardOutput}");
+                return;
+            }
+
+            TrackDependencies(ctx, depInfoPath, outPath, assetPath);
+
+            var moduleBytes = File.ReadAllBytes(outPath);
+
+            if (settings.ComponentizationSettings is { } componentizationSettings)
+            {
+                var componentBytes = NativeMethods.Componentize(moduleBytes, componentizationSettings.WitDirectory,
+                    componentizationSettings.World ?? "", StringEncoding.UTF8);
+                var component = ScriptableObject.CreateInstance<ComponentAsset>();
+                component.SetData(componentBytes);
+                component.SetWit(ComponentWitDecoder.Decode(ctx, componentBytes));
+                ctx.AddObjectToAsset("component", component);
+                ctx.SetMainObject(component);
+            }
+            else
+            {
+                var module = ScriptableObject.CreateInstance<ModuleAsset>();
+                module.SetData(moduleBytes);
+                ctx.AddObjectToAsset("module", module);
+                ctx.SetMainObject(module);
+            }
+        }
+
+        /// <summary>
+        ///     Declares the files listed in the dep-info file of cargo as the dependencies of the script.
+        /// </summary>
+        private static void TrackDependencies(AssetImportContext ctx, string depInfoPath, string outPath,
+            string assetPath)
+        {
             var depInfo = File.ReadAllText(depInfoPath);
 
             static ReadOnlySpan<char> ReadSegment(ref ReadOnlySpan<char> content)
@@ -269,32 +303,10 @@ namespace WaaS.Unity.Editor.Rust
                 }
                 else if (found && segment != assetPath)
                 {
-                    // files outside the asset database (e.g. WIT files) are tracked as custom dependencies
-                    if (ExternalFileDependency.ToAssetPath(segment) is { } dependencyAssetPath)
-                        ctx.DependsOnSourceAsset(dependencyAssetPath);
-                    else
-                        ctx.DependsOnCustomDependency(ExternalFileDependency.GetDependencyName(segment));
+                    // files outside the asset database (e.g. WIT files and the sources of path dependencies) are
+                    // tracked as custom dependencies
+                    ExternalFileDependency.Track(ctx, segment);
                 }
-            }
-
-            var moduleBytes = File.ReadAllBytes(outPath);
-
-            if (settings.ComponentizationSettings is { } componentizationSettings)
-            {
-                var componentBytes = NativeMethods.Componentize(moduleBytes, componentizationSettings.WitDirectory,
-                    componentizationSettings.World ?? "", StringEncoding.UTF8);
-                var component = ScriptableObject.CreateInstance<ComponentAsset>();
-                component.SetData(componentBytes);
-                component.SetWit(ComponentWitDecoder.Decode(ctx, componentBytes));
-                ctx.AddObjectToAsset("component", component);
-                ctx.SetMainObject(component);
-            }
-            else
-            {
-                var module = ScriptableObject.CreateInstance<ModuleAsset>();
-                module.SetData(moduleBytes);
-                ctx.AddObjectToAsset("module", module);
-                ctx.SetMainObject(module);
             }
         }
 
