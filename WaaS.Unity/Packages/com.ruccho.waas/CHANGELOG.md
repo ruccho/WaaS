@@ -12,6 +12,7 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - MoonBit Importer, which imports `*.mbt` files as scripts, and **MoonBit Bindings Settings**, which generate MoonBit bindings of WIT interfaces.
 - wit2waas: inline interfaces of worlds.
 - `[ComponentField]` can be applied to public fields, so that a type serialized by Unity can be a record.
+- Prebuilt wit2waas binaries for Windows, macOS and Linux, attached to each GitHub release.
 
 ### Changed
 
