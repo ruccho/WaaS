@@ -46,8 +46,11 @@ namespace WaaS.Runtime
                 functions[cursor++] = new InstanceFunction(instance, moduleFunction);
 
             Functions = functions;
+            FunctionArray = functions;
         }
 
         public ReadOnlyMemory<IInvocableFunction> Functions { get; }
+
+        internal IInvocableFunction[] FunctionArray { get; }
     }
 }

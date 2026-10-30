@@ -4,6 +4,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,14 +17,22 @@ namespace WaaS.Unity.Editor.Rust
     [ScriptedImporter(4, "rs", 100)]
     public class RustImporter : ScriptedImporter
     {
+        private const string CratesPath = "Library/com.ruccho.waas/rust/crates";
+
         [SerializeField] private bool crateRoot = true;
         [SerializeField] private LazyLoadReference<RustImporterPreset> preset;
         [SerializeField] private RustImporterSettings? settings;
 
         public override void OnImportAsset(AssetImportContext ctx)
         {
+            var assetPath = ctx.assetPath;
+            var hash = Hash128.Compute(assetPath);
+            var cratePath = GetCratePath(assetPath);
+
             if (!crateRoot)
             {
+                // a crate left from the time the file was a crate root would also make it the root of another crate
+                if (Directory.Exists(cratePath)) Directory.Delete(cratePath, true);
                 ctx.SetMainObject(null);
                 return;
             }
@@ -31,9 +40,6 @@ namespace WaaS.Unity.Editor.Rust
             EnsureWorkspaceCreated();
             RemoveStaleCrates();
 
-            var assetPath = ctx.assetPath;
-            var hash = Hash128.Compute(assetPath);
-            var cratePath = $"Library/com.ruccho.waas/rust/crates/waas_{hash}";
             Directory.CreateDirectory(cratePath);
             var cargoTomlPath = Path.Combine(cratePath, "Cargo.toml");
 
@@ -292,6 +298,11 @@ namespace WaaS.Unity.Editor.Rust
             }
         }
 
+        private static string GetCratePath(string assetPath)
+        {
+            return $"{CratesPath}/waas_{Hash128.Compute(assetPath)}";
+        }
+
         private static void EnsureWorkspaceCreated()
         {
             if (File.Exists("Cargo.toml")) return;
@@ -302,14 +313,13 @@ namespace WaaS.Unity.Editor.Rust
 
         /// <summary>
         ///     Removes crates whose source file no longer exists (e.g. the script was deleted or moved).
-        ///     A crate with a missing source breaks every build in the workspace.
+        ///     A crate with a missing source breaks every build in the workspace, including the checks run by IDEs.
         /// </summary>
         private static void RemoveStaleCrates()
         {
-            const string cratesPath = "Library/com.ruccho.waas/rust/crates";
-            if (!Directory.Exists(cratesPath)) return;
+            if (!Directory.Exists(CratesPath)) return;
 
-            foreach (var crateDirectory in Directory.GetDirectories(cratesPath))
+            foreach (var crateDirectory in Directory.GetDirectories(CratesPath))
             {
                 var cargoTomlPath = Path.Combine(crateDirectory, "Cargo.toml");
                 if (!File.Exists(cargoTomlPath)) continue;
@@ -326,6 +336,19 @@ namespace WaaS.Unity.Editor.Rust
                 if (sourcePath == null || File.Exists(Path.Combine(crateDirectory, sourcePath))) continue;
 
                 Directory.Delete(crateDirectory, true);
+            }
+        }
+
+        /// <summary>
+        ///     Removes the crates of deleted scripts, which are not imported again. (A moved script is imported again,
+        ///     and the import removes the crate of the old path.)
+        /// </summary>
+        private class Postprocessor : AssetPostprocessor
+        {
+            private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets,
+                string[] movedAssets, string[] movedFromAssetPaths)
+            {
+                if (deletedAssets.Any(path => path.EndsWith(".rs", StringComparison.Ordinal))) RemoveStaleCrates();
             }
         }
 

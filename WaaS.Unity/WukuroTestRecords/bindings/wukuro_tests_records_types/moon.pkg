@@ -1,0 +1,5 @@
+import {
+  "ruccho/wukuro/bindings/wukuro_core_types" @types,
+}
+
+warnings = "-44"

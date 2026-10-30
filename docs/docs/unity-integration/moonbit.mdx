@@ -42,8 +42,10 @@ For each script, MoonBit Importer creates a workspace under `Library/com.ruccho.
 
 The script is built with `moon build --target wasm --release`. Compilation errors are shown in the Unity console with the path of the source file.
 
+On Windows, the MoonBit compiler can fail to write a file whose path is 260 characters or longer, and the paths of the build output include the long names of the packages of the dependencies. Therefore, the build output (`--target-dir`) is placed in `%TEMP%/waas-moonbit/<hash>` instead of the workspace. The directories of the workspaces that no longer exist, such as those of a deleted `Library` folder, are deleted on the next build. On the other platforms, the build output is in `_build` of the workspace.
+
 :::warning
-The paths of the files in the workspace are long. On Windows, place the Unity project in a directory with a short path if the build fails because of the limit of the path length.
+If the build still fails because of the length of a path, such as a source file in a deep directory, the error message reports it. Place the Unity project or the dependency in a directory with a shorter path.
 :::
 
 ## Script packages
