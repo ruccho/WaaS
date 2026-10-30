@@ -20,7 +20,8 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages and t
 - The formatters created by reflection are preserved from managed code stripping.
 - The native editor library generates MoonBit bindings, and binds `spectest.print_char` (`println` of MoonBit) to a no-op when componentizing.
 - Calls of host functions from components are about twice as fast. `ExternalFunction.InvokeAsync` is called after all the arguments are pushed, and completes without suspension when the host function completes synchronously.
-- The interpreter runs the function bodies translated at validation with a single dispatch loop, which is several times faster. The control instructions (blocks and branches) cannot be executed with `Instruction.Execute` alone, and labels are no longer pushed to the stack.
+- The interpreter runs the function bodies translated at validation with a single dispatch loop and superinstructions, which is several times faster. The control instructions (blocks and branches) cannot be executed with `Instruction.Execute` alone, and labels are no longer pushed to the stack.
+- Calls between WebAssembly functions are executed within the `WasmStackFrame` of the caller without pushing frames to `ExecutionContext`. `WasmStackFrame.Function` is the innermost function being executed, and `WasmStackTrace` still lists each function.
 
 ## [0.3.0]
 
