@@ -5,6 +5,14 @@ using WaaS.Runtime;
 
 namespace WaaS.Models
 {
+    /// <summary>
+    ///     An instruction with a memory argument.
+    /// </summary>
+    internal interface IMemoryArgumentInstruction
+    {
+        uint Offset { get; }
+    }
+
     #region Load
 
     /// <summary>
@@ -13,7 +21,7 @@ namespace WaaS.Models
     /// <typeparam name="TValue"></typeparam>
     /// <typeparam name="TValueType"></typeparam>
     /// <typeparam name="TReadValue"></typeparam>
-    public abstract partial class Load<TValue, TValueType, TReadValue> : Instruction
+    public abstract partial class Load<TValue, TValueType, TReadValue> : Instruction, IMemoryArgumentInstruction
         where TValue : unmanaged
         where TValueType : struct, IValueType<TValue>
         where TReadValue : unmanaged
@@ -267,7 +275,7 @@ namespace WaaS.Models
     /// <typeparam name="TValue"></typeparam>
     /// <typeparam name="TValueType"></typeparam>
     /// <typeparam name="TWriteValue"></typeparam>
-    public abstract partial class Store<TValue, TValueType, TWriteValue> : Instruction
+    public abstract partial class Store<TValue, TValueType, TWriteValue> : Instruction, IMemoryArgumentInstruction
         where TValue : unmanaged
         where TValueType : struct, IValueType<TValue>
         where TWriteValue : unmanaged

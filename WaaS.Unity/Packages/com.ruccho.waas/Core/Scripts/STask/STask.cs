@@ -5,6 +5,7 @@ namespace STask
     /// <summary>
     ///     Task-like without SynchronizationContext-awareness nor ThreadPool usage.
     ///     It is mainly for single-threaded use.
+    ///     The default value represents a task completed successfully.
     /// </summary>
     [AsyncMethodBuilder(typeof(STaskMethodBuilder))]
     public readonly struct STaskVoid
@@ -41,14 +42,24 @@ namespace STask
     {
         internal readonly STaskSource<TResult> source;
 
+        // the result of a task completed synchronously (without source)
+        internal readonly TResult result;
+
         internal STask(STaskSource<TResult> source)
         {
             this.source = source;
+            result = default;
+        }
+
+        internal STask(TResult result)
+        {
+            source = default;
+            this.result = result;
         }
 
         public STaskAwaiter<TResult> GetAwaiter()
         {
-            return new STaskAwaiter<TResult>(source);
+            return new STaskAwaiter<TResult>(source, result);
         }
 
         public void Forget()

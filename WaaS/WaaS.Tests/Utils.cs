@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using WaaS.ComponentModel.Models;
 using WaaS.ComponentModel.Runtime;
@@ -11,9 +13,22 @@ internal static class Utils
 {
     private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
 
+    /// <summary>
+    ///     Temporary directory of the tests, separated for each checkout of the repository
+    ///     so that tests running in multiple checkouts at the same time do not interfere.
+    /// </summary>
+    public static string TempDirectory { get; } = Path.Combine(Path.GetTempPath(), "WaaS.Tests", GetCheckoutHash());
+
+    private static string GetCheckoutHash([CallerFilePath] string path = "")
+    {
+        var directory = Path.GetFullPath(Path.GetDirectoryName(path)!).ToLowerInvariant();
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(directory));
+        return Convert.ToHexString(hash, 0, 4).ToLowerInvariant();
+    }
+
     private static string ParseWat(string wat)
     {
-        var dir = Path.Combine(Path.GetTempPath(), "WaaS.Tests");
+        var dir = TempDirectory;
         var watPath = Path.Combine(dir, "temp.wat");
         var wasmPath = Path.Combine(dir, "temp.wasm");
 

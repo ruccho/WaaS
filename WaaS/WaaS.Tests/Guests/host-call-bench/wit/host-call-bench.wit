@@ -1,0 +1,18 @@
+package waas:host-call-bench;
+
+interface host {
+    nop: func();
+    take-string: func(value: string);
+    add-one: func(value: u32) -> u32;
+}
+
+world host-call-bench {
+    import host;
+
+    // each calls the host function n times
+    export run-nop: func(n: u32);
+    export run-string: func(n: u32, value: string);
+    export run-add-one: func(n: u32) -> u32;
+    // the same loop without host calls, for comparison
+    export run-loop: func(n: u32) -> u32;
+}
