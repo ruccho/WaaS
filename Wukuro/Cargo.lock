@@ -314,7 +314,7 @@ dependencies = [
 
 [[package]]
 name = "wukuro"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "wit-bindgen",
  "wukuro-macro",
@@ -322,7 +322,7 @@ dependencies = [
 
 [[package]]
 name = "wukuro-dialog"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "wit-bindgen",
  "wukuro",
@@ -330,7 +330,7 @@ dependencies = [
 
 [[package]]
 name = "wukuro-macro"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "proc-macro2",
  "quote",

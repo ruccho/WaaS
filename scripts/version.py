@@ -1,7 +1,7 @@
 """Sets or checks the version shared by WaaS and the distributions derived from it.
 
-WaaS and its derived distributions (the NuGet packages, the Unity packages, the Rust crates and the MoonBit module) are
-released together with the same version.
+WaaS and its derived distributions (the NuGet packages, the Unity packages, the Rust crates, the MoonBit module and the
+extension of VS Code) are released together with the same version.
 
     python scripts/version.py show
     python scripts/version.py set 0.3.0
@@ -17,9 +17,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-UNITY_PACKAGES = [
+# package.json of the Unity packages and the extension of VS Code
+PACKAGE_JSONS = [
     "WaaS.Unity/Packages/com.ruccho.waas/package.json",
     "WaaS.Unity/Packages/com.ruccho.wukuro/package.json",
+    "vscode-waas/package.json",
 ]
 
 # [package] version of a crate, [workspace.package] version of a workspace, or version of a MoonBit module,
@@ -59,7 +61,7 @@ def write(path, text):
 def collect():
     """Returns (description, version) of every place that has the version."""
     versions = []
-    for path in UNITY_PACKAGES:
+    for path in PACKAGE_JSONS:
         versions.append((path, json.loads(read(path))["version"]))
     for path, name in UNITY_DEPENDENCIES:
         versions.append((f"{path} ({name})", json.loads(read(path))["dependencies"][name]))
@@ -71,7 +73,7 @@ def collect():
 
 
 def set_version(version):
-    for path in UNITY_PACKAGES:
+    for path in PACKAGE_JSONS:
         text = read(path)
         text, count = re.subn(r'("version"\s*:\s*")[^"]*(")', r"\g<1>" + version + r"\g<2>", text, count=1)
         assert count == 1, path

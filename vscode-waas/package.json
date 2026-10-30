@@ -2,7 +2,7 @@
   "name": "waas-debug",
   "displayName": "WaaS Debugger",
   "description": "Debugs WebAssembly scripts running on WaaS in the Unity editor.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "ruccho",
   "license": "MIT",
   "repository": {
