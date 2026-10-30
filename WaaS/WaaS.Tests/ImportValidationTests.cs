@@ -82,8 +82,8 @@ public class ImportValidationTests
     }
 
     private const string ThingTypes = """
-                                      (export $thing "thing" (type (sub resource)))
-                                      (export $other "other" (type (sub resource)))
+                                      (export "thing" (type $thing (sub resource)))
+                                      (export "other" (type $other (sub resource)))
                                       """;
 
     [Test]
@@ -92,7 +92,7 @@ public class ImportValidationTests
         InstantiateHost($$"""
                           {{ThingTypes}}
                           (type $point (record (field "x" s32) (field "y" s32)))
-                          (export $point-export "point" (type (eq $point)))
+                          (export "point" (type $point-export (eq $point)))
                           (export "add" (func (param "a" s32) (param "b" s32) (result s32)))
                           (export "length" (func (param "p" $point-export) (result s32)))
                           (export "make-thing" (func (result (own $thing))))
@@ -168,7 +168,7 @@ public class ImportValidationTests
     {
         var exception = InstantiateHostWithError("""
                                                  (type $point (record (field "y" s32) (field "x" s32)))
-                                                 (export $point-export "point" (type (eq $point)))
+                                                 (export "point" (type $point-export (eq $point)))
                                                  (export "length" (func (param "p" $point-export) (result s32)))
                                                  """);
         Assert.That(exception.Message, Does.Contain($"{HostName}/point: type does not match: field 0: expected 'y', provided 'x'"));
@@ -204,7 +204,7 @@ public class ImportValidationTests
     {
         // the host instance does not export "missing", which the function refers to
         var exception = InstantiateHostWithError("""
-                                                 (export $missing "missing" (type (sub resource)))
+                                                 (export "missing" (type $missing (sub resource)))
                                                  (export "make-thing" (func (result (own $missing))))
                                                  """);
         Assert.That(exception.Message, Does.Contain($"{HostName}/missing: type is missing"));
