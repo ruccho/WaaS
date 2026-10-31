@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/static/img/social-t.svg">
+<img src="docs/static/img/social1.png">
 
 <h1>WaaS</h1>
 
