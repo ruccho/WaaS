@@ -48,7 +48,7 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/social.png',
+    image: 'img/social1.png',
     navbar: {
       title: 'WaaS',
       logo: {
