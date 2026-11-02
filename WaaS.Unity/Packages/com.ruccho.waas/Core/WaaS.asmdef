@@ -25,5 +25,5 @@
       "define": "WAAS_NATIVE_INTERPRETER"
     }
   ],
-  "noEngineReferences": true
+  "noEngineReferences": false
 }
