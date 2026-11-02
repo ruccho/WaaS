@@ -6,7 +6,7 @@ namespace WaaS.Runtime
     /// <summary>
     ///     An instance of a WebAssembly module.
     /// </summary>
-    public class Instance : IDisposable, IModuleExports
+    public partial class Instance : IDisposable, IModuleExports
     {
         private bool isDisposed;
 

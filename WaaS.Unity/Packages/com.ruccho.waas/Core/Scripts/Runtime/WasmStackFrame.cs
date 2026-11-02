@@ -121,7 +121,11 @@ namespace WaaS.Runtime
             try
             {
                 // a debugger pauses before each instruction and reads the operand stack
-                return Context.Debugger != null ? Run(waker) : RunRegister(waker);
+                if (Context.Debugger != null) return Run(waker);
+#if WAAS_NATIVE_INTERPRETER
+                if (NativeInterpreter.IsAvailable) return RunNative(waker);
+#endif
+                return RunRegister(waker);
             }
             catch (DebuggerPause)
             {

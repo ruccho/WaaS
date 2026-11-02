@@ -190,7 +190,7 @@ namespace WaaS.Runtime
     /// <summary>
     ///     A function body translated for the interpreter loop of <see cref="WasmStackFrame" />.
     /// </summary>
-    internal sealed class CompiledFunction
+    internal sealed partial class CompiledFunction
     {
         private CompiledFunction(CompiledInstruction[] baseCode,
             BranchTarget[] branchTargets, StackValueItem[] initialLocals, int numParameters, int numResults,
