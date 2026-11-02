@@ -73,8 +73,10 @@ namespace WaaS.ComponentModel.Runtime
             parameterTypes = new IDespecializedValueType[parameters.Length];
             for (var i = 0; i < parameters.Length; i++) parameterTypes[i] = parameters[i].Type.Despecialize();
             flattenParameters = paramFlattenedCount <= 16 /* MAX_FLAT_PARAMS */;
-            if (flattenParameters && !hasSerializedResult &&
-                componentFunction is Binding.ExternalFunction { SupportsDirectInvoke: true } direct)
+            if (flattenParameters &&
+                componentFunction is Binding.ExternalFunction { SupportsDirectInvoke: true } direct &&
+                (!direct.DirectInvokeUsesMemory ||
+                 (stringEncoding == CanonOptionStringEncodingKind.Utf8 && memoryToRealloc != null)))
                 DirectFunction = direct;
         }
 

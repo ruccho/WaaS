@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using WaaS.ComponentModel.Binding;
 using WaaS.ComponentModel.Runtime;
 using WaaS.Models;
 
@@ -490,7 +491,7 @@ namespace WaaS.Runtime
 
                 isMovingPushedFrame = true;
                 directCallee = callee;
-                var task = direct.InvokeDirect(parameters);
+                var task = direct.InvokeDirect(new DirectInvocationContext(lowered, Context), parameters);
                 directCallee = null;
                 isMovingPushedFrame = false;
 

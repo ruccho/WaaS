@@ -380,7 +380,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                                 }
                 """);
 
-            if (SupportsDirectInvoke(member)) AppendInvokeDirect(sourceBuilder, member);
+            if (SupportsDirectInvoke(member)) AppendInvokeDirect(sourceBuilder, member, GetResourcePropertyName);
 
             sourceBuilder.AppendLine(
 /* lang=c#    */"""
@@ -442,7 +442,7 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
 
             foreach (var member in apis)
             {
-                var direct = SupportsDirectInvoke(member) && member.isAwaitable;
+                var direct = SupportsDirectCall(member);
                 if (direct) AppendWrapperDirectCall(sourceBuilder, member);
 
                 var signature = direct
@@ -544,6 +544,8 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
         source.AddSource($"{identifier}.Instance.g.cs", sourceBuilder.ToString());
     }
 
+    private const string StackValueItemName = "global::WaaS.Runtime.StackValueItem";
+
     // the types that are the core value of the same width in the canonical ABI
     private static bool IsDirectType(ITypeSymbol type)
     {
@@ -551,24 +553,85 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
             or SpecialType.System_UInt64 or SpecialType.System_Single or SpecialType.System_Double;
     }
 
+    private static bool IsString(ITypeSymbol type)
+    {
+        return type.SpecialType == SpecialType.System_String && type.NullableAnnotation != NullableAnnotation.Annotated;
+    }
+
+    private static bool TryGetDirectRecordMembers(ITypeSymbol type, out (ISymbol member, ITypeSymbol type)[] members)
+    {
+        members = [];
+        if (type is not INamedTypeSymbol named || named.NullableAnnotation == NullableAnnotation.Annotated ||
+            !named.GetAttributes().Any(attr =>
+                attr.AttributeClass?.Matches("WaaS.ComponentModel.Binding.ComponentRecordAttribute") ?? false))
+            return false;
+
+        members = named.GetRecordMembers().Select(member => (member, member switch
+        {
+            IFieldSymbol field => field.Type,
+            IPropertySymbol property => property.Type,
+            _ => throw new ArgumentOutOfRangeException()
+        })).ToArray();
+        return members.Length != 0 && members.All(member => IsDirectType(member.type));
+    }
+
+    private static bool TryGetBorrowedResource(ITypeSymbol type, out INamedTypeSymbol? resourceType)
+    {
+        resourceType = null;
+        if (type is not INamedTypeSymbol { IsGenericType: true } named ||
+            !named.ConstructUnboundGenericType().Matches("WaaS.ComponentModel.Binding.Borrowed`1"))
+            return false;
+
+        resourceType = named.TypeArguments[0] as INamedTypeSymbol;
+        return resourceType != null;
+    }
+
+    // the number of the core values of a parameter, or -1 if it cannot be passed directly
+    private static int GetDirectParameterSize(ITypeSymbol type)
+    {
+        if (IsDirectType(type) || TryGetBorrowedResource(type, out _)) return 1;
+        if (IsString(type)) return 2;
+        return TryGetDirectRecordMembers(type, out var members) ? members.Length : -1;
+    }
+
+    // a record of one number is flattened into a core value, which is not handled to keep the generated code simple
+    private static bool IsDirectResult(ITypeSymbol? type)
+    {
+        return type == null || IsDirectType(type) || IsString(type) ||
+               (TryGetDirectRecordMembers(type, out var members) && members.Length > 1);
+    }
+
+    private static bool IsSyncOrValueTask(ComponentApi member)
+    {
+        // Task and other awaitables are left to the formatters
+        return !member.isAwaitable || member.unawaitedReturnType is INamedTypeSymbol { Name: "ValueTask" } named &&
+            named.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks";
+    }
+
     private static bool SupportsDirectInvoke(ComponentApi member)
     {
-        if (member.memberSymbol is not IMethodSymbol) return false;
-        if (member.parameters.Length > 16 /* MAX_FLAT_PARAMS */) return false;
-        if (member.parameters.Any(parameter => !IsDirectType(parameter.Type))) return false;
-        if (member.returnType != null && !IsDirectType(member.returnType)) return false;
+        if (member.memberSymbol is not IMethodSymbol || !IsSyncOrValueTask(member) || !IsDirectResult(member.returnType))
+            return false;
 
-        // Task and other awaitables are left to the formatters
-        return !member.isAwaitable || IsValueTask(member.unawaitedReturnType);
+        var total = 0;
+        foreach (var parameter in member.parameters)
+        {
+            var size = GetDirectParameterSize(parameter.Type);
+            if (size < 0) return false;
+            total += size;
+        }
+
+        return total <= 16 /* MAX_FLAT_PARAMS */;
     }
 
-    private static bool IsValueTask(ITypeSymbol? type)
+    // calls of exports from the host
+    private static bool SupportsDirectCall(ComponentApi member)
     {
-        return type is INamedTypeSymbol { Name: "ValueTask" } named &&
-               named.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks";
+        return member.isAwaitable && IsSyncOrValueTask(member) &&
+               (member.returnType == null || IsDirectType(member.returnType)) &&
+               member.parameters.All(parameter => IsDirectType(parameter.Type) || IsString(parameter.Type)) &&
+               member.parameters.Sum(parameter => IsString(parameter.Type) ? 2 : 1) <= 16 /* MAX_FLAT_PARAMS */;
     }
-
-    private const string StackValueItemName = "global::WaaS.Runtime.StackValueItem";
 
     private static string ToCoreValue(ITypeSymbol type, string expression)
     {
@@ -594,78 +657,190 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
         };
     }
 
-    private static void AppendInvokeDirect(StringBuilder sourceBuilder, ComponentApi member)
+    private static string GetTypeName(ITypeSymbol type)
     {
-        var resultType = $"global::System.Threading.Tasks.ValueTask<{StackValueItemName}>";
+        return type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+    }
+
+    private static void AppendInvokeDirect(StringBuilder sourceBuilder, ComponentApi member,
+        Func<INamedTypeSymbol, string> getResourcePropertyName)
+    {
+        var taskType = $"global::System.Threading.Tasks.ValueTask<{StackValueItemName}>";
         var returnType = member.returnType;
-        var call = $"__waas__target.{member.memberSymbol.Name}({string.Join(", ", member.parameters.Select((parameter, i) => FromCoreValue(parameter.Type, $"__parameters[{i}]")))})";
+        var usesMemory = member.parameters.Any(parameter => IsString(parameter.Type)) ||
+                         (returnType != null && !IsDirectType(returnType));
+        var isSerialized = returnType != null && !IsDirectType(returnType);
 
         sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
 
                                 public override bool SupportsDirectInvoke => true;
+                                public override bool DirectInvokeUsesMemory => {{(usesMemory ? "true" : "false")}};
 
-                                public override {{resultType}} InvokeDirect(global::System.ReadOnlySpan<{{StackValueItemName}}> __parameters)
+                                public override {{taskType}} InvokeDirect(global::WaaS.ComponentModel.Binding.DirectInvocationContext __invocation, global::System.ReadOnlySpan<{{StackValueItemName}}> __parameters)
                                 {
                 """);
 
-        if (!member.isAwaitable)
+        var cursor = 0;
+        var borrowed = new List<IParameterSymbol>();
+        foreach (var parameter in member.parameters)
         {
-            if (returnType != null)
+            var type = parameter.Type;
+            string value;
+            if (IsDirectType(type))
             {
-                sourceBuilder.AppendLine(
-                    $"                    return new {resultType}({ToCoreValue(returnType, call)});");
+                value = FromCoreValue(type, $"__parameters[{cursor++}]");
+            }
+            else if (IsString(type))
+            {
+                value = $"__invocation.LiftString(__parameters[{cursor}], __parameters[{cursor + 1}])";
+                cursor += 2;
+            }
+            else if (TryGetBorrowedResource(type, out var resourceType))
+            {
+                value = $"__invocation.LiftBorrowed<{GetTypeName(resourceType!)}>(__parameters[{cursor++}], __waas__root.{getResourcePropertyName(resourceType!)}.Type)";
+                borrowed.Add(parameter);
             }
             else
             {
-                sourceBuilder.AppendLine($"                    {call};");
-                sourceBuilder.AppendLine("                    return default;");
+                TryGetDirectRecordMembers(type, out var members);
+                var fields = members.Select(field =>
+                    $"{field.member.Name} = {FromCoreValue(field.type, $"__parameters[{cursor++}]")}").ToArray();
+                value = $"new {GetTypeName(type)}() {{ {string.Join(", ", fields)} }}";
             }
 
-            sourceBuilder.AppendLine("                }");
-            return;
+            sourceBuilder.AppendLine($"                    var @{parameter.Name} = {value};");
         }
 
-        sourceBuilder.AppendLine($"                    var __task = {call};");
-        sourceBuilder.AppendLine("                    if (!__task.IsCompletedSuccessfully) return __waas__Wait(__task);");
-        if (returnType != null)
+        if (isSerialized)
+            sourceBuilder.AppendLine($"                    var __resultPointer = __parameters[{cursor}].ExpectValueI32();");
+
+        var call = $"__waas__target.{member.memberSymbol.Name}({string.Join(", ", member.parameters.Select(parameter => $"@{parameter.Name}"))})";
+        var finishParameters = new List<string> { "global::WaaS.ComponentModel.Binding.DirectInvocationContext __invocation" };
+        var finishArguments = new List<string> { "__invocation" };
+        if (isSerialized)
         {
-            sourceBuilder.AppendLine(
-                $"                    return new {resultType}({ToCoreValue(returnType, "__task.Result")});");
+            finishParameters.Add("uint __resultPointer");
+            finishArguments.Add("__resultPointer");
+        }
+
+        foreach (var parameter in borrowed)
+        {
+            finishParameters.Add($"{GetTypeName(parameter.Type)} @{parameter.Name}");
+            finishArguments.Add($"@{parameter.Name}");
+        }
+
+        var finishPrefix = string.Join(", ", finishArguments);
+
+        if (member.isAwaitable)
+        {
+            sourceBuilder.AppendLine($"                    var __task = {call};");
+            sourceBuilder.AppendLine($"                    if (!__task.IsCompletedSuccessfully) return __waas__Wait(__task, {finishPrefix});");
+            if (returnType != null)
+            {
+                sourceBuilder.AppendLine($"                    return new {taskType}(__waas__Finish({finishPrefix}, __task.Result));");
+            }
+            else
+            {
+                sourceBuilder.AppendLine("                    __task.GetAwaiter().GetResult();");
+                sourceBuilder.AppendLine($"                    return new {taskType}(__waas__Finish({finishPrefix}));");
+            }
+        }
+        else if (returnType != null)
+        {
+            sourceBuilder.AppendLine($"                    return new {taskType}(__waas__Finish({finishPrefix}, {call}));");
         }
         else
         {
-            sourceBuilder.AppendLine("                    __task.GetAwaiter().GetResult();");
-            sourceBuilder.AppendLine("                    return default;");
+            sourceBuilder.AppendLine($"                    {call};");
+            sourceBuilder.AppendLine($"                    return new {taskType}(__waas__Finish({finishPrefix}));");
         }
 
         sourceBuilder.AppendLine("                }");
         sourceBuilder.AppendLine();
-        sourceBuilder.AppendLine(
-            $"                private static async {resultType} __waas__Wait({member.unawaitedReturnType!.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} __task)");
+
+        // stores the result after the host function has completed, which may be after a suspension
+        var parameters = string.Join(", ", finishParameters);
+        var resultParameter = returnType != null ? $", {GetTypeName(returnType)} __result" : "";
+        sourceBuilder.AppendLine("                [global::System.Runtime.CompilerServices.MethodImpl(global::System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]");
+        sourceBuilder.AppendLine($"                private static {StackValueItemName} __waas__Finish({parameters}{resultParameter})");
         sourceBuilder.AppendLine("                {");
-        if (returnType != null)
+        foreach (var parameter in borrowed)
+            sourceBuilder.AppendLine($"                    __invocation.ReleaseBorrowed(@{parameter.Name});");
+
+        if (returnType != null && IsDirectType(returnType))
         {
-            sourceBuilder.AppendLine($"                    return {ToCoreValue(returnType, "await __task")};");
+            sourceBuilder.AppendLine($"                    return {ToCoreValue(returnType, "__result")};");
         }
         else
         {
-            sourceBuilder.AppendLine("                    await __task;");
+            if (returnType != null && IsString(returnType))
+            {
+                sourceBuilder.AppendLine("                    __invocation.StoreString(__resultPointer, __result);");
+            }
+            else if (returnType != null)
+            {
+                TryGetDirectRecordMembers(returnType, out var members);
+                var alignment = members.Max(field => GetSize(field.type));
+                sourceBuilder.AppendLine(
+                    $"                    __invocation.CheckResultPointer(__resultPointer, {(alignment == 8 ? 3 : 2)});");
+                var offset = 0;
+                foreach (var field in members)
+                {
+                    var size = GetSize(field.type);
+                    offset = (offset + size - 1) / size * size;
+                    var value = field.type.SpecialType switch
+                    {
+                        SpecialType.System_Int32 => $"unchecked((uint)__result.{field.member.Name})",
+                        SpecialType.System_Int64 => $"unchecked((ulong)__result.{field.member.Name})",
+                        _ => $"__result.{field.member.Name}"
+                    };
+                    sourceBuilder.AppendLine($"                    __invocation.Store(unchecked(__resultPointer + {offset}), {value});");
+                    offset += size;
+                }
+            }
+
             sourceBuilder.AppendLine("                    return default;");
         }
 
         sourceBuilder.AppendLine("                }");
+
+        if (!member.isAwaitable) return;
+
+        sourceBuilder.AppendLine();
+        sourceBuilder.AppendLine(
+            $"                private static async {taskType} __waas__Wait({GetTypeName(member.unawaitedReturnType!)} __task, {parameters})");
+        sourceBuilder.AppendLine("                {");
+        if (returnType != null)
+        {
+            sourceBuilder.AppendLine("                    var __result = await __task;");
+            sourceBuilder.AppendLine($"                    return __waas__Finish({finishPrefix}, __result);");
+        }
+        else
+        {
+            sourceBuilder.AppendLine("                    await __task;");
+            sourceBuilder.AppendLine($"                    return __waas__Finish({finishPrefix});");
+        }
+
+        sourceBuilder.AppendLine("                }");
+    }
+
+    private static int GetSize(ITypeSymbol type)
+    {
+        return type.SpecialType is SpecialType.System_Int64 or SpecialType.System_UInt64 or SpecialType.System_Double
+            ? 8
+            : 4;
     }
 
     private static void AppendWrapperDirectCall(StringBuilder sourceBuilder, ComponentApi member)
     {
         var name = member.memberSymbol.Name;
         var componentName = Utils.ToComponentApiName(member.memberSymbol);
-        var taskType = member.unawaitedReturnType!.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-        var parameters = string.Join(", ",
-            member.parameters.Select(param =>
-                $"{param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} @{param.Name}"));
+        var taskType = GetTypeName(member.unawaitedReturnType!);
+        var parameters = string.Join(", ", member.parameters.Select(param => $"{GetTypeName(param.Type)} @{param.Name}"));
         var arguments = string.Join(", ", member.parameters.Select(param => $"@{param.Name}"));
+        var hasStrings = member.parameters.Any(param => IsString(param.Type));
+        var coreCount = member.parameters.Sum(param => IsString(param.Type) ? 2 : 1);
 
         sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
@@ -676,17 +851,27 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
                                     throw new global::System.InvalidOperationException(@"A function ""{{componentName}}"" is not found.");
                                 }
 
-                                if (function is not global::WaaS.ComponentModel.Runtime.LiftedFunction { SupportsDirectInvoke: true } __lifted)
+                                if (function is not global::WaaS.ComponentModel.Runtime.LiftedFunction { SupportsDirectInvoke: true{{(hasStrings ? ", SupportsDirectStrings: true" : "")}} } __lifted)
                                 {
                                     return __waas__Bound{{name}}({{arguments}});
                                 }
 
-                                global::System.Span<{{StackValueItemName}}> __arguments = stackalloc {{StackValueItemName}}[{{member.parameters.Length}}];
+                                global::System.Span<{{StackValueItemName}}> __arguments = stackalloc {{StackValueItemName}}[{{coreCount}}];
                 """);
 
-        for (var i = 0; i < member.parameters.Length; i++)
-            sourceBuilder.AppendLine(
-                $"                __arguments[{i}] = {ToCoreValue(member.parameters[i].Type, $"@{member.parameters[i].Name}")};");
+        var cursor = 0;
+        foreach (var parameter in member.parameters)
+            if (IsString(parameter.Type))
+            {
+                sourceBuilder.AppendLine(
+                    $"                __lifted.LowerString(this.context, @{parameter.Name}, out __arguments[{cursor}], out __arguments[{cursor + 1}]);");
+                cursor += 2;
+            }
+            else
+            {
+                sourceBuilder.AppendLine(
+                    $"                __arguments[{cursor++}] = {ToCoreValue(parameter.Type, $"@{parameter.Name}")};");
+            }
 
         sourceBuilder.AppendLine("                var __task = __lifted.InvokeDirectAsync(this.context, __arguments);");
         sourceBuilder.AppendLine($"                if (!__task.IsCompletedSuccessfully) return __waas__Wait{name}(__task);");

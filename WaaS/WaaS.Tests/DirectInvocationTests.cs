@@ -79,19 +79,46 @@ public class DirectInvocationTests
     }
 
     [Test]
-    public void BindingsWithoutScalarsAreNotDirect()
+    public async Task StringsAreDecoded()
+    {
+        var host = new CountingHost();
+        using var context = new ExecutionContext();
+        var exports = new IHostCallBenchExports.Wrapper(Instantiate(host), context);
+
+        await exports.RunString(2, "こんにちは");
+        Assert.That(host.LastString, Is.EqualTo("こんにちは"));
+    }
+
+    [Test]
+    public async Task StringsAreDecodedAfterSuspension()
+    {
+        var host = new YieldingHost();
+        using var context = new ExecutionContext();
+        var exports = new IHostCallBenchExports.Wrapper(Instantiate(host), context);
+
+        await exports.RunString(2, "こんにちは");
+        Assert.That(host.LastString, Is.EqualTo("こんにちは"));
+    }
+
+    [Test]
+    public void BindingsSupportDirectInvoke()
     {
         var instance = IHostCallBenchHost.CreateWaaSInstance(new CountingHost());
         Assert.That(instance.TryGetExport("add-one", out IFunction? addOne), Is.True);
         Assert.That(instance.TryGetExport("take-string", out IFunction? takeString), Is.True);
 
-        Assert.That(((WaaS.ComponentModel.Binding.ExternalFunction)addOne!).SupportsDirectInvoke, Is.True);
-        Assert.That(((WaaS.ComponentModel.Binding.ExternalFunction)takeString!).SupportsDirectInvoke, Is.False);
+        var add = (WaaS.ComponentModel.Binding.ExternalFunction)addOne!;
+        var take = (WaaS.ComponentModel.Binding.ExternalFunction)takeString!;
+        Assert.That(add.SupportsDirectInvoke, Is.True);
+        Assert.That(add.DirectInvokeUsesMemory, Is.False);
+        Assert.That(take.SupportsDirectInvoke, Is.True);
+        Assert.That(take.DirectInvokeUsesMemory, Is.True);
     }
 
     private class CountingHost : IHostCallBenchHost
     {
         public int NopCount { get; private set; }
+        public string? LastString { get; private set; }
 
         public ValueTask Nop()
         {
@@ -101,6 +128,7 @@ public class DirectInvocationTests
 
         public ValueTask TakeString(string value)
         {
+            LastString = value;
             return default;
         }
 
@@ -117,9 +145,12 @@ public class DirectInvocationTests
             await Task.Yield();
         }
 
+        public string? LastString { get; private set; }
+
         public async ValueTask TakeString(string value)
         {
             await Task.Yield();
+            LastString = value;
         }
 
         public async ValueTask<uint> AddOne(uint value)

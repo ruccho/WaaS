@@ -42,6 +42,23 @@ namespace WaaS.ComponentModel.Runtime
         public bool SupportsDirectInvoke => PostReturnFunction == null;
 
         /// <summary>
+        ///     Whether <see cref="LowerString" /> is available.
+        /// </summary>
+        public bool SupportsDirectStrings =>
+            StringEncoding == CanonOptionStringEncodingKind.Utf8 && MemoryToRealloc != null;
+
+        /// <summary>
+        ///     Stores a string argument into the memory of the guest.
+        /// </summary>
+        public void LowerString(ExecutionContext context, string value, out StackValueItem ptr,
+            out StackValueItem length)
+        {
+            Binding.DirectInvocation.LowerString(context, this, value, out var ptrValue, out var lengthValue);
+            ptr = new StackValueItem(ptrValue);
+            length = new StackValueItem(lengthValue);
+        }
+
+        /// <summary>
         ///     Invokes the core function with the core values of the parameters and returns the core value of the
         ///     result, without the formatters. The parameters and the result must not need lifting or lowering.
         /// </summary>
