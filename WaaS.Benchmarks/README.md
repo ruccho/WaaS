@@ -125,7 +125,7 @@ Values vary between runs on the same machine. Between two runs, some call benchm
 
 - xLua is the fastest in every execution workload of this set, on both backends.
 - WaaS is faster than Lua-CSharp in pure computation dominated by arithmetic and calls: about 7 to 8 times in `fib`, and about 1.8 to 3.9 times in `mandelbrot`.
-- On Mono, WaaS is also faster than Lua-CSharp in `sieve` and `strings`. On IL2CPP, Lua-CSharp is faster in these, and in `sort` and `map` on both backends, where the guest relies on its allocator and hash table inside the interpreter.
+- On Mono, WaaS is also faster than Lua-CSharp in `sieve` and `strings`. On IL2CPP, Lua-CSharp is faster in these, and in `sort` and `map` on both backends.
 - Lua-CSharp is faster than WaaS in every call across the script boundary, about 1.2 to 10 times on IL2CPP.
 - Lua-CSharp loads the fastest on IL2CPP. WaaS has the slowest load on both backends, and most of the load time is spent in `Component.Create`.
-- `sieve`, `mandelbrot` and `sort` of WaaS are slower on IL2CPP than on Mono, while Lua-CSharp is faster on IL2CPP in every workload. The cause has not been investigated.
+- All compute workloads of WaaS except `fib` are slower on IL2CPP than on Mono, while Lua-CSharp is faster on IL2CPP in every workload. The cause has not been investigated.
