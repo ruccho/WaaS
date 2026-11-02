@@ -134,6 +134,65 @@ public class DedicatedOperationTests
         Assert.That(Call(body, "(param i32)", "i32", I32(value)), Is.EqualTo(expected));
     }
 
+    [TestCase("i32.const 10 local.get 0 i32.sub", 3u, 7u)]
+    [TestCase("local.get 0 i32.const 10 i32.sub", 13u, 3u)]
+    [TestCase("i32.const 1 local.get 0 i32.shl", 4u, 16u)]
+    [TestCase("i32.const 256 local.get 0 i32.shr_u", 4u, 16u)]
+    [TestCase("i32.const -256 local.get 0 i32.shr_s", 4u, 0xFFFFFFF0u)]
+    [TestCase("i32.const 7 local.get 0 i32.add", 3u, 10u)]
+    [TestCase("i32.const 7 local.get 0 i32.lt_u", 8u, 1u)]
+    [TestCase("i32.const 7 local.get 0 i32.lt_u", 7u, 0u)]
+    [TestCase("i32.const -1 local.get 0 i32.lt_s", 0u, 1u)]
+    [TestCase("i32.const 7 local.get 0 i32.ge_u", 7u, 1u)]
+    public void ConstantOperandsOfI32(string body, uint value, uint expected)
+    {
+        Assert.That(Call(body, "(param i32)", "i32", I32(value)), Is.EqualTo(expected));
+    }
+
+    [TestCase("i64.const 10 local.get 0 i64.sub", 3ul, 7ul)]
+    [TestCase("i64.const 1 local.get 0 i64.shl", 40ul, 1ul << 40)]
+    [TestCase("i64.const -16 local.get 0 i64.shr_s", 4ul, ulong.MaxValue)]
+    [TestCase("i64.const 0x123456789 local.get 0 i64.add", 1ul, 0x12345678Aul)]
+    public void ConstantOperandsOfI64(string body, ulong value, ulong expected)
+    {
+        Assert.That(Call(body, "(param i64)", "i64", I64(value)), Is.EqualTo(expected));
+    }
+
+    [TestCase("f64.const 10 local.get 0 f64.sub", 4.0, 6.0)]
+    [TestCase("local.get 0 f64.const 10 f64.sub", 4.0, -6.0)]
+    [TestCase("f64.const 1 local.get 0 f64.div", 4.0, 0.25)]
+    [TestCase("local.get 0 f64.const 2 f64.div", 4.0, 2.0)]
+    [TestCase("f64.const 2 local.get 0 f64.mul", 4.0, 8.0)]
+    public void ConstantOperandsOfF64(string body, double value, double expected)
+    {
+        var function = Utils.GetInstance(
+            $$"""
+              (module
+                (func (export "run") (param f64) (result f64)
+                  {{body}}))
+              """, new Imports()).ExportInstance.Items["run"] as IInvocableFunction;
+
+        using var context = new ExecutionContext();
+        Span<StackValueItem> arguments = stackalloc StackValueItem[1];
+        arguments[0] = new StackValueItem(value);
+        context.Invoke(function!, arguments);
+        Span<StackValueItem> results = stackalloc StackValueItem[1];
+        context.TakeResults(results);
+
+        Assert.That(results[0].ExpectValueF64(), Is.EqualTo(expected));
+    }
+
+    [TestCase("f64.const 1 local.get 0 f64.lt", 2.0, 1u)]
+    [TestCase("f64.const 1 local.get 0 f64.lt", 1.0, 0u)]
+    [TestCase("f64.const 1 local.get 0 f64.lt", double.NaN, 0u)]
+    [TestCase("f64.const 1 local.get 0 f64.ge", double.NaN, 0u)]
+    [TestCase("f64.const 1 local.get 0 f64.ne", double.NaN, 1u)]
+    [TestCase("local.get 0 f64.const 1 f64.le", double.NaN, 0u)]
+    public void ComparisonsWithFloatConstants(string body, double value, uint expected)
+    {
+        Assert.That(Call(body, "(param f64)", "i32", new StackValueItem(value)), Is.EqualTo(expected));
+    }
+
     // the entries for blocks, loops and ends execute the following instruction by themselves
     [Test]
     public void BlocksEnteredByBranchesAndCalls()

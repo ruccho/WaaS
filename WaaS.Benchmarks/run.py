@@ -70,7 +70,9 @@ def unity_editor():
 def run_unity(method, log_name):
     BUILD_DIR.mkdir(exist_ok=True)
     log = BUILD_DIR / f"{log_name}.log"
-    command = [unity_editor(), "-batchmode", "-nographics", "-quit", "-projectPath", UNITY_PROJECT,
+    # the directory monitor can deadlock the Editor on a ReFS Dev Drive (Unity issue 23832)
+    command = [unity_editor(), "-batchmode", "-nographics", "-quit", "-DisableDirectoryMonitor",
+               "-projectPath", UNITY_PROJECT,
                "-executeMethod", f"WaaS.Benchmarks.Editor.BenchmarkBuild.{method}", "-logFile", log]
     try:
         run(command)

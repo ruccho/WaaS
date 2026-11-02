@@ -188,3 +188,31 @@ Functions are executed as a register code, which is generated from the code for 
 - The results are of Windows x64 only. Other platforms of Burst and of IL2CPP have not been measured.
 
 To test the loop for Burst without Unity, pass `-p:WaaSNativeInterpreter=true` to `dotnet test` and `dotnet run`, which compiles it for .NET.
+
+## Results on an idle machine
+
+The tables above were measured while the machine was under other load, and the compute workloads of WaaS appear slower than they are. The following values were measured on 2026-11-03 by running the players alternately on an idle machine, with Burst on IL2CPP. Each value is the lowest of the medians of four runs.
+
+| Workload | WaaS | xLua | Lua-CSharp |
+|---|---:|---:|---:|
+| compute_fib (ms) | 20.0 | 49.9 | 392.7 |
+| compute_sieve (ms) | 42.1 | 33.7 | 229.9 |
+| compute_mandelbrot (ms) | 16.5 | 32.9 | 184.1 |
+| compute_strings (ms) | 61.2 | 26.0 | 183.8 |
+| compute_sort (ms) | 56.6 | 51.0 | 155.2 |
+| compute_map (ms) | 79.9 | 8.9 | 69.6 |
+| ffi_nop (ns/call) | 58.0 | 27.4 | 205.6 |
+| ffi_add (ns/call) | 69.4 | 37.9 | 412.3 |
+| ffi_string_in (ns/call) | 405.3 | 119.7 | 303.4 |
+| ffi_string_out (ns/call) | 811.4 | 70.3 | 254.2 |
+| ffi_struct (ns/call) | 375.7 | 94.1 | 361.2 |
+| ffi_resource (ns/call) | 334.9 | 31.4 | 315.9 |
+| callback_add (ns/call) | 467.1 | 29.4 | 377.9 |
+| callback_string (ns/call) | 971.9 | 68.2 | 369.4 |
+
+## Rejected optimizations
+
+The following were tried with Burst on IL2CPP, and compared by running the players alternately.
+
+- Operations for constant operands of the left side and of floating-point numbers (branch `experiment/constant-operands`): CoreCLR became about 30 percent faster, but on Burst `mandelbrot` became about 7 percent faster while `fib`, `sieve`, `sort` and `map` became 5 to 20 percent slower.
+- Keeping the result of an operation in a local variable for the next one: the changes were between 6 percent faster and 24 percent slower.
