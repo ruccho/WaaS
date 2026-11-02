@@ -92,6 +92,10 @@ public class HostCallBenchmarkTests
         await Measure("nop()", n, () => exports.RunNop(n));
         await Measure("take-string(string)", n, () => exports.RunString(n, "hello, world"));
         await Measure("add-one(u32) -> u32", n, () => exports.RunAddOne(n));
+        await Measure("host calls export", n, async () =>
+        {
+            for (var i = 0; i < n; i++) await exports.RunLoop(0);
+        });
     }
 
     private static async ValueTask Measure<T>(string name, uint n, Func<ValueTask<T>> run)

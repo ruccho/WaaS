@@ -123,6 +123,8 @@ namespace WaaS.Runtime
         F64ConvertI64U,
         F32DemoteF64,
         F64PromoteF32,
+        I32ExtendS8,
+        I64Ctz,
         Reinterpret,
 
         // memory. A: offset, B: value type (loads of 32 and 64 bits)
@@ -142,6 +144,12 @@ namespace WaaS.Runtime
         Store16,
         Store32,
         Store64,
+
+        // numeric operations which trap
+        I32DivU,
+        I32RemU,
+        I64DivU,
+        I64RemU,
 
         // superinstructions, which execute a sequence of instructions at once
         LocalGet2, // local.get A, local.get B
@@ -465,6 +473,12 @@ namespace WaaS.Runtime
                    (op >= Op.LocalGet2 && op <= Op.I32ShrUTee);
         }
 
+        // whether the operation continues to the next instruction unless it traps at its own index
+        private static bool IsMemoryAccess(Op op)
+        {
+            return (op >= Op.Load32 && op <= Op.Store64) || (op >= Op.Load32Tee && op <= Op.Store32LocalGet2);
+        }
+
         // whether the operation may continue at an instruction other than the next one. the operations executed with
         // Instruction.Execute may push a frame and continue at the next instruction after the frame completes.
         private static bool IsBlockEnd(Op op)
@@ -628,7 +642,7 @@ namespace WaaS.Runtime
                         };
                 }
 
-                if (!IsStraight(fused.Op)) continue;
+                if (!IsStraight(fused.Op) && !IsMemoryAccess(fused.Op)) continue;
 
                 // the following blocks, loops and ends do nothing
                 var next = i + fused.Length;
@@ -637,6 +651,17 @@ namespace WaaS.Runtime
                     fused.Length++;
                     next++;
                 }
+            }
+
+            // a block, a loop or an end can still be entered by a branch or by a return from a call. such an entry
+            // executes the next instruction by itself not to spend a dispatch on doing nothing.
+            for (var i = code.Length - 2; i >= 0; i--)
+            {
+                if (code[i].Op != Op.Nop || !IsStraight(code[i + 1].Op) || code[i + 1].Length == byte.MaxValue)
+                    continue;
+
+                code[i] = code[i + 1];
+                code[i].Length++;
             }
 
             return code;
@@ -788,6 +813,12 @@ namespace WaaS.Runtime
                 ConvertI64F64U => Op.F64ConvertI64U,
                 DemoteF64F32 => Op.F32DemoteF64,
                 PromoteF32F64 => Op.F64PromoteF32,
+                ExtendS8I32 => Op.I32ExtendS8,
+                CtzI64 => Op.I64Ctz,
+                DivI32U => Op.I32DivU,
+                RemI32U => Op.I32RemU,
+                DivI64U => Op.I64DivU,
+                RemI64U => Op.I64RemU,
                 ReinterpretF32I32 or ReinterpretF64I64 or ReinterpretI32F32 or ReinterpretI64F64 => Op.Reinterpret,
                 LoadI32 or LoadF32 => Op.Load32,
                 LoadI64 or LoadF64 => Op.Load64,

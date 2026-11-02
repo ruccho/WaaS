@@ -41,6 +41,7 @@ namespace WaaS.Runtime
         public ExecutionContext(uint? maxStackFrames = null)
         {
             this.maxStackFrames = maxStackFrames;
+            MaxStackFrameCount = maxStackFrames ?? long.MaxValue;
             Debugger = DefaultDebugger;
         }
 
@@ -117,6 +118,11 @@ namespace WaaS.Runtime
         internal int FrameCount => frames.Count;
 
         internal uint? MaxStackFrames => maxStackFrames;
+
+        /// <summary>
+        ///     <see cref="MaxStackFrames" /> without the cost of reading a nullable value in the interpreter loop.
+        /// </summary>
+        internal long MaxStackFrameCount { get; }
 
         private StackFrame? Current
         {
