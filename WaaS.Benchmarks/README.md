@@ -60,6 +60,8 @@ The Rust workloads use the standard library, as a script in a product would. For
 
 ## Results
 
+The results in this section were measured before the changes described in "Results after the optimization".
+
 Measured on 2026-11-02 with WaaS 0.4.0 (`9865183`), xLua `59bf426`, Lua-CSharp 0.5.8, Unity 6000.5.8f1, and an Intel Core i7-13700F on Windows 11. The script sizes are 39,255 bytes for the component, 3,978 bytes for the Lua source and 10,377 bytes for the xLua bytecode.
 
 Values vary between runs on the same machine. Between two runs, some call benchmarks differed by up to about 2 times, so small differences should not be interpreted.
@@ -129,3 +131,30 @@ Values vary between runs on the same machine. Between two runs, some call benchm
 - Lua-CSharp is faster than WaaS in every call across the script boundary, about 1.2 to 10 times on IL2CPP.
 - Lua-CSharp loads the fastest on IL2CPP. WaaS has the slowest load on both backends, and most of the load time is spent in `Component.Create`.
 - All compute workloads of WaaS except `fib` are slower on IL2CPP than on Mono, while Lua-CSharp is faster on IL2CPP in every workload. The cause has not been investigated.
+
+## Results after the optimization
+
+Measured on 2026-11-02 under the same conditions, on IL2CPP. Lua-CSharp and xLua are the values of the same run.
+
+| Workload | WaaS before | WaaS after | xLua | Lua-CSharp |
+|---|---:|---:|---:|---:|
+| First load (ms) | 12.6 | 11.5 | 6.8 | 2.5 |
+| Repeated load (ms) | 4.8 | 5.1 | 1.4 | 0.3 |
+| compute_fib (ms) | 92.8 | 100.1 | 48.9 | 650.5 |
+| compute_sieve (ms) | 404.6 | 359.2 | 46.0 | 324.9 |
+| compute_mandelbrot (ms) | 138.4 | 105.8 | 48.2 | 235.4 |
+| compute_strings (ms) | 389.2 | 346.9 | 28.0 | 195.5 |
+| compute_sort (ms) | 575.2 | 512.0 | 69.2 | 224.7 |
+| compute_map (ms) | 1,026.7 | 964.5 | 9.3 | 100.8 |
+| ffi_nop (ns/call) | 551.1 | 58.7 | 30.1 | 224.2 |
+| ffi_add (ns/call) | 839.3 | 69.7 | 42.5 | 409.9 |
+| ffi_string_in (ns/call) | 1,675.0 | 362.4 | 124.0 | 350.3 |
+| ffi_string_out (ns/call) | 3,975.1 | 2,034.8 | 74.5 | 313.1 |
+| ffi_struct (ns/call) | 3,826.7 | 390.2 | 96.2 | 350.9 |
+| ffi_resource (ns/call) | 1,682.5 | 431.7 | 37.4 | 396.5 |
+| callback_add (ns/call) | 2,986.2 | 549.0 | 31.9 | 414.8 |
+| callback_string (ns/call) | 5,442.1 | 2,262.5 | 67.1 | 374.8 |
+
+- Calls across the script boundary that do not allocate in the guest take 1.5 to 2.5 times the time of xLua for numbers, and are on the same level as Lua-CSharp or faster.
+- `ffi_string_out` and `callback_string` allocate in the guest with realloc, which is interpreted. The cost has not been analyzed further.
+- Reaching instructions through a `ref` local instead of an index made the interpreter about 12 percent faster on CoreCLR, but up to about twice as slow on IL2CPP, so it was not adopted.
