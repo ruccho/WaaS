@@ -1,0 +1,21 @@
+/.build/
+/results/
+/guest/target/
+
+/unity/[Ll]ibrary/
+/unity/[Tt]emp/
+/unity/[Oo]bj/
+/unity/[Bb]uilds/
+/unity/[Ll]ogs/
+/unity/[Uu]ser[Ss]ettings/
+/unity/*.csproj
+/unity/*.sln
+/unity/.vs/
+
+# placed by run.py
+/unity/Assets/XLua/
+/unity/Assets/XLua.meta
+/unity/Assets/Plugins/
+/unity/Assets/Plugins.meta
+/unity/Assets/StreamingAssets/
+/unity/Assets/StreamingAssets.meta

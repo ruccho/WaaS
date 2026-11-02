@@ -1,0 +1,46 @@
+package waas:benchmark;
+
+interface host {
+    record vec3 {
+        x: f32,
+        y: f32,
+        z: f32,
+    }
+
+    resource counter {
+        add: func(delta: s32) -> s32;
+    }
+
+    nop: func();
+    add: func(a: s32, b: s32) -> s32;
+    take-string: func(value: string) -> s32;
+    get-string: func() -> string;
+    transform: func(value: vec3) -> vec3;
+    get-counter: func() -> counter;
+}
+
+// The functions correspond one-to-one with the functions of lua/benchmark.lua.
+// Every workload returns a checksum as f64 so that the harness can verify that both implementations did the same work.
+world benchmark {
+    import host;
+
+    // workloads that run inside the guest without calling the host
+    export compute-fib: func(n: u32) -> f64;
+    export compute-sieve: func(n: u32) -> f64;
+    export compute-mandelbrot: func(n: u32) -> f64;
+    export compute-strings: func(n: u32) -> f64;
+    export compute-sort: func(n: u32) -> f64;
+    export compute-map: func(n: u32) -> f64;
+
+    // workloads that call the host n times from a loop in the guest
+    export ffi-nop: func(n: u32) -> f64;
+    export ffi-add: func(n: u32) -> f64;
+    export ffi-string-in: func(n: u32) -> f64;
+    export ffi-string-out: func(n: u32) -> f64;
+    export ffi-struct: func(n: u32) -> f64;
+    export ffi-resource: func(n: u32) -> f64;
+
+    // functions that the host calls n times from a loop in the host
+    export callback-add: func(a: s32, b: s32) -> s32;
+    export callback-string: func(value: string) -> s32;
+}
