@@ -470,17 +470,41 @@ namespace WaaS.Runtime
         {
             lock (locker)
             {
-                var frame = PushFrame(function, inputValues);
+                var frame = PushFrameWhileMoving(function, inputValues);
                 var movingNow = moving;
-                moving = false;
-                MoveToEndOrPending(frame, out var pending);
-                moving = movingNow;
-                if (pending)
+
+                // a function that completes at once does not need the loop of MoveToEndOrPending
+                moving = true;
+                StackFrameState state;
+                try
                 {
-                    Dispose();
-                    throw new InvalidOperationException("InterruptFrame() cannot handle async frames.");
+                    state = frame.MoveNext(new Waker(currentPendingTaskSource));
+                }
+                catch (Exception ex)
+                {
+                    moving = movingNow;
+                    WasmStackTrace.Attach(ex, frames);
+                    DiscardFrames(frame);
+                    throw;
                 }
 
+                moving = false;
+                if (state == StackFrameState.Completed)
+                {
+                    frames.Pop();
+                }
+                else
+                {
+                    MoveToEndOrPending(frame, out var pending);
+                    if (pending)
+                    {
+                        moving = movingNow;
+                        Dispose();
+                        throw new InvalidOperationException("InterruptFrame() cannot handle async frames.");
+                    }
+                }
+
+                moving = movingNow;
                 frame.TakeResults(results);
                 frame.Dispose();
             }
