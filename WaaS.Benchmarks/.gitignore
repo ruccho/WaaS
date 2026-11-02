@@ -1,6 +1,12 @@
 /.build/
 /results/
 /guest/target/
+/guest-compute/target/
+/guest-moonbit/_build/
+/guest-moonbit/target/
+/native/target/
+/dotnet/bin/
+/dotnet/obj/
 
 /unity/[Ll]ibrary/
 /unity/[Tt]emp/

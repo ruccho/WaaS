@@ -37,13 +37,14 @@ namespace WaaS.Benchmarks
         private readonly ExecutionContext context = new();
         private readonly IBenchmark.Wrapper exports;
 
-        public WaasEngine(byte[] componentBytes)
+        public WaasEngine(byte[] componentBytes, string name = "waas")
         {
             var instance = Instantiate(Component.Create(componentBytes));
             exports = new IBenchmark.Wrapper(instance, context);
+            Name = name;
         }
 
-        public string Name => "waas";
+        public string Name { get; }
 
         public Func<uint, double> GetWorkload(string name)
         {

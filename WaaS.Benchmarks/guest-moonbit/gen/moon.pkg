@@ -1,0 +1,30 @@
+import {
+  "waas/benchmark/ffi" @ffi,
+  "waas/benchmark/gen/world/benchmark" @benchmark,
+}
+
+options(
+  link: {
+    "wasm": {
+      "exports": [
+        "cabi_realloc:cabi_realloc",
+        "wasmExportCallbackAdd:callback-add",
+        "wasmExportCallbackString:callback-string",
+        "wasmExportComputeFib:compute-fib",
+        "wasmExportComputeMandelbrot:compute-mandelbrot",
+        "wasmExportComputeMap:compute-map",
+        "wasmExportComputeSieve:compute-sieve",
+        "wasmExportComputeSort:compute-sort",
+        "wasmExportComputeStrings:compute-strings",
+        "wasmExportFfiAdd:ffi-add",
+        "wasmExportFfiNop:ffi-nop",
+        "wasmExportFfiResource:ffi-resource",
+        "wasmExportFfiStringIn:ffi-string-in",
+        "wasmExportFfiStringOut:ffi-string-out",
+        "wasmExportFfiStruct:ffi-struct",
+      ],
+      "export-memory-name": "memory",
+      "heap-start-address": 16,
+    },
+  },
+)

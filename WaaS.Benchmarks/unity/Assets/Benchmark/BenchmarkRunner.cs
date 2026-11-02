@@ -42,6 +42,7 @@ namespace WaaS.Benchmarks
         };
 
         private static byte[] componentBytes;
+        private static byte[] moonBitComponentBytes;
         private static byte[] luaSource;
         private static byte[] luaBytecode;
         private static readonly List<string> Records = new();
@@ -81,6 +82,7 @@ namespace WaaS.Benchmarks
             // file IO is excluded from every measurement
             var directory = Application.streamingAssetsPath;
             componentBytes = File.ReadAllBytes(Path.Combine(directory, "benchmark.wasm"));
+            moonBitComponentBytes = File.ReadAllBytes(Path.Combine(directory, "benchmark-moonbit.wasm"));
             luaSource = File.ReadAllBytes(Path.Combine(directory, "benchmark.lua"));
             luaBytecode = File.ReadAllBytes(Path.Combine(directory, "benchmark.luac"));
 
@@ -88,6 +90,9 @@ namespace WaaS.Benchmarks
             {
                 case "cold-waas":
                     RecordLoad("waas", "cold", LoadStages.Waas(componentBytes));
+                    break;
+                case "cold-waas-moonbit":
+                    RecordLoad("waas-moonbit", "cold", LoadStages.Waas(moonBitComponentBytes));
                     break;
                 case "cold-lua":
                     RecordLoad("xlua", "cold", LoadStages.Lua(luaSource));
@@ -114,15 +119,17 @@ namespace WaaS.Benchmarks
             {
                 var record = i >= WarmupRuns;
                 MeasureWarmLoad("waas", record, () => LoadStages.Waas(componentBytes));
+                MeasureWarmLoad("waas-moonbit", record, () => LoadStages.Waas(moonBitComponentBytes));
                 MeasureWarmLoad("xlua", record, () => LoadStages.Lua(luaSource));
                 MeasureWarmLoad("xlua-bytecode", record, () => LoadStages.Lua(luaBytecode));
                 MeasureWarmLoad("lua-csharp", record, () => LoadStages.LuaCSharp(luaSource));
             }
 
             using var waas = new WaasEngine(componentBytes);
+            using var moonBit = new WaasEngine(moonBitComponentBytes, "waas-moonbit");
             using var lua = new LuaEngine(luaSource);
             using var luaCSharp = new LuaCSharpEngine(luaSource);
-            IScriptEngine[] engines = { waas, lua, luaCSharp };
+            IScriptEngine[] engines = { waas, moonBit, lua, luaCSharp };
 
             foreach (var (name, n) in ComputeWorkloads) MeasureAll(engines, "compute", name, n);
             foreach (var name in FfiWorkloads) MeasureAll(engines, "ffi", name, CallCount);
@@ -214,7 +221,7 @@ namespace WaaS.Benchmarks
             builder.Append($"\"mode\":\"{mode}\",\"backend\":\"{backend}\",");
             builder.Append($"\"unity\":\"{Application.unityVersion}\",\"development\":{(Debug.isDebugBuild ? "true" : "false")},");
             builder.Append($"\"cpu\":\"{SystemInfo.processorType.Trim()}\",\"os\":\"{SystemInfo.operatingSystem}\",");
-            builder.Append($"\"sizes\":{{\"component\":{componentBytes.Length},\"lua\":{luaSource.Length},\"luac\":{luaBytecode.Length}}},");
+            builder.Append($"\"sizes\":{{\"component\":{componentBytes.Length},\"moonbit\":{moonBitComponentBytes.Length},\"lua\":{luaSource.Length},\"luac\":{luaBytecode.Length}}},");
             builder.Append($"\"records\":[{string.Join(",", Records)}]");
             builder.Append('}');
             return builder.ToString();

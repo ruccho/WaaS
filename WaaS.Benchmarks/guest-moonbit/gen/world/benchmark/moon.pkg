@@ -1,0 +1,4 @@
+import {
+  "waas/benchmark/interface/waas/benchmark/host" @host,
+  "waas/benchmark/workloads" @workloads,
+}
