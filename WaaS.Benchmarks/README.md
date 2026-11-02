@@ -182,7 +182,7 @@ Functions are executed as a register code, which is generated from the code for 
 | First load (ms) | 12.6 | 13.1 | 13.4 | 109.9 | 6.9 | 2.6 |
 | Repeated load (ms) | 4.8 | 6.2 | 6.1 | 7.3 | 1.4 | 0.3 |
 
-- With Burst, WaaS is faster than xLua with Lua 5.3 in `fib` and `mandelbrot`, and takes less than 1.5 times the time in `sieve` and `sort`. It is faster than Lua-CSharp in every compute workload.
+- With Burst, WaaS is faster than xLua with Lua 5.3 in `fib` and `mandelbrot`, and takes less than 1.5 times the time in `sieve` and `sort`. It is faster than Lua-CSharp in every compute workload except `map`.
 - Without Burst, the register code does not improve IL2CPP as it does CoreCLR, where it is about twice as fast, and `fib` is slower than before. The managed loop should be improved for the platforms without Burst.
 - The translation makes the load about 25 percent slower.
 - The results are of Windows x64 only. Other platforms of Burst and of IL2CPP have not been measured.
