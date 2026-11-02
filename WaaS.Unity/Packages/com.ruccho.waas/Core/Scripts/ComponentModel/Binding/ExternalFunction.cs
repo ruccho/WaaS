@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using STask;
 using WaaS.ComponentModel.Runtime;
 using WaaS.Runtime;
@@ -14,6 +15,21 @@ namespace WaaS.ComponentModel.Binding
     public abstract class ExternalFunction : IFunction
     {
         public abstract IFunctionType Type { get; }
+
+        /// <summary>
+        ///     Whether <see cref="InvokeDirect" /> is available. Generated for the functions whose parameters and result
+        ///     are numbers that correspond to a core value of the same width.
+        /// </summary>
+        public virtual bool SupportsDirectInvoke => false;
+
+        /// <summary>
+        ///     Invokes the host implementation with the core values of the parameters and returns the core value of the
+        ///     result, without a stack frame and the formatters.
+        /// </summary>
+        public virtual ValueTask<StackValueItem> InvokeDirect(ReadOnlySpan<StackValueItem> parameters)
+        {
+            throw new NotSupportedException();
+        }
 
         FunctionBinder IFunction.GetBinder(ExecutionContext context)
         {

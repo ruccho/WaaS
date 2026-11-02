@@ -378,6 +378,12 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
             sourceBuilder.AppendLine(
 /* lang=c#    */"""
                                 }
+                """);
+
+            if (SupportsDirectInvoke(member)) AppendInvokeDirect(sourceBuilder, member);
+
+            sourceBuilder.AppendLine(
+/* lang=c#    */"""
                             }
                 """);
         }
@@ -436,9 +442,16 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
 
             foreach (var member in apis)
             {
+                var direct = SupportsDirectInvoke(member) && member.isAwaitable;
+                if (direct) AppendWrapperDirectCall(sourceBuilder, member);
+
+                var signature = direct
+                    ? $"private async {member.unawaitedReturnType!.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} __waas__Bound{member.memberSymbol.Name}"
+                    : $"public {(member.isAwaitable ? "async " : "")}{member.unawaitedReturnType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "void"} {member.memberSymbol.Name}";
+
                 sourceBuilder.AppendLine(
 /* lang=c#  */$$"""
-                            public {{(member.isAwaitable ? "async " : "")}}{{member.unawaitedReturnType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? "void"}} {{member.memberSymbol.Name}}({{string.Join(", ", member.parameters.Select(param => $"{param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} @{param.Name}"))}})
+                            {{signature}}({{string.Join(", ", member.parameters.Select(param => $"{param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} @{param.Name}"))}})
                             {
                                 if (!this.instance.TryGetExport(@"{{Utils.ToComponentApiName(member.memberSymbol)}}", out global::WaaS.ComponentModel.Runtime.IFunction? function))
                                 {
@@ -529,6 +542,180 @@ public class ComponentBindingInstanceGenerator : IIncrementalGenerator
 
 
         source.AddSource($"{identifier}.Instance.g.cs", sourceBuilder.ToString());
+    }
+
+    // the types that are the core value of the same width in the canonical ABI
+    private static bool IsDirectType(ITypeSymbol type)
+    {
+        return type.SpecialType is SpecialType.System_Int32 or SpecialType.System_UInt32 or SpecialType.System_Int64
+            or SpecialType.System_UInt64 or SpecialType.System_Single or SpecialType.System_Double;
+    }
+
+    private static bool SupportsDirectInvoke(ComponentApi member)
+    {
+        if (member.memberSymbol is not IMethodSymbol) return false;
+        if (member.parameters.Length > 16 /* MAX_FLAT_PARAMS */) return false;
+        if (member.parameters.Any(parameter => !IsDirectType(parameter.Type))) return false;
+        if (member.returnType != null && !IsDirectType(member.returnType)) return false;
+
+        // Task and other awaitables are left to the formatters
+        return !member.isAwaitable || IsValueTask(member.unawaitedReturnType);
+    }
+
+    private static bool IsValueTask(ITypeSymbol? type)
+    {
+        return type is INamedTypeSymbol { Name: "ValueTask" } named &&
+               named.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks";
+    }
+
+    private const string StackValueItemName = "global::WaaS.Runtime.StackValueItem";
+
+    private static string ToCoreValue(ITypeSymbol type, string expression)
+    {
+        return type.SpecialType switch
+        {
+            SpecialType.System_Int32 => $"new {StackValueItemName}(unchecked((uint){expression}))",
+            SpecialType.System_Int64 => $"new {StackValueItemName}(unchecked((ulong){expression}))",
+            _ => $"new {StackValueItemName}({expression})"
+        };
+    }
+
+    private static string FromCoreValue(ITypeSymbol type, string expression)
+    {
+        return type.SpecialType switch
+        {
+            SpecialType.System_Int32 => $"unchecked((int){expression}.ExpectValueI32())",
+            SpecialType.System_UInt32 => $"{expression}.ExpectValueI32()",
+            SpecialType.System_Int64 => $"unchecked((long){expression}.ExpectValueI64())",
+            SpecialType.System_UInt64 => $"{expression}.ExpectValueI64()",
+            SpecialType.System_Single => $"global::WaaS.ComponentModel.Binding.DirectInvocation.LiftF32({expression})",
+            SpecialType.System_Double => $"global::WaaS.ComponentModel.Binding.DirectInvocation.LiftF64({expression})",
+            _ => throw new ArgumentOutOfRangeException(nameof(type))
+        };
+    }
+
+    private static void AppendInvokeDirect(StringBuilder sourceBuilder, ComponentApi member)
+    {
+        var resultType = $"global::System.Threading.Tasks.ValueTask<{StackValueItemName}>";
+        var returnType = member.returnType;
+        var call = $"__waas__target.{member.memberSymbol.Name}({string.Join(", ", member.parameters.Select((parameter, i) => FromCoreValue(parameter.Type, $"__parameters[{i}]")))})";
+
+        sourceBuilder.AppendLine(
+/* lang=c#  */$$"""
+
+                                public override bool SupportsDirectInvoke => true;
+
+                                public override {{resultType}} InvokeDirect(global::System.ReadOnlySpan<{{StackValueItemName}}> __parameters)
+                                {
+                """);
+
+        if (!member.isAwaitable)
+        {
+            if (returnType != null)
+            {
+                sourceBuilder.AppendLine(
+                    $"                    return new {resultType}({ToCoreValue(returnType, call)});");
+            }
+            else
+            {
+                sourceBuilder.AppendLine($"                    {call};");
+                sourceBuilder.AppendLine("                    return default;");
+            }
+
+            sourceBuilder.AppendLine("                }");
+            return;
+        }
+
+        sourceBuilder.AppendLine($"                    var __task = {call};");
+        sourceBuilder.AppendLine("                    if (!__task.IsCompletedSuccessfully) return __waas__Wait(__task);");
+        if (returnType != null)
+        {
+            sourceBuilder.AppendLine(
+                $"                    return new {resultType}({ToCoreValue(returnType, "__task.Result")});");
+        }
+        else
+        {
+            sourceBuilder.AppendLine("                    __task.GetAwaiter().GetResult();");
+            sourceBuilder.AppendLine("                    return default;");
+        }
+
+        sourceBuilder.AppendLine("                }");
+        sourceBuilder.AppendLine();
+        sourceBuilder.AppendLine(
+            $"                private static async {resultType} __waas__Wait({member.unawaitedReturnType!.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} __task)");
+        sourceBuilder.AppendLine("                {");
+        if (returnType != null)
+        {
+            sourceBuilder.AppendLine($"                    return {ToCoreValue(returnType, "await __task")};");
+        }
+        else
+        {
+            sourceBuilder.AppendLine("                    await __task;");
+            sourceBuilder.AppendLine("                    return default;");
+        }
+
+        sourceBuilder.AppendLine("                }");
+    }
+
+    private static void AppendWrapperDirectCall(StringBuilder sourceBuilder, ComponentApi member)
+    {
+        var name = member.memberSymbol.Name;
+        var componentName = Utils.ToComponentApiName(member.memberSymbol);
+        var taskType = member.unawaitedReturnType!.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var parameters = string.Join(", ",
+            member.parameters.Select(param =>
+                $"{param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)} @{param.Name}"));
+        var arguments = string.Join(", ", member.parameters.Select(param => $"@{param.Name}"));
+
+        sourceBuilder.AppendLine(
+/* lang=c#  */$$"""
+                            public {{taskType}} {{name}}({{parameters}})
+                            {
+                                if (!this.instance.TryGetExport(@"{{componentName}}", out global::WaaS.ComponentModel.Runtime.IFunction? function))
+                                {
+                                    throw new global::System.InvalidOperationException(@"A function ""{{componentName}}"" is not found.");
+                                }
+
+                                if (function is not global::WaaS.ComponentModel.Runtime.LiftedFunction { SupportsDirectInvoke: true } __lifted)
+                                {
+                                    return __waas__Bound{{name}}({{arguments}});
+                                }
+
+                                global::System.Span<{{StackValueItemName}}> __arguments = stackalloc {{StackValueItemName}}[{{member.parameters.Length}}];
+                """);
+
+        for (var i = 0; i < member.parameters.Length; i++)
+            sourceBuilder.AppendLine(
+                $"                __arguments[{i}] = {ToCoreValue(member.parameters[i].Type, $"@{member.parameters[i].Name}")};");
+
+        sourceBuilder.AppendLine("                var __task = __lifted.InvokeDirectAsync(this.context, __arguments);");
+        sourceBuilder.AppendLine($"                if (!__task.IsCompletedSuccessfully) return __waas__Wait{name}(__task);");
+        if (member.returnType != null)
+        {
+            sourceBuilder.AppendLine($"                return new {taskType}({FromCoreValue(member.returnType, "__task.Result")});");
+        }
+        else
+        {
+            sourceBuilder.AppendLine("                __task.GetAwaiter().GetResult();");
+            sourceBuilder.AppendLine("                return default;");
+        }
+
+        sourceBuilder.AppendLine("            }");
+        sourceBuilder.AppendLine();
+        sourceBuilder.AppendLine(
+            $"            private static async {taskType} __waas__Wait{name}(global::System.Threading.Tasks.ValueTask<{StackValueItemName}> __task)");
+        sourceBuilder.AppendLine("            {");
+        if (member.returnType != null)
+        {
+            sourceBuilder.AppendLine("                var __result = await __task;");
+            sourceBuilder.AppendLine($"                return {FromCoreValue(member.returnType, "__result")};");
+        }
+        else
+        {
+            sourceBuilder.AppendLine("                await __task;");
+        }
+
+        sourceBuilder.AppendLine("            }");
     }
 
     private static bool IsValueTypeDefinition(INamedTypeSymbol type)

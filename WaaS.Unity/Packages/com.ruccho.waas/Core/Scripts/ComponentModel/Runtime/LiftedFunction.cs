@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using WaaS.ComponentModel.Models;
 using WaaS.Runtime;
 using ExecutionContext = WaaS.Runtime.ExecutionContext;
@@ -34,6 +35,45 @@ namespace WaaS.ComponentModel.Runtime
         public Memory? MemoryToRealloc { get; }
 
         public IFunctionType Type { get; }
+
+        /// <summary>
+        ///     Whether <see cref="InvokeDirectAsync" /> is available.
+        /// </summary>
+        public bool SupportsDirectInvoke => PostReturnFunction == null;
+
+        /// <summary>
+        ///     Invokes the core function with the core values of the parameters and returns the core value of the
+        ///     result, without the formatters. The parameters and the result must not need lifting or lowering.
+        /// </summary>
+        public ValueTask<StackValueItem> InvokeDirectAsync(ExecutionContext context,
+            ReadOnlySpan<StackValueItem> parameters)
+        {
+            var task = context.InvokeAsync(CoreFunction, parameters);
+            if (!task.IsCompletedSuccessfully) return WaitForResultAsync(task, context);
+
+            task.GetAwaiter().GetResult();
+            return new ValueTask<StackValueItem>(TakeResult(context));
+        }
+
+        private async ValueTask<StackValueItem> WaitForResultAsync(ValueTask task, ExecutionContext context)
+        {
+            await task;
+            return TakeResult(context);
+        }
+
+        private StackValueItem TakeResult(ExecutionContext context)
+        {
+            var result = default(StackValueItem);
+            if (CoreFunction.Type.ResultTypes.Length != 0)
+            {
+                Span<StackValueItem> results = stackalloc StackValueItem[1];
+                context.TakeResults(results);
+                result = results[0];
+            }
+
+            context.ReleaseLastFrame();
+            return result;
+        }
 
         public FunctionBinder GetBinder(ExecutionContext context)
         {

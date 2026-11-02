@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using WaaS.ComponentModel.Runtime;
 using WaaS.Models;
 
 namespace WaaS.Runtime
@@ -22,6 +23,9 @@ namespace WaaS.Runtime
         private int activationCount;
         private Activation[] activations;
         private int usedActivationCount;
+
+        // the host function being called without a frame
+        private IInvocableFunction directCallee;
 
         private CompiledFunction compiled;
         private Instance currentInstance;
@@ -80,6 +84,7 @@ namespace WaaS.Runtime
 
             activationCount = default;
             usedActivationCount = default;
+            directCallee = default;
             compiled = default;
             currentInstance = default;
             functions = default;
@@ -327,6 +332,9 @@ namespace WaaS.Runtime
         /// </summary>
         internal void CaptureStackTrace(List<WasmStackTraceFrame> dest, bool isInnermost)
         {
+            // it stays set when the function throws
+            if (directCallee != null) dest.Add(WasmStackTraceFrame.CaptureHost(directCallee));
+
             dest.Add(WasmStackTraceFrame.CaptureWasm(Function, GetCurrentInstruction(isInnermost)));
             for (var i = activationCount - 1; i >= 0; i--)
             {
@@ -441,6 +449,65 @@ namespace WaaS.Runtime
             return StackFrameState.Completed;
         }
 
+        /// <summary>
+        ///     Calls a host function that does not need a frame, without going through the stack of the frames.
+        ///     <see cref="programCounter" /> stays at the call so that the stack trace of an exception points to it.
+        /// </summary>
+        /// <param name="callee">The function to call.</param>
+        /// <param name="parametersIndex">The index of the parameters, which is where the results are written.</param>
+        /// <param name="numParameters">The number of the parameters.</param>
+        /// <param name="pendingCore">The frame to wait for the function when it has been started but is not completed.</param>
+        /// <returns>Whether the function has been called and is completed.</returns>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private bool TryInvokeDirectly(IInvocableFunction callee, int parametersIndex, int numParameters,
+            out IStackFrameCore pendingCore)
+        {
+            pendingCore = null;
+            var parameters = new ReadOnlySpan<StackValueItem>(values, parametersIndex, numParameters);
+
+            // an exception of the host is not an error at the instruction
+            if (callee is ExternalFunction external)
+            {
+                var numResults = external.Type.ResultTypes.Length;
+                var results = numResults <= MaxInlineResults
+                    ? stackalloc StackValueItem[numResults]
+                    : new StackValueItem[numResults];
+
+                isMovingPushedFrame = true;
+                directCallee = callee;
+                external.Invoke(Context, parameters, results);
+                directCallee = null;
+                isMovingPushedFrame = false;
+
+                results.CopyTo(values.AsSpan(parametersIndex));
+                stackPointer = parametersIndex + numResults;
+                return true;
+            }
+
+            if (callee is LoweredFunction { DirectFunction: { } direct } lowered)
+            {
+                var numResults = lowered.Type.ResultTypes.Length;
+
+                isMovingPushedFrame = true;
+                directCallee = callee;
+                var task = direct.InvokeDirect(parameters);
+                directCallee = null;
+                isMovingPushedFrame = false;
+
+                if (!task.IsCompletedSuccessfully)
+                {
+                    pendingCore = new DirectInvocationStackFrame(task, numResults);
+                    return false;
+                }
+
+                if (numResults != 0) values[parametersIndex] = task.Result;
+                stackPointer = parametersIndex + numResults;
+                return true;
+            }
+
+            return false;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Push(uint value)
         {
@@ -530,6 +597,7 @@ namespace WaaS.Runtime
             return height + arity;
         }
 
+        private const int MaxInlineResults = 4;
         private static readonly byte[] EmptyMemory = new byte[1];
 
         /// <summary>
@@ -1773,9 +1841,24 @@ namespace WaaS.Runtime
                     // execution context. this frame continues if the callee completes synchronously.
                     sp -= numParameters;
                     stackPointer = sp;
+                    if (TryInvokeDirectly(callee, sp, numParameters, out var pendingCore))
+                    {
+                        sp = stackPointer;
+                        pc++;
+                        if (memory != null && memory.Buffer.Length != 0)
+                        {
+                            m0 = ref memory.Buffer[0];
+                            memLen = (ulong)memory.Length;
+                        }
+
+                        continue;
+                    }
+
                     isFramePushed = true;
-                    var frame = context.PushFrameFromFrame(callee,
-                        new ReadOnlySpan<StackValueItem>(values, sp, numParameters));
+                    var frame = pendingCore != null
+                        ? context.PushFrame(new StackFrame(pendingCore))
+                        : context.PushFrameFromFrame(callee,
+                            new ReadOnlySpan<StackValueItem>(values, sp, numParameters));
                     programCounter = (uint)(pc + 1);
 
                     var state = MovePushedFrame(frame, waker);

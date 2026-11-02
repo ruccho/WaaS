@@ -208,7 +208,7 @@ namespace WaaS.Runtime
             };
         }
 
-        internal static WasmStackTraceFrame CaptureHost(IStackFrameCore core)
+        internal static WasmStackTraceFrame CaptureHost(object core)
         {
             string description;
             try

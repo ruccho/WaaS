@@ -73,7 +73,15 @@ namespace WaaS.ComponentModel.Runtime
             parameterTypes = new IDespecializedValueType[parameters.Length];
             for (var i = 0; i < parameters.Length; i++) parameterTypes[i] = parameters[i].Type.Despecialize();
             flattenParameters = paramFlattenedCount <= 16 /* MAX_FLAT_PARAMS */;
+            if (flattenParameters && !hasSerializedResult &&
+                componentFunction is Binding.ExternalFunction { SupportsDirectInvoke: true } direct)
+                DirectFunction = direct;
         }
+
+        /// <summary>
+        ///     The host function which takes the flattened values as they are, if any.
+        /// </summary>
+        internal Binding.ExternalFunction? DirectFunction { get; }
 
         public IInstance Instance { get; }
         public ICanonOptions Options => this;

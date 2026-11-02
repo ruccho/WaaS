@@ -135,6 +135,15 @@ namespace WaaS.Runtime
 
         public int ResultLength => LastFrame.ResultLength;
 
+        /// <summary>
+        ///     Returns the frame of the completed invocation to the pool.
+        /// </summary>
+        internal void ReleaseLastFrame()
+        {
+            LastFrame.Dispose();
+            LastFrame = default;
+        }
+
         public void Dispose()
         {
             lock (locker)
@@ -489,27 +498,46 @@ namespace WaaS.Runtime
             }
         }
 
-        private async ValueTask RunAsync()
+        // does not create a state machine when the invocation completes synchronously
+        private ValueTask RunAsync()
         {
             var initial = Current ?? throw new InvalidOperationException();
+            ValueTaskSource source;
+            try
+            {
+                if (!MoveAsync(initial, out source)) return default;
+            }
+            catch (Exception ex)
+            {
+                return new ValueTask(Task.FromException(ex));
+            }
+
+            return WaitAndRunAsync(initial, source);
+        }
+
+        private bool MoveAsync(StackFrame initial, out ValueTaskSource source)
+        {
+            RefillFuel();
+            source = currentPendingTaskSource ??= ValueTaskSource.Create();
+            var wasRunningAsync = isRunningAsync;
+            isRunningAsync = true;
+            bool pending;
+            try
+            {
+                MoveToEndOrPending(initial, out pending);
+            }
+            finally
+            {
+                isRunningAsync = wasRunningAsync;
+            }
+
+            return pending;
+        }
+
+        private async ValueTask WaitAndRunAsync(StackFrame initial, ValueTaskSource source)
+        {
             while (true)
             {
-                RefillFuel();
-                var source = currentPendingTaskSource ??= ValueTaskSource.Create();
-                var wasRunningAsync = isRunningAsync;
-                isRunningAsync = true;
-                bool pending;
-                try
-                {
-                    MoveToEndOrPending(initial, out pending);
-                }
-                finally
-                {
-                    isRunningAsync = wasRunningAsync;
-                }
-
-                if (!pending) return;
-
                 currentPendingTaskSource = null;
 
                 var registration = RegisterCancellation(source, CancellationToken);
@@ -528,6 +556,8 @@ namespace WaaS.Runtime
                 {
                     registration.Dispose();
                 }
+
+                if (!MoveAsync(initial, out source)) return;
             }
         }
 
