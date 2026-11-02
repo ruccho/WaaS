@@ -158,3 +158,33 @@ Measured on 2026-11-02 under the same conditions, on IL2CPP. Lua-CSharp and xLua
 - Calls across the script boundary that do not allocate in the guest take 1.5 to 2.5 times the time of xLua for numbers, and are on the same level as Lua-CSharp or faster.
 - `ffi_string_out` and `callback_string` allocate in the guest with realloc, which is interpreted. The cost has not been analyzed further.
 - Reaching instructions through a `ref` local instead of an index made the interpreter about 12 percent faster on CoreCLR, but up to about twice as slow on IL2CPP, so it was not adopted.
+
+## Results with the register code and Burst
+
+Functions are executed as a register code, which is generated from the code for the operand stack, and by an interpreter loop compiled by Burst when `com.unity.burst` is installed. Measured on 2026-11-02 under the same conditions. "Managed" is the loop on managed references without Burst, on IL2CPP.
+
+| Workload | Before, IL2CPP | Managed, IL2CPP | Burst, IL2CPP | Burst, Mono | xLua, IL2CPP | Lua-CSharp, IL2CPP |
+|---|---:|---:|---:|---:|---:|---:|
+| compute_fib (ms) | 92.8 | 175.8 | 23.3 | 23.4 | 49.1 | 667.1 |
+| compute_sieve (ms) | 404.6 | 338.5 | 73.1 | 80.2 | 49.2 | 307.6 |
+| compute_mandelbrot (ms) | 138.4 | 120.6 | 18.6 | 25.1 | 32.8 | 248.9 |
+| compute_strings (ms) | 389.2 | 368.2 | 94.9 | 164.2 | 27.3 | 204.0 |
+| compute_sort (ms) | 575.2 | 488.3 | 98.7 | 85.3 | 74.3 | 200.3 |
+| compute_map (ms) | 1,026.7 | 718.5 | 173.1 | 173.0 | 9.2 | 95.8 |
+| ffi_nop (ns/call) | 551.1 | 76.9 | 57.1 | 77.4 | 30.5 | 207.5 |
+| ffi_add (ns/call) | 839.3 | 104.1 | 68.2 | 90.8 | 42.2 | 681.3 |
+| ffi_string_in (ns/call) | 1,675.0 | 506.9 | 438.4 | 595.2 | 119.1 | 307.2 |
+| ffi_string_out (ns/call) | 3,975.1 | 2,824.4 | 1,301.5 | 2,049.3 | 73.6 | 253.6 |
+| ffi_struct (ns/call) | 3,826.7 | 587.3 | 480.6 | 641.9 | 93.9 | 358.8 |
+| ffi_resource (ns/call) | 1,682.5 | 430.9 | 340.4 | 469.0 | 60.7 | 316.1 |
+| callback_add (ns/call) | 2,986.2 | 654.2 | 589.6 | 826.4 | 30.1 | 390.4 |
+| callback_string (ns/call) | 5,442.1 | 2,914.2 | 1,493.1 | 1,988.4 | 67.0 | 377.2 |
+| First load (ms) | 12.6 | 13.1 | 13.4 | 109.9 | 6.9 | 2.6 |
+| Repeated load (ms) | 4.8 | 6.2 | 6.1 | 7.3 | 1.4 | 0.3 |
+
+- With Burst, WaaS is faster than xLua with Lua 5.3 in `fib` and `mandelbrot`, and takes less than 1.5 times the time in `sieve` and `sort`. It is faster than Lua-CSharp in every compute workload.
+- Without Burst, the register code does not improve IL2CPP as it does CoreCLR, where it is about twice as fast, and `fib` is slower than before. The managed loop should be improved for the platforms without Burst.
+- The translation makes the load about 25 percent slower.
+- The results are of Windows x64 only. Other platforms of Burst and of IL2CPP have not been measured.
+
+To test the loop for Burst without Unity, pass `-p:WaaSNativeInterpreter=true` to `dotnet test` and `dotnet run`, which compiles it for .NET.
