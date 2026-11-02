@@ -101,6 +101,39 @@ public class DedicatedOperationTests
         }
     }
 
+    [TestCase(0u, 2u)]
+    [TestCase(1u, 1u)]
+    public void IfWithoutElseWhoseBodyBranches(uint condition, uint expected)
+    {
+        const string body = """
+                            block $exit (result i32)
+                              local.get 0
+                              if
+                                i32.const 1
+                                br $exit
+                              end
+                              i32.const 2
+                            end
+                            """;
+
+        Assert.That(Call(body, "(param i32)", "i32", I32(condition)), Is.EqualTo(expected));
+    }
+
+    // a value on the stack keeps the value of the local at the time it was pushed
+    [TestCase(3u, 3u + 4u)]
+    public void LocalIsWrittenWhileItsValueIsOnTheStack(uint value, uint expected)
+    {
+        const string body = """
+                            local.get 0
+                            i32.const 4
+                            local.set 0
+                            local.get 0
+                            i32.add
+                            """;
+
+        Assert.That(Call(body, "(param i32)", "i32", I32(value)), Is.EqualTo(expected));
+    }
+
     // the entries for blocks, loops and ends execute the following instruction by themselves
     [Test]
     public void BlocksEnteredByBranchesAndCalls()

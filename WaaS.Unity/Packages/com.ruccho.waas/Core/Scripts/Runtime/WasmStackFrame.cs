@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -13,7 +13,7 @@ namespace WaaS.Runtime
     ///     The calls from it to WebAssembly functions are also executed in the frame without pushing new frames, and the
     ///     members such as <see cref="Function" /> reflect the innermost function being executed.
     /// </summary>
-    public class WasmStackFrame : IStackFrameCore
+    public partial class WasmStackFrame : IStackFrameCore
     {
         // the buffer of a pooled frame is kept for the next use unless it is larger than this
         private const int MaxRetainedBufferLength = 1024;
@@ -120,8 +120,8 @@ namespace WaaS.Runtime
             // the interpreter loop is kept out of the exception handler for better code generation
             try
             {
-                // a debugger pauses before each instruction, which may be in the middle of a superinstruction
-                return Run(waker, Context.Debugger != null);
+                // a debugger pauses before each instruction and reads the operand stack
+                return Context.Debugger != null ? Run(waker) : RunRegister(waker);
             }
             catch (DebuggerPause)
             {
@@ -606,7 +606,7 @@ namespace WaaS.Runtime
         ///     <see cref="programCounter" /> is updated before an instruction which may throw so that it points to the
         ///     failed one.
         /// </summary>
-        private StackFrameState Run(in Waker waker, bool useBaseCode)
+        private StackFrameState Run(in Waker waker)
         {
             // the locals are kept few for the register allocation
             var context = Context;
@@ -617,8 +617,7 @@ namespace WaaS.Runtime
             // the bounds are not checked on the hot path. the validation ensures that the indices of the locals and
             // the operand stack are within the buffer, and the program counter stays in the code.
             ref var v0 = ref values[0];
-            ref var c0 = ref compiled.Code[0];
-            if (useBaseCode) c0 = ref compiled.BaseCode[0];
+            ref var c0 = ref compiled.BaseCode[0];
 
             ref var m0 = ref EmptyMemory[0];
             var memLen = 0UL;
@@ -636,15 +635,6 @@ namespace WaaS.Runtime
                 int cost = instr.Cost;
                 if (cost != 0 && (context.fuel -= cost) < 0)
                 {
-                    if (cost > 1)
-                    {
-                        // the fuel is not enough for all the instructions of the block.
-                        // continue instruction by instruction until the function changes.
-                        context.fuel += cost;
-                        c0 = ref compiled.BaseCode[0];
-                        continue;
-                    }
-
                     programCounter = (uint)pc;
                     // the debugger reads the operand stack
                     stackPointer = sp;
@@ -701,116 +691,6 @@ namespace WaaS.Runtime
                         }
 
                         break;
-                    case Op.BrIfZeroLoop:
-                        if (Unsafe.Add(ref v0, --sp).valueI32 == 0)
-                        {
-                            // the cancellation is reported at br_if
-                            ThrowIfCancellationRequested(context, pc + 1);
-                            sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
-                            pc = instr.A;
-                            continue;
-                        }
-
-                        break;
-                    case Op.BrIfZero:
-                        if (Unsafe.Add(ref v0, --sp).valueI32 == 0)
-                        {
-                            sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
-                            pc = instr.A;
-                            continue;
-                        }
-
-                        break;
-                    case Op.BrIfI32NeLoop:
-                    {
-                        var rhs = Unsafe.Add(ref v0, sp - 1).valueI32;
-                        var lhs = Unsafe.Add(ref v0, sp - 2).valueI32;
-                        sp -= 2;
-                        if (lhs != rhs)
-                        {
-                            // the cancellation is reported at br_if
-                            ThrowIfCancellationRequested(context, pc + 1);
-                            sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
-                            pc = instr.A;
-                            continue;
-                        }
-
-                        break;
-                    }
-                    case Op.BrIfI32Ne:
-                    {
-                        var rhs = Unsafe.Add(ref v0, sp - 1).valueI32;
-                        var lhs = Unsafe.Add(ref v0, sp - 2).valueI32;
-                        sp -= 2;
-                        if (lhs != rhs)
-                        {
-                            sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
-                            pc = instr.A;
-                            continue;
-                        }
-
-                        break;
-                    }
-                    case Op.BrIfI32GtULoop:
-                    {
-                        var rhs = Unsafe.Add(ref v0, sp - 1).valueI32;
-                        var lhs = Unsafe.Add(ref v0, sp - 2).valueI32;
-                        sp -= 2;
-                        if (lhs > rhs)
-                        {
-                            // the cancellation is reported at br_if
-                            ThrowIfCancellationRequested(context, pc + 1);
-                            sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
-                            pc = instr.A;
-                            continue;
-                        }
-
-                        break;
-                    }
-                    case Op.BrIfI32GtU:
-                    {
-                        var rhs = Unsafe.Add(ref v0, sp - 1).valueI32;
-                        var lhs = Unsafe.Add(ref v0, sp - 2).valueI32;
-                        sp -= 2;
-                        if (lhs > rhs)
-                        {
-                            sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
-                            pc = instr.A;
-                            continue;
-                        }
-
-                        break;
-                    }
-                    case Op.BrIfI32LtULoop:
-                    {
-                        var rhs = Unsafe.Add(ref v0, sp - 1).valueI32;
-                        var lhs = Unsafe.Add(ref v0, sp - 2).valueI32;
-                        sp -= 2;
-                        if (lhs < rhs)
-                        {
-                            // the cancellation is reported at br_if
-                            ThrowIfCancellationRequested(context, pc + 1);
-                            sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
-                            pc = instr.A;
-                            continue;
-                        }
-
-                        break;
-                    }
-                    case Op.BrIfI32LtU:
-                    {
-                        var rhs = Unsafe.Add(ref v0, sp - 1).valueI32;
-                        var lhs = Unsafe.Add(ref v0, sp - 2).valueI32;
-                        sp -= 2;
-                        if (lhs < rhs)
-                        {
-                            sp = MoveBranchValues(ref v0, sp, this.stackBase + instr.B, instr.C);
-                            pc = instr.A;
-                            continue;
-                        }
-
-                        break;
-                    }
                     case Op.ReturnIf:
                         if (Unsafe.Add(ref v0, --sp).valueI32 != 0) goto Return;
                         break;
@@ -849,93 +729,6 @@ namespace WaaS.Runtime
 
                     #region Variable
 
-                    case Op.LocalGet2:
-                        Unsafe.Add(ref v0, sp) = Unsafe.Add(ref v0, frameBase + instr.A);
-                        Unsafe.Add(ref v0, sp + 1) = Unsafe.Add(ref v0, frameBase + instr.B);
-                        sp += 2;
-                        break;
-                    case Op.LocalGetConst:
-                    {
-                        Unsafe.Add(ref v0, sp) = Unsafe.Add(ref v0, frameBase + instr.A);
-                        ref var slot = ref Unsafe.Add(ref v0, sp + 1);
-                        slot.valueType = ValueType.I32;
-                        slot.valueI64 = (uint)instr.B;
-                        sp += 2;
-                        break;
-                    }
-                    case Op.LocalGetI32AddConst:
-                    {
-                        ref var slot = ref Unsafe.Add(ref v0, sp);
-                        slot.valueType = ValueType.I32;
-                        slot.valueI64 = Unsafe.Add(ref v0, frameBase + instr.A).valueI32 + (uint)instr.B;
-                        sp++;
-                        break;
-                    }
-                    case Op.I32AddConst:
-                    {
-                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
-                        slot.valueI64 = slot.valueI32 + (uint)instr.B;
-                        break;
-                    }
-                    case Op.LocalSetGet:
-                        Unsafe.Add(ref v0, frameBase + instr.A) = Unsafe.Add(ref v0, sp - 1);
-                        Unsafe.Add(ref v0, sp - 1) = Unsafe.Add(ref v0, frameBase + instr.B);
-                        break;
-                    case Op.LocalGet3:
-                        Unsafe.Add(ref v0, sp) = Unsafe.Add(ref v0, frameBase + instr.A);
-                        Unsafe.Add(ref v0, sp + 1) = Unsafe.Add(ref v0, frameBase + instr.B);
-                        Unsafe.Add(ref v0, sp + 2) = Unsafe.Add(ref v0, frameBase + instr.C);
-                        sp += 3;
-                        break;
-                    case Op.LocalGet2Const:
-                    {
-                        Unsafe.Add(ref v0, sp) = Unsafe.Add(ref v0, frameBase + instr.A);
-                        Unsafe.Add(ref v0, sp + 1) = Unsafe.Add(ref v0, frameBase + instr.B);
-                        ref var slot = ref Unsafe.Add(ref v0, sp + 2);
-                        slot.valueType = ValueType.I32;
-                        slot.valueI64 = (uint)instr.C;
-                        sp += 3;
-                        break;
-                    }
-                    case Op.LocalTeeConst:
-                    {
-                        Unsafe.Add(ref v0, frameBase + instr.A) = Unsafe.Add(ref v0, sp - 1);
-                        ref var slot = ref Unsafe.Add(ref v0, sp);
-                        slot.valueType = ValueType.I32;
-                        slot.valueI64 = (uint)instr.B;
-                        sp++;
-                        break;
-                    }
-                    case Op.LocalGetI32AddTee:
-                    {
-                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
-                        slot.valueI64 = slot.valueI32 + Unsafe.Add(ref v0, frameBase + instr.A).valueI32;
-                        Unsafe.Add(ref v0, frameBase + instr.B) = slot;
-                        break;
-                    }
-                    case Op.I32AndConst:
-                    {
-                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
-                        slot.valueI64 = slot.valueI32 & (uint)instr.B;
-                        break;
-                    }
-                    case Op.I32ShlAdd:
-                    {
-                        // the shift count is masked to 5 bits as specified
-                        ref var lhs = ref Unsafe.Add(ref v0, sp - 3);
-                        lhs.valueI64 = lhs.valueI32 +
-                                       (Unsafe.Add(ref v0, sp - 2).valueI32 << (int)Unsafe.Add(ref v0, sp - 1).valueI32);
-                        sp -= 2;
-                        break;
-                    }
-                    case Op.I32ShrUTee:
-                    {
-                        ref var lhs = ref Unsafe.Add(ref v0, sp - 2);
-                        lhs.valueI64 = lhs.valueI32 >> (int)Unsafe.Add(ref v0, sp - 1).valueI32;
-                        sp--;
-                        Unsafe.Add(ref v0, frameBase + instr.A) = lhs;
-                        break;
-                    }
                     case Op.LocalGet:
                         Unsafe.Add(ref v0, sp) = Unsafe.Add(ref v0, frameBase + instr.A);
                         sp++;
@@ -1740,49 +1533,6 @@ namespace WaaS.Runtime
                         sp -= 2;
                         break;
                     }
-                    case Op.Load32Tee:
-                    {
-                        ref var slot = ref Unsafe.Add(ref v0, sp - 1);
-                        var address = (ulong)slot.valueI32 + (uint)instr.A;
-                        if (address + 4 > memLen) ThrowOutOfBounds(pc);
-                        slot.valueI64 = Unsafe.ReadUnaligned<uint>(ref Unsafe.Add(ref m0, (int)address));
-                        slot.valueType = (ValueType)instr.B;
-                        Unsafe.Add(ref v0, frameBase + instr.C) = slot;
-                        break;
-                    }
-                    case Op.ConstLoad32Tee:
-                    {
-                        var address = (ulong)(uint)instr.B + (uint)instr.A;
-                        // the load follows the constant
-                        if (address + 4 > memLen) ThrowOutOfBounds(pc + 1);
-                        ref var slot = ref Unsafe.Add(ref v0, sp++);
-                        slot.valueType = ValueType.I32;
-                        slot.valueI64 = Unsafe.ReadUnaligned<uint>(ref Unsafe.Add(ref m0, (int)address));
-                        Unsafe.Add(ref v0, frameBase + instr.C) = slot;
-                        break;
-                    }
-                    case Op.Store32Const2:
-                    {
-                        ref var first = ref Unsafe.Add(ref v0, sp - 2);
-                        ref var second = ref Unsafe.Add(ref v0, sp - 1);
-                        var address = (ulong)first.valueI32 + (uint)instr.A;
-                        if (address + 4 > memLen) ThrowOutOfBounds(pc);
-                        Unsafe.WriteUnaligned(ref Unsafe.Add(ref m0, (int)address), second.valueI32);
-                        first.valueType = ValueType.I32;
-                        first.valueI64 = (uint)instr.B;
-                        second.valueType = ValueType.I32;
-                        second.valueI64 = (uint)instr.C;
-                        break;
-                    }
-                    case Op.Store32LocalGet2:
-                    {
-                        var address = (ulong)Unsafe.Add(ref v0, sp - 2).valueI32 + (uint)instr.A;
-                        if (address + 4 > memLen) ThrowOutOfBounds(pc);
-                        Unsafe.WriteUnaligned(ref Unsafe.Add(ref m0, (int)address), Unsafe.Add(ref v0, sp - 1).valueI32);
-                        Unsafe.Add(ref v0, sp - 2) = Unsafe.Add(ref v0, frameBase + instr.B);
-                        Unsafe.Add(ref v0, sp - 1) = Unsafe.Add(ref v0, frameBase + instr.C);
-                        break;
-                    }
 
                     #endregion
 
@@ -1825,7 +1575,7 @@ namespace WaaS.Runtime
                         // the cancellation is observed on calls as well as loops, to abort a deep recursion
                         ThrowIfCancellationRequested(context, pc);
                         EnterFunction(wasmCallee, pc + 1, sp - numParameters);
-                        c0 = ref compiled.Code[0];
+                        c0 = ref compiled.BaseCode[0];
                         v0 = ref values[0];
                         frameBase = this.frameBase;
                         sp = stackBase;
@@ -1888,7 +1638,7 @@ namespace WaaS.Runtime
                 // the locals are not passed by reference to keep them in registers
                 pc = ReturnToCaller(sp);
                 sp = stackPointer;
-                c0 = ref compiled.Code[0];
+                c0 = ref compiled.BaseCode[0];
                 frameBase = this.frameBase;
                 if (memory != null && memory.Buffer.Length != 0)
                 {

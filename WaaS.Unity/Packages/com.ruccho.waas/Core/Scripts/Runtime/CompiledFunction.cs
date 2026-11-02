@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using WaaS.Models;
@@ -150,36 +150,6 @@ namespace WaaS.Runtime
         I32RemU,
         I64DivU,
         I64RemU,
-
-        // superinstructions, which execute a sequence of instructions at once
-        LocalGet2, // local.get A, local.get B
-        LocalGetConst, // local.get A, i32.const B
-        LocalGetI32AddConst, // local.get A, i32.const B, i32.add
-        I32AddConst, // i32.const B, i32.add
-        LocalSetGet, // local.set A, local.get B
-        LocalGet3, // local.get A, local.get B, local.get C
-        LocalGet2Const, // local.get A, local.get B, i32.const C
-        LocalTeeConst, // local.tee A, i32.const B
-        LocalGetI32AddTee, // local.get A, i32.add, local.tee B
-        I32AndConst, // i32.const B, i32.and
-        I32ShlAdd, // i32.shl, i32.add
-        I32ShrUTee, // i32.shr_u, local.tee A
-
-        // superinstructions with memory accesses, which may throw
-        Load32Tee, // (i32|f32).load A (B: value type), local.tee C
-        ConstLoad32Tee, // i32.const B, i32.load A, local.tee C
-        Store32Const2, // (i32|f32|i64).store32 A, i32.const B, i32.const C
-        Store32LocalGet2, // (i32|f32|i64).store32 A, local.get B, local.get C
-
-        // superinstructions ending with br_if. A, B and C are the same as BrIf
-        BrIfZero, // i32.eqz, br_if
-        BrIfZeroLoop,
-        BrIfI32Ne, // i32.ne, br_if
-        BrIfI32NeLoop,
-        BrIfI32GtU, // i32.gt_u, br_if
-        BrIfI32GtULoop,
-        BrIfI32LtU, // i32.lt_u, br_if
-        BrIfI32LtULoop
     }
 
     /// <summary>
@@ -222,11 +192,10 @@ namespace WaaS.Runtime
     /// </summary>
     internal sealed class CompiledFunction
     {
-        private CompiledFunction(CompiledInstruction[] code, CompiledInstruction[] baseCode,
+        private CompiledFunction(CompiledInstruction[] baseCode,
             BranchTarget[] branchTargets, StackValueItem[] initialLocals, int numParameters, int numResults,
             int maxStackDepth)
         {
-            Code = code;
             BaseCode = baseCode;
             BranchTargets = branchTargets;
             InitialLocals = initialLocals;
@@ -236,16 +205,44 @@ namespace WaaS.Runtime
         }
 
         /// <summary>
-        ///     The instructions with superinstructions. A sequence of instructions which falls through is executed at once
-        ///     from the first one.
-        /// </summary>
-        public CompiledInstruction[] Code { get; }
-
-        /// <summary>
-        ///     The instructions without superinstructions, each of which executes only the instruction at the index and
-        ///     consumes the fuel by itself. Used when the remaining fuel is not enough to execute a basic block.
+        ///     The instructions for the operand stack, each of which corresponds to the instruction at the same index and
+        ///     consumes the fuel by itself. Used when a debugger is attached and when the remaining fuel is not enough to
+        ///     execute a basic block.
         /// </summary>
         public CompiledInstruction[] BaseCode { get; }
+
+        /// <summary>
+        ///     The code executed normally. See <see cref="RegisterCompiler" />.
+        /// </summary>
+        public RegisterInstruction[] RegisterCode { get; private set; }
+
+        /// <summary>
+        ///     The index in <see cref="BaseCode" /> of each instruction of <see cref="RegisterCode" />.
+        /// </summary>
+        public int[] Origins { get; private set; }
+
+        /// <summary>
+        ///     The index in <see cref="RegisterCode" /> of the start of the basic block at each index of
+        ///     <see cref="BaseCode" />, or -1.
+        /// </summary>
+        public int[] EntryIndices { get; private set; }
+
+        /// <summary>
+        ///     The destinations of br_table in <see cref="RegisterCode" />.
+        /// </summary>
+        public int[] RegisterBranchTargets { get; private set; }
+
+        private int[] blockCodeIndices;
+        private RegisterBlock[] blocks;
+
+        /// <summary>
+        ///     Gets the basic block whose first instruction in <see cref="RegisterCode" /> is at the index.
+        /// </summary>
+        public ref RegisterBlock GetBlock(int codeIndex)
+        {
+            return ref blocks[Array.BinarySearch(blockCodeIndices, codeIndex)];
+        }
+
         public BranchTarget[] BranchTargets { get; }
 
         /// <summary>
@@ -270,6 +267,10 @@ namespace WaaS.Runtime
             {
                 var instructions = function.Body.Instructions.Span;
                 var code = new CompiledInstruction[instructions.Length];
+                var heights = new int[instructions.Length];
+                var unreachable = new bool[instructions.Length];
+                var pops = new int[instructions.Length];
+                var pushes = new int[instructions.Length];
                 var branchTargets = new List<BranchTarget>();
 
                 var parameterTypes = function.Type.ParameterTypes.Span;
@@ -341,6 +342,8 @@ namespace WaaS.Runtime
                 {
                     var instr = instructions[i];
                     ref var compiled = ref code[i];
+                    heights[i] = height;
+                    unreachable[i] = isUnreachable;
 
                     switch (instr)
                     {
@@ -370,6 +373,7 @@ namespace WaaS.Runtime
                                 NumParameters = numParameters,
                                 NumResults = block.ResultTypes.Length,
                                 End = block.End,
+                                IsIfWithoutElse = block is If { Else: null },
                                 IsUnreachable = isUnreachable
                             });
                             break;
@@ -395,6 +399,13 @@ namespace WaaS.Runtime
                             var block = blocks[blocks.Count - 1];
                             blocks.RemoveAt(blocks.Count - 1);
                             compiled.Op = Op.Nop;
+                            if (block.IsIfWithoutElse)
+                            {
+                                // this is where the condition being false continues
+                                heights[i] = block.Height + block.NumParameters;
+                                unreachable[i] = block.IsUnreachable;
+                            }
+
                             height = block.Height;
                             PushValues(block.NumResults);
                             isUnreachable = block.IsUnreachable;
@@ -436,6 +447,8 @@ namespace WaaS.Runtime
                         default:
                         {
                             var (popCount, pushCount) = instr.PreValidateStackState(context);
+                            pops[i] = (int)popCount;
+                            pushes[i] = (int)pushCount;
                             PopValues((int)popCount);
                             PushValues((int)pushCount);
                             Translate(context, instr, ref compiled);
@@ -458,32 +471,29 @@ namespace WaaS.Runtime
                 var maxStackDepth = Math.Max(maxHeight, (int)(function.MaxStackDepth ?? 0));
 
                 var branchTargetArray = branchTargets.ToArray();
-                var fused = Fuse(code);
-                AssignBlockCosts(fused, FindBlockStarts(code, branchTargetArray));
-
-                return new CompiledFunction(fused, code, branchTargetArray, initialLocals, parameterTypes.Length,
+                var result = new CompiledFunction(code, branchTargetArray, initialLocals, parameterTypes.Length,
                     function.Type.ResultTypes.Length, maxStackDepth);
+
+                var starts = FindBlockStarts(code, branchTargetArray);
+                var costs = GetBlockCosts(code, starts);
+                RegisterCompiler.Compile(code, branchTargetArray, starts, costs, heights, unreachable, pops, pushes,
+                    numLocals, out var registerCode, out var origins, out var entryIndices, out var blockCodeIndices,
+                    out var registerBlocks, out var registerBranchTargets);
+                result.RegisterCode = registerCode;
+                result.Origins = origins;
+                result.EntryIndices = entryIndices;
+                result.RegisterBranchTargets = registerBranchTargets;
+                result.blockCodeIndices = blockCodeIndices;
+                result.blocks = registerBlocks;
+                return result;
             }
-        }
-
-        // whether the operation always continues to the next instruction without throwing
-        private static bool IsStraight(Op op)
-        {
-            return op == Op.Nop || (op >= Op.Drop && op <= Op.Reinterpret) ||
-                   (op >= Op.LocalGet2 && op <= Op.I32ShrUTee);
-        }
-
-        // whether the operation continues to the next instruction unless it traps at its own index
-        private static bool IsMemoryAccess(Op op)
-        {
-            return (op >= Op.Load32 && op <= Op.Store64) || (op >= Op.Load32Tee && op <= Op.Store32LocalGet2);
         }
 
         // whether the operation may continue at an instruction other than the next one. the operations executed with
         // Instruction.Execute may push a frame and continue at the next instruction after the frame completes.
         private static bool IsBlockEnd(Op op)
         {
-            return op == Op.Fallback || (op >= Op.Return && op <= Op.CallIndirect) || op >= Op.BrIfZero;
+            return op == Op.Fallback || (op >= Op.Return && op <= Op.CallIndirect);
         }
 
         /// <summary>
@@ -515,156 +525,35 @@ namespace WaaS.Runtime
         }
 
         /// <summary>
-        ///     Makes the first instruction of each basic block consume the fuel of the whole block. A block continues
-        ///     while the instructions fall through to the next one which is not the start of another block. The
-        ///     instructions in the block may still throw, in which case the fuel of the rest of the block is consumed
-        ///     as well.
+        ///     Calculates the fuel of each basic block. A block continues while the instructions fall through to the next
+        ///     one which is not the start of another block. The instructions in the block may still throw, in which case the
+        ///     fuel of the rest of the block is consumed as well.
         /// </summary>
-        private static void AssignBlockCosts(CompiledInstruction[] code, bool[] starts)
+        private static ushort[] GetBlockCosts(CompiledInstruction[] code, bool[] starts)
         {
-            // a block with more instructions than the cost can represent is split, which may change the other blocks
-            bool changed;
-            do
-            {
-                changed = false;
-                for (var i = 0; i < code.Length; i++) code[i].Cost = 0;
-
-                for (var i = 0; i < code.Length; i++)
-                {
-                    if (!starts[i]) continue;
-
-                    var cost = 0;
-                    var p = i;
-                    while (true)
-                    {
-                        cost += code[p].Length;
-                        if (IsBlockEnd(code[p].Op)) break;
-
-                        var next = p + code[p].Length;
-                        if (next >= code.Length || starts[next]) break;
-
-                        if (cost + code[next].Length > ushort.MaxValue)
-                        {
-                            starts[next] = true;
-                            changed = true;
-                            break;
-                        }
-
-                        p = next;
-                    }
-
-                    code[i].Cost = (ushort)cost;
-                }
-            } while (changed);
-        }
-
-        private static bool IsI32Const(in CompiledInstruction instr)
-        {
-            return instr.Op == Op.Const && instr.A == (int)ValueType.I32;
-        }
-
-        /// <summary>
-        ///     Creates the code with superinstructions. Every index still has its own entry, which is the target of
-        ///     branches.
-        /// </summary>
-        private static CompiledInstruction[] Fuse(CompiledInstruction[] baseCode)
-        {
-            var code = (CompiledInstruction[])baseCode.Clone();
+            var costs = new ushort[code.Length];
             for (var i = 0; i < code.Length; i++)
             {
-                ref var fused = ref code[i];
-                var first = baseCode[i];
-                var second = i + 1 < baseCode.Length ? baseCode[i + 1] : default;
-                var third = i + 2 < baseCode.Length ? baseCode[i + 2] : default;
+                if (!starts[i]) continue;
 
-                // the sequences are chosen by the frequencies in the scripts compiled by rustc
-                if (first.Op == Op.LocalGet && IsI32Const(second) && third.Op == Op.I32Add)
-                    fused = new CompiledInstruction
-                        { Op = Op.LocalGetI32AddConst, Length = 3, A = first.A, B = second.B };
-                else if (first.Op == Op.LocalGet && second.Op == Op.LocalGet && third.Op == Op.LocalGet)
-                    fused = new CompiledInstruction
-                        { Op = Op.LocalGet3, Length = 3, A = first.A, B = second.A, C = third.A };
-                else if (first.Op == Op.LocalGet && second.Op == Op.LocalGet && IsI32Const(third))
-                    fused = new CompiledInstruction
-                        { Op = Op.LocalGet2Const, Length = 3, A = first.A, B = second.A, C = third.B };
-                else if (first.Op == Op.LocalGet && second.Op == Op.I32Add && third.Op == Op.LocalTee)
-                    fused = new CompiledInstruction
-                        { Op = Op.LocalGetI32AddTee, Length = 3, A = first.A, B = third.A };
-                else if (IsI32Const(first) && second.Op == Op.Load32 && second.B == (int)ValueType.I32 &&
-                         third.Op == Op.LocalTee)
-                    fused = new CompiledInstruction
-                        { Op = Op.ConstLoad32Tee, Length = 3, A = second.A, B = first.B, C = third.A };
-                else if (first.Op == Op.Store32 && IsI32Const(second) && IsI32Const(third))
-                    fused = new CompiledInstruction
-                        { Op = Op.Store32Const2, Length = 3, A = first.A, B = second.B, C = third.B };
-                else if (first.Op == Op.Store32 && second.Op == Op.LocalGet && third.Op == Op.LocalGet)
-                    fused = new CompiledInstruction
-                        { Op = Op.Store32LocalGet2, Length = 3, A = first.A, B = second.A, C = third.A };
-                else if (first.Op == Op.LocalGet && second.Op == Op.LocalGet)
-                    fused = new CompiledInstruction { Op = Op.LocalGet2, Length = 2, A = first.A, B = second.A };
-                else if (first.Op == Op.LocalGet && IsI32Const(second))
-                    fused = new CompiledInstruction { Op = Op.LocalGetConst, Length = 2, A = first.A, B = second.B };
-                else if (IsI32Const(first) && second.Op == Op.I32Add)
-                    fused = new CompiledInstruction { Op = Op.I32AddConst, Length = 2, B = first.B };
-                else if (first.Op == Op.LocalSet && second.Op == Op.LocalGet)
-                    fused = new CompiledInstruction { Op = Op.LocalSetGet, Length = 2, A = first.A, B = second.A };
-                else if (first.Op == Op.LocalTee && IsI32Const(second))
-                    fused = new CompiledInstruction { Op = Op.LocalTeeConst, Length = 2, A = first.A, B = second.B };
-                else if (IsI32Const(first) && second.Op == Op.I32And)
-                    fused = new CompiledInstruction { Op = Op.I32AndConst, Length = 2, B = first.B };
-                else if (first.Op == Op.I32Shl && second.Op == Op.I32Add)
-                    fused = new CompiledInstruction { Op = Op.I32ShlAdd, Length = 2 };
-                else if (first.Op == Op.I32ShrU && second.Op == Op.LocalTee)
-                    fused = new CompiledInstruction { Op = Op.I32ShrUTee, Length = 2, A = second.A };
-                else if (first.Op == Op.Load32 && second.Op == Op.LocalTee)
-                    fused = new CompiledInstruction
-                        { Op = Op.Load32Tee, Length = 2, A = first.A, B = first.B, C = second.A };
-                else if (second.Op == Op.BrIf || second.Op == Op.BrIfLoop)
+                var cost = 0;
+                for (var p = i; ; p++)
                 {
-                    var op = first.Op switch
+                    cost++;
+                    if (IsBlockEnd(code[p].Op) || p + 1 >= code.Length || starts[p + 1]) break;
+
+                    // a block with more instructions than the cost can represent is split
+                    if (cost == ushort.MaxValue)
                     {
-                        Op.I32Eqz => Op.BrIfZero,
-                        Op.I32Ne => Op.BrIfI32Ne,
-                        Op.I32GtU => Op.BrIfI32GtU,
-                        Op.I32LtU => Op.BrIfI32LtU,
-                        _ => Op.Fallback
-                    };
-
-                    // the loop variant follows each operation
-                    if (op != Op.Fallback)
-                        fused = new CompiledInstruction
-                        {
-                            Op = second.Op == Op.BrIf ? op : op + 1,
-                            Length = 2,
-                            A = second.A,
-                            B = second.B,
-                            C = second.C
-                        };
+                        starts[p + 1] = true;
+                        break;
+                    }
                 }
 
-                if (!IsStraight(fused.Op) && !IsMemoryAccess(fused.Op)) continue;
-
-                // the following blocks, loops and ends do nothing
-                var next = i + fused.Length;
-                while (next < baseCode.Length && baseCode[next].Op == Op.Nop && fused.Length < byte.MaxValue)
-                {
-                    fused.Length++;
-                    next++;
-                }
+                costs[i] = (ushort)cost;
             }
 
-            // a block, a loop or an end can still be entered by a branch or by a return from a call. such an entry
-            // executes the next instruction by itself not to spend a dispatch on doing nothing.
-            for (var i = code.Length - 2; i >= 0; i--)
-            {
-                if (code[i].Op != Op.Nop || !IsStraight(code[i + 1].Op) || code[i + 1].Length == byte.MaxValue)
-                    continue;
-
-                code[i] = code[i + 1];
-                code[i].Length++;
-            }
-
-            return code;
+            return costs;
         }
 
         private static void Translate(in ValidationContext context, Instruction instr, ref CompiledInstruction compiled)
@@ -874,6 +763,7 @@ namespace WaaS.Runtime
             public int NumParameters;
             public int NumResults;
             public End End;
+            public bool IsIfWithoutElse;
 
             // whether the code before the block was unreachable
             public bool IsUnreachable;
