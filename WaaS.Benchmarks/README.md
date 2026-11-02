@@ -31,6 +31,7 @@ python run.py build                # download xLua, build the guest and the play
 python run.py bench --cold-runs 15 # measure and report
 python run.py report               # report the existing results
 python run.py bindings             # regenerate Assets/Benchmark/Bindings from guest/wit
+python charts.py                   # regenerate the charts in docs/static/img from the results
 ```
 
 The results use the IL2CPP player. `--backend mono` builds and measures the Mono player instead, whose results are written to `results/mono` and are not reported. Results are written to `results/`, and the summary to `results/report.md`. xLua and Lua-CSharp are downloaded at the commit and the version pinned in `run.py`, and are not stored in this repository. `Assets/csc.rsp` loads the source generator of Lua-CSharp from `unity/Tools`.
@@ -47,6 +48,7 @@ The results use the IL2CPP player. `--backend mono` builds and measures the Mono
 | `dotnet/` | Harness on CoreCLR |
 | `native/` | Harness of wasmtime and wasm3 |
 | `run.py` | Setup, build, execution and reporting |
+| `charts.py` | The charts of the documentation |
 
 ## Method
 

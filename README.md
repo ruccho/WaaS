@@ -51,31 +51,11 @@ It can be used as a script to add plugins to applications created with Unity or 
 
 WaaS is an interpreter that runs on managed code. In Unity, installing `com.unity.burst` makes it use an interpreter loop compiled by Burst.
 
-Compute workloads compiled from Rust (ms, lower is better):
+![Compute workloads of WaaS, xLua, Lua-CSharp, wasm3 and wasmtime on a logarithmic scale](docs/static/img/performance-compute.svg)
 
-| Workload | WaaS Burst | WaaS CoreCLR | xLua | Lua-CSharp | wasm3 | wasmtime |
-|---|---:|---:|---:|---:|---:|---:|
-| fib | 19.7 | 34.1 | 49.3 | 393.3 | 17.9 | 2.0 |
-| sieve | 42.0 | 40.2 | 33.4 | 230.4 | 19.0 | 2.3 |
-| mandelbrot | 16.4 | 16.5 | 32.6 | 182.0 | 7.3 | 1.7 |
-| strings | 60.9 | 40.8 | 24.8 | 181.3 | 16.3 | 2.2 |
-| sort | 56.4 | 64.2 | 50.2 | 154.5 | 23.9 | 4.6 |
-| map | 79.4 | 81.2 | 8.8 | 70.1 | 36.7 | 4.4 |
+![Calls between scripts and the host on a logarithmic scale](docs/static/img/performance-calls.svg)
 
-Calls between scripts and the host (ns/call, lower is better):
-
-| Workload | WaaS Burst | WaaS CoreCLR | xLua | Lua-CSharp |
-|---|---:|---:|---:|---:|
-| ffi_nop | 58 | 40 | 27 | 207 |
-| ffi_add | 69 | 51 | 40 | 413 |
-| ffi_string_in | 404 | 76 | 114 | 304 |
-| ffi_string_out | 805 | 307 | 67 | 259 |
-| ffi_struct | 374 | 115 | 94 | 362 |
-| ffi_resource | 333 | 154 | 31 | 318 |
-| callback_add | 469 | 128 | 30 | 373 |
-| callback_string | 967 | 337 | 68 | 361 |
-
-wasmtime is a JIT compiler and is shown for reference. xLua runs Lua 5.3 on a native interpreter, not LuaJIT. Results vary with the workload and the guest language. See [the documentation](https://ruccho.com/WaaS/performance) for the conditions and the results of MoonBit, and [WaaS.Benchmarks](WaaS.Benchmarks) to reproduce them.
+wasmtime is a JIT compiler and is shown for reference. xLua runs Lua 5.3 on a native interpreter, not LuaJIT. Results vary with the workload and the guest language. See [the documentation](https://ruccho.com/WaaS/performance) for the values, the conditions and the results of MoonBit, and [WaaS.Benchmarks](WaaS.Benchmarks) to reproduce them.
 
 > [!NOTE]
 > WaaS is currently **very experimental** and breaking changes can be made.

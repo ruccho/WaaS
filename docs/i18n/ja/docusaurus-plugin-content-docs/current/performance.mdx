@@ -35,6 +35,12 @@ Windows 11、Intel Core i7-13700F。Unity 6000.5.8f1 の非開発ビルドの IL
 
 計算の処理（ms、小さいほど高速）。wasmtime は JIT コンパイラであり参考値です。wasm3 はインタプリタです。
 
+![WaaS、xLua、Lua-CSharp、wasm3、wasmtime の計算の処理の時間（対数軸）](/img/performance-compute.svg)
+
+ゲスト言語による時間の差は処理によって異なります。
+
+![WaaS、wasm3、wasmtime での Rust と MoonBit のゲストの時間（対数軸）](/img/performance-guests.svg)
+
 | Workload | WaaS CoreCLR (Rust) | WaaS CoreCLR (MoonBit) | WaaS Burst (Rust) | WaaS Burst (MoonBit) | wasm3 (Rust) | wasm3 (MoonBit) | wasmtime (Rust) | wasmtime (MoonBit) |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | fib | 34.1 | 65.4 | 19.7 | 44.6 | 17.9 | 26.4 | 2.0 | 3.8 |
@@ -62,6 +68,8 @@ n/a: wasm3 がこのモジュールの関数をコンパイルできません。
 ## スクリプトとホストの間の呼び出し
 
 単位は ns/call で、小さいほど高速です。`ffi_*` はスクリプトからホスト、`callback_*` はホストからスクリプトの呼び出しです。
+
+![スクリプトとホストの間の呼び出しの時間（対数軸）](/img/performance-calls.svg)
 
 | Workload | WaaS CoreCLR (Rust) | WaaS CoreCLR (MoonBit) | WaaS Burst (Rust) | WaaS Burst (MoonBit) | xLua | Lua-CSharp |
 |---|---:|---:|---:|---:|---:|---:|

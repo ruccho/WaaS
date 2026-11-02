@@ -35,6 +35,12 @@ The same workloads are implemented in Rust, MoonBit and Lua, and the harnesses v
 
 Compute workloads (ms, lower is better). wasmtime is a JIT compiler and is shown for reference, and wasm3 is an interpreter.
 
+![Compute workloads of WaaS, xLua, Lua-CSharp, wasm3 and wasmtime on a logarithmic scale](/img/performance-compute.svg)
+
+The time of the guest language differs by workload.
+
+![Rust and MoonBit guests on WaaS, wasm3 and wasmtime on a logarithmic scale](/img/performance-guests.svg)
+
 | Workload | WaaS CoreCLR (Rust) | WaaS CoreCLR (MoonBit) | WaaS Burst (Rust) | WaaS Burst (MoonBit) | wasm3 (Rust) | wasm3 (MoonBit) | wasmtime (Rust) | wasmtime (MoonBit) |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | fib | 34.1 | 65.4 | 19.7 | 44.6 | 17.9 | 26.4 | 2.0 | 3.8 |
@@ -62,6 +68,8 @@ Compute workloads (ms, lower is better).
 ## Calls between scripts and the host
 
 The values are in ns/call, lower is better. `ffi_*` are calls from scripts to the host, and `callback_*` are calls from the host to scripts.
+
+![Calls between scripts and the host on a logarithmic scale](/img/performance-calls.svg)
 
 | Workload | WaaS CoreCLR (Rust) | WaaS CoreCLR (MoonBit) | WaaS Burst (Rust) | WaaS Burst (MoonBit) | xLua | Lua-CSharp |
 |---|---:|---:|---:|---:|---:|---:|
