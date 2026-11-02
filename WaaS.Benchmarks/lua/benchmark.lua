@@ -1,11 +1,12 @@
 -- Workloads of the benchmark. Keep the behavior identical to guest/src/lib.rs:
 -- the harness compares the checksums of both implementations.
 --
--- The script does not use integer division or bitwise operators so that it also runs on LuaJIT.
+-- The script does not use integer division or bitwise operators so that it runs on Lua 5.2 and LuaJIT as well.
 -- Functions that are called in loops are cached in locals, which is the idiomatic way to make them fast.
 
-local host = CS.WaaS.Benchmarks.LuaBenchmarkHost.Instance
-local Vector3 = CS.UnityEngine.Vector3
+-- xLua exposes C# through CS. Lua-CSharp receives its host object as a global variable.
+local host = CS and CS.WaaS.Benchmarks.LuaBenchmarkHost.Instance or benchmark_host
+local Vector3 = CS and CS.UnityEngine.Vector3 or benchmark_host.CreateVector3
 
 local MODULUS = 1000000007
 local sort = table.sort

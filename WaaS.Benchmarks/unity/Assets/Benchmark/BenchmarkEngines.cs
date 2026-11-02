@@ -2,11 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Lua;
+using Lua.Runtime;
+using Lua.Standard;
 using Waas.Benchmark;
 using WaaS.ComponentModel.Models;
 using WaaS.ComponentModel.Runtime;
 using XLua;
 using ExecutionContext = WaaS.Runtime.ExecutionContext;
+using LuaFunction = XLua.LuaFunction;
+using LuaTable = XLua.LuaTable;
+using LuaCSharpTable = Lua.LuaTable;
 
 namespace WaaS.Benchmarks
 {
@@ -134,11 +140,114 @@ namespace WaaS.Benchmarks
         }
     }
 
+    internal sealed class LuaCSharpEngine : IScriptEngine
+    {
+        private readonly LuaState state;
+        private readonly LuaCSharpTable module;
+
+        public LuaCSharpEngine(byte[] chunk)
+        {
+            state = CreateState();
+            module = Instantiate(state, state.Load(chunk, "benchmark"));
+        }
+
+        public string Name => "lua-csharp";
+
+        public Func<uint, double> GetWorkload(string name)
+        {
+            var function = module[name];
+            return n => Call(state, function, (double)n).Read<double>();
+        }
+
+        public Func<int, int, int> GetCallbackAdd()
+        {
+            var function = module["callback_add"];
+            return (a, b) => Call(state, function, a, b).Read<int>();
+        }
+
+        public Func<string, int> GetCallbackString()
+        {
+            var function = module["callback_string"];
+            return value => Call(state, function, value).Read<int>();
+        }
+
+        public void Collect()
+        {
+        }
+
+        public void Dispose()
+        {
+        }
+
+        public static LuaState CreateState()
+        {
+            var state = LuaState.Create();
+            state.OpenStandardLibraries();
+            state.Environment["benchmark_host"] = new LuaCSharpBenchmarkHost();
+            return state;
+        }
+
+        public static LuaCSharpTable Instantiate(LuaState state, LuaClosure chunk)
+        {
+            var basePosition = state.Stack.Count;
+            state.Push(chunk);
+            return Finish(state, basePosition).Read<LuaCSharpTable>();
+        }
+
+        // calls through the stack of the state, which does not allocate an array for the arguments
+        public static LuaValue Call(LuaState state, LuaValue function, LuaValue argument)
+        {
+            var basePosition = state.Stack.Count;
+            state.Push(function);
+            state.Push(argument);
+            return Finish(state, basePosition);
+        }
+
+        public static LuaValue Call(LuaState state, LuaValue function, LuaValue argument0, LuaValue argument1)
+        {
+            var basePosition = state.Stack.Count;
+            state.Push(function);
+            state.Push(argument0);
+            state.Push(argument1);
+            return Finish(state, basePosition);
+        }
+
+        private static LuaValue Finish(LuaState state, int basePosition)
+        {
+            var task = state.CallAsync(basePosition, basePosition);
+            if (!task.IsCompletedSuccessfully) throw new InvalidOperationException("The call did not complete.");
+
+            using var reader = state.ReadStack(task.Result);
+            return reader.AsSpan()[0];
+        }
+    }
+
     /// <summary>
     ///     Measures each stage from an unloaded script to its first call.
     /// </summary>
     internal static class LoadStages
     {
+        public static IEnumerable<(string stage, double milliseconds)> LuaCSharp(byte[] chunk)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var state = LuaCSharpEngine.CreateState();
+            var engineInit = Elapsed(stopwatch);
+
+            var closure = state.Load(chunk, "benchmark");
+            var load = Elapsed(stopwatch);
+
+            var module = LuaCSharpEngine.Instantiate(state, closure);
+            var instantiate = Elapsed(stopwatch);
+
+            var result = LuaCSharpEngine.Call(state, module["callback_add"], 1, 2).Read<int>();
+            var firstCall = Elapsed(stopwatch);
+            if (result != 3) throw new InvalidOperationException("Unexpected result.");
+
+            state.Dispose();
+
+            return new[] { ("engine-init", engineInit), ("load", load), ("instantiate", instantiate), ("first-call", firstCall) };
+        }
+
         public static IEnumerable<(string stage, double milliseconds)> Waas(byte[] bytes)
         {
             var stopwatch = Stopwatch.StartNew();

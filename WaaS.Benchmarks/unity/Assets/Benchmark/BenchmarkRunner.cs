@@ -14,7 +14,7 @@ namespace WaaS.Benchmarks
     /// <summary>
     ///     Entry point of the benchmark player. It runs only with <c>-benchmark-mode</c>:
     ///     <list type="bullet">
-    ///         <item><c>cold-waas</c>, <c>cold-lua</c>, <c>cold-lua-bytecode</c>: one load in a fresh process</item>
+    ///         <item><c>cold-*</c>: one load of one engine in a fresh process</item>
     ///         <item><c>warm</c>: repeated loads and all execution workloads</item>
     ///     </list>
     ///     Results are written as JSON to the path given by <c>-benchmark-output</c>.
@@ -95,6 +95,9 @@ namespace WaaS.Benchmarks
                 case "cold-lua-bytecode":
                     RecordLoad("xlua-bytecode", "cold", LoadStages.Lua(luaBytecode));
                     break;
+                case "cold-lua-csharp":
+                    RecordLoad("lua-csharp", "cold", LoadStages.LuaCSharp(luaSource));
+                    break;
                 case "warm":
                     RunWarm();
                     break;
@@ -113,15 +116,18 @@ namespace WaaS.Benchmarks
                 MeasureWarmLoad("waas", record, () => LoadStages.Waas(componentBytes));
                 MeasureWarmLoad("xlua", record, () => LoadStages.Lua(luaSource));
                 MeasureWarmLoad("xlua-bytecode", record, () => LoadStages.Lua(luaBytecode));
+                MeasureWarmLoad("lua-csharp", record, () => LoadStages.LuaCSharp(luaSource));
             }
 
             using var waas = new WaasEngine(componentBytes);
             using var lua = new LuaEngine(luaSource);
+            using var luaCSharp = new LuaCSharpEngine(luaSource);
+            IScriptEngine[] engines = { waas, lua, luaCSharp };
 
-            foreach (var (name, n) in ComputeWorkloads) MeasureBoth(waas, lua, "compute", name, n);
-            foreach (var name in FfiWorkloads) MeasureBoth(waas, lua, "ffi", name, CallCount);
+            foreach (var (name, n) in ComputeWorkloads) MeasureAll(engines, "compute", name, n);
+            foreach (var name in FfiWorkloads) MeasureAll(engines, "ffi", name, CallCount);
 
-            MeasureBoth(waas, lua, "callback", "callback_add", CallCount, engine =>
+            MeasureAll(engines, "callback", "callback_add", CallCount, engine =>
             {
                 var add = engine.GetCallbackAdd();
                 return n =>
@@ -131,7 +137,7 @@ namespace WaaS.Benchmarks
                     return value;
                 };
             });
-            MeasureBoth(waas, lua, "callback", "callback_string", CallCount, engine =>
+            MeasureAll(engines, "callback", "callback_string", CallCount, engine =>
             {
                 var callback = engine.GetCallbackString();
                 return n =>
@@ -151,16 +157,20 @@ namespace WaaS.Benchmarks
             if (record) RecordLoad(engine, "warm", stages);
         }
 
-        private static void MeasureBoth(IScriptEngine a, IScriptEngine b, string group, string name, uint n,
+        private static void MeasureAll(IScriptEngine[] engines, string group, string name, uint n,
             Func<IScriptEngine, Func<uint, double>> factory = null)
         {
             factory ??= engine => engine.GetWorkload(name);
-            var checksumA = Measure(a, group, name, n, factory(a));
-            var checksumB = Measure(b, group, name, n, factory(b));
+            var first = Measure(engines[0], group, name, n, factory(engines[0]));
+            foreach (var engine in engines.Skip(1))
+            {
+                var checksum = Measure(engine, group, name, n, factory(engine));
 
-            // guards against workloads that have drifted apart, or that were optimized away
-            if (checksumA != checksumB)
-                throw new InvalidOperationException($"Checksum mismatch in {name}: {checksumA} != {checksumB}");
+                // guards against workloads that have drifted apart, or that were optimized away
+                if (checksum != first)
+                    throw new InvalidOperationException(
+                        $"Checksum mismatch in {name} on {engine.Name}: {first} != {checksum}");
+            }
         }
 
         private static double Measure(IScriptEngine engine, string group, string name, uint n,

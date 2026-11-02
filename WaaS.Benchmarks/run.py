@@ -23,9 +23,19 @@ STREAMING_ASSETS = UNITY_PROJECT / "Assets" / "StreamingAssets"
 XLUA_COMMIT = "59bf42685dbe36fe0e1678a6ba8597f859ef7ca3"
 XLUA_URL = f"https://github.com/Tencent/xLua/archive/{XLUA_COMMIT}.zip"
 
+LUA_CSHARP_VERSION = "0.5.8"
+# package id -> (version, directory in the package, destination relative to the Unity project)
+LUA_CSHARP_PACKAGES = {
+    "LuaCSharp": (LUA_CSHARP_VERSION, "lib/netstandard2.1/", "Assets/LuaCSharp"),
+    "LuaCSharp.Annotations": (LUA_CSHARP_VERSION, "lib/netstandard2.1/", "Assets/LuaCSharp"),
+    "Microsoft.Bcl.TimeProvider": ("8.0.0", "lib/netstandard2.0/", "Assets/LuaCSharp"),
+    # loaded by Assets/csc.rsp
+    "LuaCSharp.SourceGenerator": (LUA_CSHARP_VERSION, "analyzers/dotnet/cs/", "Tools/LuaCSharpAnalyzer"),
+}
+
 BACKENDS = {"mono": ("Mono", "BuildMono"), "il2cpp": ("IL2CPP", "BuildIl2Cpp")}
-COLD_MODES = ["cold-waas", "cold-lua", "cold-lua-bytecode"]
-ENGINE_LABELS = {"waas": "WaaS", "xlua": "xLua", "xlua-bytecode": "xLua (bytecode)"}
+COLD_MODES = ["cold-waas", "cold-lua", "cold-lua-bytecode", "cold-lua-csharp"]
+ENGINE_LABELS = {"waas": "WaaS", "xlua": "xLua", "xlua-bytecode": "xLua (bytecode)", "lua-csharp": "Lua-CSharp"}
 STAGES = ["engine-init", "load", "instantiate", "first-call"]
 
 
@@ -94,6 +104,28 @@ def setup_xlua():
     marker.write_text(XLUA_COMMIT + "\n")
 
 
+def setup_lua_csharp():
+    marker = UNITY_PROJECT / "Assets" / "LuaCSharp" / ".version"
+    if marker.exists() and marker.read_text().strip() == LUA_CSHARP_VERSION:
+        return
+
+    shutil.rmtree(UNITY_PROJECT / "Assets" / "LuaCSharp", ignore_errors=True)
+    shutil.rmtree(UNITY_PROJECT / "Tools", ignore_errors=True)
+    for package, (version, directory_in_package, destination) in LUA_CSHARP_PACKAGES.items():
+        print(f"Downloading {package} {version}", flush=True)
+        url = f"https://www.nuget.org/api/v2/package/{package}/{version}"
+        with urllib.request.urlopen(url) as response:
+            archive = zipfile.ZipFile(io.BytesIO(response.read()))
+        names = [n for n in archive.namelist() if n.startswith(directory_in_package) and n.endswith(".dll")]
+        if not names:
+            sys.exit(f"{package} has no assembly in {directory_in_package}: {archive.namelist()}")
+        directory = UNITY_PROJECT / destination
+        directory.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (directory / Path(name).name).write_bytes(archive.read(name))
+    marker.write_text(LUA_CSHARP_VERSION + "\n")
+
+
 def build_guest():
     env = tool_environment()
     target_dir = BUILD_DIR / "guest"
@@ -115,6 +147,7 @@ def generate_bindings():
 
 def build_players(backends):
     setup_xlua()
+    setup_lua_csharp()
     build_guest()
     run_unity("GenerateLuaBindings", "generate-lua-bindings")
     for backend in backends:
@@ -163,16 +196,18 @@ def load_table(medians):
 
 def exec_table(records, per_call):
     unit = "ns/call" if per_call else "ms"
-    lines = [f"| Workload | n | WaaS ({unit}) | xLua ({unit}) | xLua / WaaS |", "|---|---:|---:|---:|---:|"]
+    lines = [f"| Workload | n | WaaS ({unit}) | xLua ({unit}) | Lua-CSharp ({unit}) | xLua / WaaS | Lua-CSharp / WaaS |",
+             "|---|---:|---:|---:|---:|---:|---:|"]
     by_name = {}
     for record in records:
         by_name.setdefault(record["name"], {})[record["engine"]] = record
     for name, engines in by_name.items():
         n = engines["waas"]["n"]
         scale = 1e6 / n if per_call else 1
-        waas = statistics.median(engines["waas"]["samples"]) * scale
-        xlua = statistics.median(engines["xlua"]["samples"]) * scale
-        lines.append(f"| {name} | {n:,} | {waas:,.1f} | {xlua:,.1f} | {xlua / waas:.2f} |")
+        waas, xlua, lua_csharp = (statistics.median(engines[e]["samples"]) * scale
+                                  for e in ("waas", "xlua", "lua-csharp"))
+        lines.append(f"| {name} | {n:,} | {waas:,.1f} | {xlua:,.1f} | {lua_csharp:,.1f} "
+                     f"| {xlua / waas:.2f} | {lua_csharp / waas:.2f} |")
     return lines
 
 
