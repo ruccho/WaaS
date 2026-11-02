@@ -144,5 +144,5 @@ wasm3 (MoonBit) cannot run compute_strings: compiling function underran the stac
 The following were tried with Burst on IL2CPP, and compared by running the players alternately.
 
 - Reaching instructions through a `ref` local instead of an index in the managed loop: about 12 percent faster on CoreCLR, and up to about twice as slow on IL2CPP.
-- Operations for constant operands of the left side and of floating-point numbers (branch `experiment/constant-operands`): CoreCLR became about 30 percent faster, but on Burst `mandelbrot` became about 7 percent faster while `fib`, `sieve`, `sort` and `map` became 5 to 20 percent slower.
+- Operations for constant operands of the left side and of floating-point numbers: CoreCLR became about 30 percent faster, but on Burst `mandelbrot` became about 7 percent faster while `fib`, `sieve`, `sort` and `map` became 5 to 20 percent slower.
 - Keeping the result of an operation in a local variable for the next one: the changes were between 6 percent faster and 24 percent slower.
