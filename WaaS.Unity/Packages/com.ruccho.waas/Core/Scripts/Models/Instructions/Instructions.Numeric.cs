@@ -947,15 +947,7 @@ namespace WaaS.Models
     {
         protected override ulong Operate(ulong value)
         {
-            ulong i = 8 * sizeof(ulong);
-            var c = value;
-            while (c != 0)
-            {
-                c <<= 1;
-                i--;
-            }
-
-            return i;
+            return BitUtils.TrailingZeroCount(value);
         }
     }
 

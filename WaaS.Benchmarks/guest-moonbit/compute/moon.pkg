@@ -1,0 +1,20 @@
+import {
+  "waas/benchmark/workloads",
+}
+
+options(
+  link: {
+    "wasm": {
+      "exports": [
+        "compute_fib",
+        "compute_sieve",
+        "compute_mandelbrot",
+        "compute_strings",
+        "compute_sort",
+        "compute_map",
+      ],
+      "export-memory-name": "memory",
+      "heap-start-address": 16,
+    },
+  },
+)

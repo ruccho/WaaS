@@ -8,6 +8,11 @@
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     </PropertyGroup>
 
+    <!-- runs the interpreter loop for Burst on .NET, to test it without Unity -->
+    <PropertyGroup Condition=" '$(WaaSNativeInterpreter)' == 'true' ">
+        <DefineConstants>$(DefineConstants);WAAS_NATIVE_INTERPRETER</DefineConstants>
+    </PropertyGroup>
+
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>

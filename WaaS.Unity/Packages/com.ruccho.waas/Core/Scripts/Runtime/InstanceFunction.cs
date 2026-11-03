@@ -11,6 +11,10 @@ namespace WaaS.Runtime
         public readonly Function function;
         public readonly Instance instance;
 
+#if WAAS_NATIVE_INTERPRETER
+        internal unsafe NativeFunction* Native;
+#endif
+
         public InstanceFunction(Instance instance, Function function)
         {
             this.instance = instance;

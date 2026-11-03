@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "com.ruccho.waas": "file:../../../WaaS.Unity/Packages/com.ruccho.waas",
+    "com.unity.burst": "1.8.25",
+    "com.unity.modules.imageconversion": "1.0.0",
+    "com.unity.modules.imgui": "1.0.0",
+    "com.unity.modules.jsonserialize": "1.0.0",
+    "com.unity.modules.uielements": "1.0.0"
+  }
+}

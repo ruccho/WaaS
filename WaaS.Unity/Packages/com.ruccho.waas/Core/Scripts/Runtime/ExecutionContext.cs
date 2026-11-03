@@ -41,6 +41,7 @@ namespace WaaS.Runtime
         public ExecutionContext(uint? maxStackFrames = null)
         {
             this.maxStackFrames = maxStackFrames;
+            MaxStackFrameCount = maxStackFrames ?? long.MaxValue;
             Debugger = DefaultDebugger;
         }
 
@@ -118,6 +119,11 @@ namespace WaaS.Runtime
 
         internal uint? MaxStackFrames => maxStackFrames;
 
+        /// <summary>
+        ///     <see cref="MaxStackFrames" /> without the cost of reading a nullable value in the interpreter loop.
+        /// </summary>
+        internal long MaxStackFrameCount { get; }
+
         private StackFrame? Current
         {
             get
@@ -128,6 +134,15 @@ namespace WaaS.Runtime
         }
 
         public int ResultLength => LastFrame.ResultLength;
+
+        /// <summary>
+        ///     Returns the frame of the completed invocation to the pool.
+        /// </summary>
+        internal void ReleaseLastFrame()
+        {
+            LastFrame.Dispose();
+            LastFrame = default;
+        }
 
         public void Dispose()
         {
@@ -455,17 +470,41 @@ namespace WaaS.Runtime
         {
             lock (locker)
             {
-                var frame = PushFrame(function, inputValues);
+                var frame = PushFrameWhileMoving(function, inputValues);
                 var movingNow = moving;
-                moving = false;
-                MoveToEndOrPending(frame, out var pending);
-                moving = movingNow;
-                if (pending)
+
+                // a function that completes at once does not need the loop of MoveToEndOrPending
+                moving = true;
+                StackFrameState state;
+                try
                 {
-                    Dispose();
-                    throw new InvalidOperationException("InterruptFrame() cannot handle async frames.");
+                    state = frame.MoveNext(new Waker(currentPendingTaskSource));
+                }
+                catch (Exception ex)
+                {
+                    moving = movingNow;
+                    WasmStackTrace.Attach(ex, frames);
+                    DiscardFrames(frame);
+                    throw;
                 }
 
+                moving = false;
+                if (state == StackFrameState.Completed)
+                {
+                    frames.Pop();
+                }
+                else
+                {
+                    MoveToEndOrPending(frame, out var pending);
+                    if (pending)
+                    {
+                        moving = movingNow;
+                        Dispose();
+                        throw new InvalidOperationException("InterruptFrame() cannot handle async frames.");
+                    }
+                }
+
+                moving = movingNow;
                 frame.TakeResults(results);
                 frame.Dispose();
             }
@@ -483,27 +522,46 @@ namespace WaaS.Runtime
             }
         }
 
-        private async ValueTask RunAsync()
+        // does not create a state machine when the invocation completes synchronously
+        private ValueTask RunAsync()
         {
             var initial = Current ?? throw new InvalidOperationException();
+            ValueTaskSource source;
+            try
+            {
+                if (!MoveAsync(initial, out source)) return default;
+            }
+            catch (Exception ex)
+            {
+                return new ValueTask(Task.FromException(ex));
+            }
+
+            return WaitAndRunAsync(initial, source);
+        }
+
+        private bool MoveAsync(StackFrame initial, out ValueTaskSource source)
+        {
+            RefillFuel();
+            source = currentPendingTaskSource ??= ValueTaskSource.Create();
+            var wasRunningAsync = isRunningAsync;
+            isRunningAsync = true;
+            bool pending;
+            try
+            {
+                MoveToEndOrPending(initial, out pending);
+            }
+            finally
+            {
+                isRunningAsync = wasRunningAsync;
+            }
+
+            return pending;
+        }
+
+        private async ValueTask WaitAndRunAsync(StackFrame initial, ValueTaskSource source)
+        {
             while (true)
             {
-                RefillFuel();
-                var source = currentPendingTaskSource ??= ValueTaskSource.Create();
-                var wasRunningAsync = isRunningAsync;
-                isRunningAsync = true;
-                bool pending;
-                try
-                {
-                    MoveToEndOrPending(initial, out pending);
-                }
-                finally
-                {
-                    isRunningAsync = wasRunningAsync;
-                }
-
-                if (!pending) return;
-
                 currentPendingTaskSource = null;
 
                 var registration = RegisterCancellation(source, CancellationToken);
@@ -522,6 +580,8 @@ namespace WaaS.Runtime
                 {
                     registration.Dispose();
                 }
+
+                if (!MoveAsync(initial, out source)) return;
             }
         }
 

@@ -1,7 +1,9 @@
 {
   "name": "WaaS",
   "rootNamespace": "WaaS",
-  "references": [],
+  "references": [
+    "Unity.Burst"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": true,
@@ -11,6 +13,17 @@
   ],
   "autoReferenced": true,
   "defineConstraints": [],
-  "versionDefines": [],
-  "noEngineReferences": true
+  "versionDefines": [
+    {
+      "name": "com.unity.burst",
+      "expression": "1.8.0",
+      "define": "WAAS_BURST"
+    },
+    {
+      "name": "com.unity.burst",
+      "expression": "1.8.0",
+      "define": "WAAS_NATIVE_INTERPRETER"
+    }
+  ],
+  "noEngineReferences": false
 }

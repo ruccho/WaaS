@@ -47,6 +47,16 @@ It can be used as a script to give complex behavior to user-created contents.
 
 It can be used as a script to add plugins to applications created with Unity or .NET.
 
+## Performance
+
+WaaS is an interpreter that runs on managed code. In Unity, installing `com.unity.burst` makes it use an interpreter loop compiled by Burst.
+
+![Compute workloads of WaaS, xLua, Lua-CSharp, wasm3 and wasmtime on a logarithmic scale](docs/static/img/performance-compute.svg)
+
+![Calls between scripts and the host on a logarithmic scale](docs/static/img/performance-calls.svg)
+
+wasmtime is a JIT compiler and is shown for reference. xLua runs Lua 5.3 on a native interpreter, not LuaJIT. Results vary with the workload and the guest language. See [the documentation](https://ruccho.com/WaaS/performance) for the values, the conditions and the results of MoonBit, and [WaaS.Benchmarks](WaaS.Benchmarks) to reproduce them.
+
 > [!NOTE]
 > WaaS is currently **very experimental** and breaking changes can be made.
 

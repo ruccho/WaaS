@@ -7,7 +7,7 @@ sidebar_position: 1
 
 ## Unity
 
-WaaS は Unity 2022.3.12f1 以降に対応しています。
+WaaS は Unity 6000.0 以降に対応しています。
 
 ### 1. 依存関係のインストール
 
@@ -30,6 +30,12 @@ https://github.com/ruccho/WaaS.git?path=/WaaS.Unity/Packages/com.ruccho.waas#rel
 ```
 
 `#release` は、最新のリリースを指す `release` ブランチを参照します。特定のバージョンを使う場合は、代わりに `#v0.3.0` のようにタグを指定してください。
+
+### 3. Burst のインストール（推奨）
+
+Package Manager から `com.unity.burst` 1.8.0 以降をインストールすることを推奨します。コードを変更しなくても、WaaS は Burst でコンパイルされたインタプリタでスクリプトを実行します。Burst がなくても動作しますが、低速なインタプリタになります。
+
+違いについては[性能](../performance.mdx)を参照してください。
 
 ## .NET
 

@@ -9,7 +9,27 @@ namespace WaaS.Runtime
     /// </summary>
     public class Global : IExternal
     {
-        protected internal StackValueItem stackValue;
+        // an array of one element, whose address can be fixed for the interpreter on pointers
+        private readonly StackValueItem[] storage = new StackValueItem[1];
+
+        protected internal ref StackValueItem stackValue => ref storage[0];
+
+#if WAAS_NATIVE_INTERPRETER
+        private System.Runtime.InteropServices.GCHandle storageHandle;
+
+        internal unsafe StackValueItem* GetPointer()
+        {
+            if (!storageHandle.IsAllocated)
+                storageHandle = System.Runtime.InteropServices.GCHandle.Alloc(storage,
+                    System.Runtime.InteropServices.GCHandleType.Pinned);
+            return (StackValueItem*)storageHandle.AddrOfPinnedObject();
+        }
+
+        ~Global()
+        {
+            if (storageHandle.IsAllocated) storageHandle.Free();
+        }
+#endif
 
         // the object of a reference value, which the global holds strongly
         private protected object referenceKeepAlive;
