@@ -4,6 +4,12 @@ Wukuro is released together with WaaS with the same version. The Unity package a
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-03
+
+### Changed
+
+- Scripts run faster, with the improvements of WaaS 0.5.0. Install `com.unity.burst` to run them on the interpreter compiled by Burst.
+
 ## [0.4.0] - 2026-10-31
 
 ### Breaking Changes
