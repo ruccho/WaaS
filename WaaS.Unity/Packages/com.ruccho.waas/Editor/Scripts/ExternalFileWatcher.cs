@@ -31,7 +31,30 @@ namespace WaaS.Unity.Editor
         static ExternalFileWatcher()
         {
             Load();
+            RegisterRecordedFiles();
             EditorApplication.update += Update;
+        }
+
+        /// <summary>
+        ///     Registers the hashes of the files recorded at the previous imports as their custom dependencies. The
+        ///     exporters register the files they write only after the editor finishes importing, so without this the
+        ///     first import after the editor starts finds the custom dependencies unregistered and reimports every asset
+        ///     that tracks an external file, and the next refresh reimports them again with the registered values.
+        /// </summary>
+        private static void RegisterRecordedFiles()
+        {
+            // import worker processes load the domain too, but the custom dependencies belong to the main process
+            if (AssetDatabase.IsAssetImportWorkerProcess()) return;
+
+            foreach (var path in Dependencies.Values.SelectMany(files => files.Keys).Distinct())
+                try
+                {
+                    ExternalFileDependency.Register(path);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[WaaS] Failed to register the custom dependency of {path}: {ex.Message}");
+                }
         }
 
         public static void BeginImport(string assetPath)
