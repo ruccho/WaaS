@@ -4,6 +4,10 @@ WaaS and its derived distributions (the NuGet packages, the Unity packages, the 
 
 ## [Unreleased]
 
+### Fixed
+
+- In Unity, Rust and MoonBit scripts that use files outside the asset database, such as exported WIT files, were imported twice after the editor started: in the first import, and again in the next refresh. The custom dependencies of the files are now registered when the editor loads.
+
 ## [0.5.0] - 2026-11-03
 
 ### Breaking Changes
